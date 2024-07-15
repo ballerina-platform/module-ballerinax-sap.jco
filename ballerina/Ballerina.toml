@@ -1,0 +1,28 @@
+[package]
+org = "ballerinax"
+name = "sap.jco"
+version = "0.1.0"
+distribution = "2201.9.0"
+authors = ["Ballerina"]
+keywords = ["Business Management/ERP", "Cost/Paid", "Vendor/SAP"]
+repository = "https://github.com/ballerina-platform/module-ballerinax-sap.jco"
+icon = "icon.png"
+license = ["Apache-2.0"]
+
+[build-options]
+observabilityIncluded = true
+
+[platform.java17]
+graalvmCompatible = true
+
+[[platform.java17.dependency]]
+groupId = "io.ballerina.lib.sap"
+artifactId = "sap.jco-native"
+version = "0.1.0-SNAPSHOT"
+path = "../native/build/libs/sap.jco-native-0.1.0-SNAPSHOT.jar"
+
+[[platform.java17.dependency]]
+path = "../native/libs/sapidoc3.jar"
+
+[[platform.java17.dependency]]
+path = "../native/libs/sapjco3.jar"
