@@ -18,15 +18,7 @@
 
 import org.apache.tools.ant.taskdefs.condition.Os
 
-def graalvmFlag = ""
-
-task clean {
-}
-
 task test {
-    if (project.hasProperty("balGraalVMTest")) {
-        graalvmFlag = "--graalvm"
-    }
     doLast {
         try {
             exec {
@@ -49,8 +41,6 @@ task build {
     gradle.taskGraph.whenReady { graph ->
         if (graph.hasTask(":sap.jco-examples:test")) {
             build.enabled = false
-        } else {
-            test.enabled = false
         }
     }
     doLast {

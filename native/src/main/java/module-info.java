@@ -16,11 +16,10 @@
  * under the License.
  */
 
- module io.ballerina.lib.sap {
-     requires sapjco3;
-     requires sapidoc3;
+module io.ballerina.lib.sap {
+    requires sapjco3;
+    requires sapidoc3;
     requires io.ballerina.runtime;
-     requires org.slf4j;
-     requires java.logging;
-     exports io.ballerina.lib.sap;
+    requires org.slf4j;
+    exports io.ballerina.lib.sap;
 }

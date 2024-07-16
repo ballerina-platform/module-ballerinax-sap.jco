@@ -15,15 +15,11 @@
 // under the License.
 
 import ballerina/jballerina.java as java;
-import ballerina/log;
 
-function init() {
-    error? module = setModule();
-    if module is error {
-        log:printError("Error in module initialization", module);
-    }
+isolated function init() {
+    setModule();
 }
 
-function setModule() returns error? = @java:Method {
+isolated function setModule() = @java:Method {
     'class: "io.ballerina.lib.sap.ModuleUtils"
 } external;
