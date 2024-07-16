@@ -14,15 +14,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/uuid;
 import ballerina/jballerina.java as java;
+import ballerina/uuid;
 
 # A Ballerina client for SAP BAPI/RFC.
 @display {label: "RFC Client", iconPath: "icon.png"}
 public isolated client class Client {
 
     # Initializes the connector.
-    # 
+    #
     # + configurations - The configurations required to initialize the BAPI client.
     # + return - An error if the initialization fails.
     public isolated function init(*DestinationConfig configurations) returns Error? {
@@ -31,16 +31,17 @@ public isolated client class Client {
     }
 
     # Executes the RFC function.
-    # 
+    #
     # + functionName - The name of the function to be executed.
     # + importParams - The input parameters for the function.
     # + exportParams - The output parameters for the function.
     # + return - An error if the execution fails.
-    isolated remote function execute(string functionName,record {} importParams,typedesc<record {}> exportParams = <>) returns exportParams|Error? = @java:Method{
+    isolated remote function execute(string functionName, record {} importParams, typedesc<record {}> exportParams = <>) returns exportParams|Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
+
 }
 
-isolated function initializeClient(Client jcoClient,DestinationConfig configurations) returns Error? = @java:Method {
+isolated function initializeClient(Client jcoClient, DestinationConfig configurations) returns Error? = @java:Method {
     'class: "io.ballerina.lib.sap.Client"
 } external;

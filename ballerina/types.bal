@@ -94,9 +94,9 @@ public type DestinationConfig record {
     @display {label: "Password (jco.client.passwd)"}
     string password;
     @display {label: "Language (jco.client.lang)"}
-    string language="EN";
+    string language = "EN";
     @display {label: "Group (jco.client.group)"}
-    string group="PUBLIC";
+    string group = "PUBLIC";
     @display {label: "Auth Type (jco.destination.auth_type)"}
     string authType?;
     @display {label: "Code Page (jco.client.codepage)"}
