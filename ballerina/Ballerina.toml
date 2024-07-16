@@ -9,6 +9,12 @@ repository = "https://github.com/ballerina-platform/module-ballerinax-sap.jco"
 icon = "icon.png"
 license = ["Apache-2.0"]
 
+[build-options]
+observabilityIncluded = true
+
+[platform.java17]
+graalvmCompatible = true
+
 [[platform.java17.dependency]]
 groupId = "io.ballerina.lib.sap"
 artifactId = "sap.jco-native"
@@ -17,14 +23,6 @@ path = "../native/build/libs/sap.jco-native-0.1.0-SNAPSHOT.jar"
 
 [[platform.java17.dependency]]
 path = "../native/libs/sapidoc3.jar"
-scope = "provided"
-groupId="com.sap"
-artifactId="com.sap.conn.idoc"
-version="3.1.3"
 
 [[platform.java17.dependency]]
 path = "../native/libs/sapjco3.jar"
-scope = "provided"
-groupId="com.sap"
-artifactId="com.sap.conn.jco"
-version="3.1.9"
