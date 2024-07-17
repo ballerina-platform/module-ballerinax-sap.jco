@@ -9,10 +9,64 @@ on:
     types: check_connector_for_breaking_changes
 
 jobs:
-  call_workflow:
-    name: Run Connector Build Workflow
-    if: ${{ github.repository_owner == 'ballerina-platform' }}
-    uses: ballerina-platform/ballerina-library/.github/workflows/build-connector-template.yml@main
-    secrets: inherit
-    with:
-      repo-name: module-ballerinax-sap.jco
+  ubuntu-build:
+    name: Build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.head_ref }}-ubuntu-build
+      cancel-in-progress: true
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Get Ballerina Version
+        run: |
+          BAL_VERSION=$(grep -w 'ballerinaLangVersion' gradle.properties | cut -d= -f2 | rev | cut --complement -d- -f1 | rev) 
+          if [ -z "$BAL_VERSION" ]; then
+            BAL_VERSION="latest"
+          fi
+          echo "BAL_VERSION=$BAL_VERSION" >> $GITHUB_ENV
+          echo "Ballerina Version: $BAL_VERSION"
+
+      - name: Set Up Ballerina
+        uses: ballerina-platform/setup-ballerina@v1.1.0
+        with:
+          version: ${{ env.BAL_VERSION }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: 17.0.7
+
+      - name: Set ENV Variables
+        run: |
+          echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
+
+      - name: Build the Package
+        env:
+          packageUser: ${{ github.actor }}
+          packagePAT: ${{ secrets.GITHUB_TOKEN }}
+          botUser: ${{ secrets.BALLERINA_BOT_USERNAME }}
+          botPAT: ${{ secrets.BALLERINA_BOT_TOKEN }}
+        run: |
+          ./gradlew build -x test
+
+      - name: Generate Codecov Report
+        uses: codecov/codecov-action@v3
+
+      # Send notification when build fails
+      - name: Alert notifier on failure
+        if: failure() && (github.event.action == 'check_connector_for_breaking_changes')
+        run: |
+          curl -X POST \
+          'https://api.github.com/repos/ballerina-platform/ballerina-release/dispatches' \
+          --header 'Accept: application/vnd.github.v3+json' \
+          --header 'Authorization: Bearer ${{ secrets.BALLERINA_BOT_TOKEN }}' \
+          --data-raw '{
+            "event_type": "notify-ballerinax-connector-build-failure",
+            "client_payload": {
+              "repoName": "module-ballerinax-sap.jco",
+              "workflow": "CI"
+            }
+          }'

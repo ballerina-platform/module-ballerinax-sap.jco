@@ -16,6 +16,8 @@
  * under the License.
  */
 
+import java.util.Base64
+
 plugins {
     id 'com.github.spotbugs-base'
     id 'de.undercouch.download'
@@ -63,25 +65,31 @@ allprojects {
 }
 
 def moduleVersion = project.version.replace("-SNAPSHOT", "")
-
-// Task to check if JAR files are present and set up dependency
 task checkAndDownloadJars {
-    def libsDir = file('native/libs/')
-    def sapidocJar = file("${libsDir}/sapidoc3.jar")
-    def sapjcoJar = file("${libsDir}/sapjco3.jar")
-
     doLast {
+        def libsDir = file('native/libs/')
+        def sapidocJar = file("${libsDir}/sapidoc3.jar")
+        def sapjcoJar = file("${libsDir}/sapjco3.jar")
+
         if (!sapidocJar.exists() || !sapjcoJar.exists()) {
             println 'JAR files are missing. Downloading...'
-            downloadJars.execute()
+            tasks.downloadJars.execute() 
         } else {
             println 'JAR files already exist in native/libs/ directory.'
         }
     }
 }
 
-// Task to download required JAR files
 task downloadJars(type: de.undercouch.gradle.tasks.download.Download) {
+    def user = System.getenv("botUser")
+    def token = System.getenv("botPAT")
+
+    def encodedAuth = Base64.getEncoder().encodeToString("$user:$token".bytes)
+
+    headers([
+        'Authorization': "Basic $encodedAuth"
+    ])
+
     src([
         'https://github.com/wso2-enterprise/wso2-sap-resources/blob/master/resources/lib/sapidoc3.jar?raw=true',
         'https://github.com/wso2-enterprise/wso2-sap-resources/blob/master/resources/lib/sapjco3.jar?raw=true'
@@ -90,8 +98,38 @@ task downloadJars(type: de.undercouch.gradle.tasks.download.Download) {
     overwrite false
 }
 
+checkAndDownloadJars.doLast {
+    def libsDir = file('native/libs/')
+    def sapidocJar = file("${libsDir}/sapidoc3.jar")
+    def sapjcoJar = file("${libsDir}/sapjco3.jar")
+
+    if (!sapidocJar.exists() || !sapjcoJar.exists()) {
+        println 'JAR files are missing. Triggering download...'
+        tasks.downloadJars.execute()
+    }
+}
+
+task checkJars {
+    doLast {
+        def libsDir = file('native/libs/')
+        def sapidocJar = file("${libsDir}/sapidoc3.jar")
+        def sapjcoJar = file("${libsDir}/sapjco3.jar")
+
+        if (!sapidocJar.exists() || !sapjcoJar.exists()) {
+            println 'JAR files are missing. Need to download...'
+        } else {
+            println 'JAR files already exist. No download needed.'
+        }
+    }
+}
+
+downloadJars.onlyIf {
+    !new File('native/libs/sapidoc3.jar').exists() || !new File('native/libs/sapjco3.jar').exists()
+}
+
 task build {
-    dependsOn checkAndDownloadJars
+    dependsOn checkJars
+    dependsOn downloadJars
     dependsOn(':sap.jco-native:build')
     dependsOn(':sap.jco-ballerina:build')
     dependsOn(':sap.jco-examples:build')
