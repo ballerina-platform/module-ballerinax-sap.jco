@@ -17,7 +17,6 @@
 import ballerina/jballerina.java as java;
 import ballerina/uuid;
 
-
 # A Ballerina client for SAP BAPI/RFC.
 @display {label: "RFC Client", iconPath: "icon.png"}
 public isolated client class Client {
@@ -37,7 +36,7 @@ public isolated client class Client {
     # + importParams - The input parameters for the function.
     # + exportParams - The output parameters for the function.
     # + return - An error if the execution fails.
-    isolated remote function execute(string functionName, record {|string|int|float|decimal...;|} importParams, typedesc<record {}> exportParams = <>) returns exportParams|Error? = @java:Method {
+    isolated remote function execute(string functionName, record {|string|int|float|decimal...;|} importParams, typedesc<record {|string|int|float|decimal...;|}> exportParams = <>) returns exportParams|Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 

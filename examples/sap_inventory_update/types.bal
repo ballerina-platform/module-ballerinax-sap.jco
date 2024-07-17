@@ -30,7 +30,7 @@ type SapInventoryInput record {|
     |};
 
 // Define the record for RFC function output
-type SapUpdateResponse record {
+type SapUpdateResponse record {|
     string status;
     string message;
-};
+|};
