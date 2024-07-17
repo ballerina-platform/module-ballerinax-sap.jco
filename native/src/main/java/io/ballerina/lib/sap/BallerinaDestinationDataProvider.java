@@ -106,10 +106,11 @@ public class BallerinaDestinationDataProvider implements DestinationDataProvider
                 DestinationDataProvider.JCO_REPOSITORY_ROUNDTRIP_OPTIMIZATION);
 
         configKeys.forEach((key, destKey) -> {
-            String value = jcoDestinationConfig.getStringValue(StringUtils.fromString(key)).toString();
-            properties.setProperty(destKey, value);
+            BString value = jcoDestinationConfig.getStringValue(StringUtils.fromString(key));
+            if (value != null) {
+                properties.setProperty(destKey, value.toString());
+            }
         });
-
         destinationProperties.put(jcoDestinationConfig.getStringValue(
                 StringUtils.fromString("destinationId")).toString(), properties);
     }
