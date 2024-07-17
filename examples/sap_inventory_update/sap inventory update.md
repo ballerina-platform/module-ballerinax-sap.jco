@@ -1,4 +1,4 @@
-# Example Scenario: SAP Inventory Update for BestWidgets
+# SAP Inventory Update for BestWidgets
 
 In this example, we will demonstrate how to integrate external data into an SAP system using the Ballerina SAP JCo
 Connector, showcasing Ballerina's data mapping capabilities and the RFC function calling feature. The scenario involves
@@ -43,7 +43,7 @@ credentials to connect to your SAP system. Refer to the [Setup Guide](../../READ
 Configure the necessary SAP connection parameters in `Config.toml` in the example directory:
 
 ```toml
-[DestinationConfig]
+[sapConfig]
 host = "localhost"
 systemNumber = "00"
 jcoClient = "000"
@@ -51,10 +51,8 @@ user = "JCOTESTER"
 password = "SECRET"
 group = "DEV2"
 
-[APIConfig]
+[apiEndpoint]
 apiEndpoint = "https://api.example.com/inventory"
-
-
 ```
 
 ## Run the Example
