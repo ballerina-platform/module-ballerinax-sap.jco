@@ -64,6 +64,31 @@ allprojects {
 
 def moduleVersion = project.version.replace("-SNAPSHOT", "")
 
+// Task to check if JAR files are present and download if not
+task checkAndDownloadJars {
+    def libsDir = file('native/libs/')
+    def sapidocJar = file("${libsDir}/sapidoc3.jar")
+    def sapjcoJar = file("${libsDir}/sapjco3.jar")
+
+    doLast {
+        if (!sapidocJar.exists() || !sapjcoJar.exists()) {
+            tasks.downloadJars.execute()
+        } else {
+            println 'JAR files already exist in native/libs/ directory.'
+        }
+    }
+}
+
+// Task to download required JAR files
+task downloadJars(type: de.undercouch.gradle.tasks.download.Download) {
+    src([
+        'https://github.com/wso2-enterprise/wso2-sap-resources/blob/master/resources/lib/sapidoc3.jar?raw=true',
+        'https://github.com/wso2-enterprise/wso2-sap-resources/blob/master/resources/lib/sapjco3.jar?raw=true'
+    ])
+    dest 'native/libs/'
+    overwrite false
+}
+
 task build {
     dependsOn(':sap.jco-native:build')
     dependsOn(':sap.jco-ballerina:build')
