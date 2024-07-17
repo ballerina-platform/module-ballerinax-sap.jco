@@ -23,11 +23,11 @@ type ApiInventoryData record {
 };
 
 // Define the record for SAP RFC function input
-type SapInventoryInput record {| 
+type SapInventoryInput record {|
     string materialId;
     int stockLevel;
     string plant;
-    |};
+|};
 
 // Define the record for RFC function output
 type SapUpdateResponse record {|
