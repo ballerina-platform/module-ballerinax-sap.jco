@@ -90,6 +90,7 @@ task downloadJars(type: de.undercouch.gradle.tasks.download.Download) {
 }
 
 task build {
+    dependsOn checkAndDownloadJars
     dependsOn(':sap.jco-native:build')
     dependsOn(':sap.jco-ballerina:build')
     dependsOn(':sap.jco-examples:build')
