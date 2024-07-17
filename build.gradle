@@ -64,7 +64,7 @@ allprojects {
 
 def moduleVersion = project.version.replace("-SNAPSHOT", "")
 
-// Task to check if JAR files are present and download if not
+// Task to check if JAR files are present and set up dependency
 task checkAndDownloadJars {
     def libsDir = file('native/libs/')
     def sapidocJar = file("${libsDir}/sapidoc3.jar")
@@ -72,7 +72,8 @@ task checkAndDownloadJars {
 
     doLast {
         if (!sapidocJar.exists() || !sapjcoJar.exists()) {
-            tasks.downloadJars.execute()
+            println 'JAR files are missing. Downloading...'
+            downloadJars.execute()
         } else {
             println 'JAR files already exist in native/libs/ directory.'
         }
