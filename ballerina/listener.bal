@@ -26,7 +26,7 @@ public isolated class Listener {
     # + configurations - The configurations required to initialize the listener.
     # + return - An error if the initialization fails.
     public isolated function init(*DestinationConfig configurations) returns Error? {
-        return externInit(self, configurations, uuid:createType4AsString()); // pass destination id
+        return externInit(self, configurations, uuid:createType4AsString());
     }
 
     # Attach a listener to the iDoc listener.

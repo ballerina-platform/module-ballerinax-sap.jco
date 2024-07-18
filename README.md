@@ -125,8 +125,8 @@ public function main() returns error? {
 
 ```ballerina
 public function main() returns error? {
-    string iDocString = check io:fileReadString("resources/sample.xml");
-    check jcoClient->sendIDoc(iDocString);
+    xml iDoc = check io:fileReadXml("resources/sample.xml");
+    check jcoClient->sendIDoc(iDoc);
     io:println("IDoc sent successfully.");
 }
 ```
