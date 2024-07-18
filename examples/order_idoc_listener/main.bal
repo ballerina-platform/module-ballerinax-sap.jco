@@ -26,7 +26,7 @@ listener jco:Listener idocListener = new (sapConfig);
 
 // Service to process incoming iDocs
 service jco:Service on idocListener {
-    remote function onIDoc(xml iDoc) returns error? {
+    remote function onReceive(xml iDoc) returns error? {
         // Parse iDoc XML to iDoc record
         ORDERS05 iDocRecord = check xmldata:fromXml(iDoc);
 
@@ -37,9 +37,10 @@ service jco:Service on idocListener {
         check processOrder(internalOrder);
     }
 
-    remote function onError(error err) returns error? {
-        io:println("Error processing iDoc: ", err.message());
+    remote function onError(error 'error) returns error? {
+        io:println("Error processing iDoc: ", 'error.message());
     }
+
 }
 
 function transform(ORDERS05 orders05) returns InternalOrder => {

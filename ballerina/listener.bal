@@ -26,9 +26,7 @@ public isolated class Listener {
     # + configurations - The configurations required to initialize the listener.
     # + return - An error if the initialization fails.
     public isolated function init(*DestinationConfig configurations) returns Error? {
-        configurations["destinationId"] = uuid:createType4AsString();
-        Error? initResult = externInit(self, configurations);
-        return initResult;
+        return externInit(self, configurations, uuid:createType4AsString()); // pass destination id
     }
 
     # Attach a listener to the iDoc listener.
@@ -71,7 +69,7 @@ public isolated class Listener {
     } external;
 }
 
-isolated function externInit(Listener jcoListener, DestinationConfig configurations) returns Error? = @java:Method {
+isolated function externInit(Listener jcoListener, DestinationConfig configurations, string destinationId) returns Error? = @java:Method {
     name: "init",
     'class: "io.ballerina.lib.sap.Listener"
 } external;

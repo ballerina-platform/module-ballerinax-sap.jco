@@ -84,21 +84,35 @@ public class IDocDispatcher {
         }
     }
 
-    public void invokeOnIDoc(Callback callback, Object... args) {
+    public void invokeOnReceive(Callback callback, Object... args) {
         Module module = ModuleUtils.getModule();
         StrandMetadata metadata = new StrandMetadata(
-                module.getOrg(), module.getName(), module.getMajorVersion(), SAPConstants.ON_IDOC);
+                module.getOrg(), module.getName(), module.getMajorVersion(), SAPConstants.ON_RECEIVE);
         ObjectType serviceType = (ObjectType) getReferredType(TypeUtils.getType(service));
-        if (serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_IDOC)) {
-            runtime.invokeMethodAsyncConcurrently(service, SAPConstants.ON_IDOC, null, metadata, callback, null,
+        if (serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_RECEIVE)) {
+            runtime.invokeMethodAsyncConcurrently(service, SAPConstants.ON_RECEIVE, null, metadata, callback, null,
                     PredefinedTypes.TYPE_NULL, args);
         } else {
-            runtime.invokeMethodAsyncSequentially(service, SAPConstants.ON_IDOC, null, metadata, callback, null,
+            runtime.invokeMethodAsyncSequentially(service, SAPConstants.ON_RECEIVE, null, metadata, callback, null,
                     PredefinedTypes.TYPE_NULL, args);
         }
     }
 
-    public void invokeOnError(Type returnType, Object... args) {
+    public void invokeOnError(Object... args) {
+        MethodType onErrorFunction = null;
+        MethodType[] resourceFunctions = ((ObjectType) TypeUtils.getType(service)).getMethods();
+
+        for (MethodType resourceFunction : resourceFunctions) {
+            if (SAPConstants.ON_ERROR.equals(resourceFunction.getName())) {
+                onErrorFunction = resourceFunction;
+                break;
+            }
+        }
+
+        Type returnType = onErrorFunction != null ? onErrorFunction.getReturnType() : null;
+        if (returnType == null) {
+            returnType = PredefinedTypes.TYPE_NULL;
+        }
         Module module = ModuleUtils.getModule();
         StrandMetadata metadata = new StrandMetadata(
                 module.getOrg(), module.getName(), module.getMajorVersion(), SAPConstants.ON_ERROR);
@@ -165,32 +179,21 @@ public class IDocDispatcher {
                 try {
                     BXml xmlContentValue = XmlUtils.parse(xmlContent);
                     Object[] args = {xmlContentValue, true};
-                    invokeOnIDoc(callback, args);
+                    invokeOnReceive(callback, args);
                     countDownLatch.await();
                 } catch (InterruptedException | BError exception) {
-                    MethodType onErrorFunction = null;
-                    MethodType[] resourceFunctions = ((ObjectType) TypeUtils.getType(service)).getMethods();
-
-                    for (MethodType resourceFunction : resourceFunctions) {
-                        if (SAPConstants.ON_ERROR.equals(resourceFunction.getName())) {
-                            onErrorFunction = resourceFunction;
-                            break;
-                        }
-                    }
-
-                    Type returnType = onErrorFunction != null ? onErrorFunction.getReturnType() : null;
-                    if (returnType == null) {
-                        returnType = PredefinedTypes.TYPE_NULL;
-                    }
                     Object[] args = new Object[]{
                             (exception instanceof BError) ? exception : SAPErrorCreator.createError(
                                     exception.getMessage(), exception), true
                     };
-                    invokeOnError(returnType, args);
+                    invokeOnError(args);
                 }
-
             } catch (Throwable thr) {
                 logger.error("Error while processing IDoc", thr);
+                Object[] args = new Object[]{
+                        SAPErrorCreator.createError(thr.getMessage(), thr), true
+                };
+                invokeOnError(args);
             } finally {
                 try {
                     stringWriter.close();

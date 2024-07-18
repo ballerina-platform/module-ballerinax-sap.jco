@@ -42,7 +42,7 @@ public function main() returns error? {
 
         // Write iDoc to a file and send to SAP
         check io:fileWriteXml("resources/generated_iDocs/" + shipment.orderId + ".xml", iDoc);
-        check sapClient->sendIDoc(iDoc.toString());
+        check sapClient->sendIDoc(iDoc);
         io:println("iDoc sent for Order ID: ", shipment.orderId);
     }
 }

@@ -18,10 +18,13 @@
 
 package io.ballerina.lib.sap;
 
+import com.sap.conn.jco.ext.DestinationDataProvider;
+
+import java.util.Map;
+
 public class SAPConstants {
 
     // Constants for SAP Client
-    public static final String DESTINATION_ID = "destinationId";
     public static final String RETURN = "RETURN";
     public static final String RFC_DESTINATION = "RFC_DESTINATION";
     public static final String TYPE = "TYPE";
@@ -29,79 +32,80 @@ public class SAPConstants {
     public static final String S = "S";
 
     // Constants for SAP Destination Provider Configurations
-    public static final String JCO_CLIENT = "jcoClient";
-    public static final String USER = "user";
-    public static final String PASSWORD = "password";
-    public static final String LANGUAGE = "language";
-    public static final String HOST = "host";
-    public static final String SYSTEM_NUMBER = "systemNumber";
-    public static final String GROUP = "group";
-    public static final String AUTH_TYPE = "authType";
-    public static final String CODE_PAGE = "codePage";
-    public static final String ALIAS_USER = "aliasUser";
-    public static final String PCS = "pcs";
-    public static final String MS_HOST = "msHost";
-    public static final String MS_SERVER = "msServer";
-    public static final String R3_NAME = "r3Name";
-    public static final String STICKY = "sticky";
-    public static final String SAP_ROUTER = "sapRouter";
-    public static final String MY_SAP_SSO2 = "mySapSso2";
-    public static final String GET_SSO2 = "getSso2";
-    public static final String X509_CERT = "x509Cert";
-    public static final String OIDC_BEARER_TOKEN = "oidcBearerToken";
-    public static final String EXT_ID_DATA = "extIdData";
-    public static final String EXT_ID_TYPE = "extIdType";
-    public static final String L_CHECK = "lCheck";
-    public static final String USE_BAS_XML = "useBasXml";
-    public static final String NETWORK = "network";
-    public static final String SERIALIZATION_FORMAT = "serializationFormat";
-    public static final String DELTA = "delta";
-    public static final String SNC_MODE = "sncMode";
-    public static final String SNC_SSO = "sncSso";
-    public static final String SNC_PARTNER_NAME = "sncPartnerName";
-    public static final String SNC_QOP = "sncQop";
-    public static final String SNC_MY_NAME = "sncMyName";
-    public static final String PEAK_LIMIT = "peakLimit";
-    public static final String POOL_CAPACITY = "poolCapacity";
-    public static final String EXPIRATION_TIME = "expirationTime";
-    public static final String EXPIRATION_CHECK_PERIOD = "expirationCheckPeriod";
-    public static final String MAX_GET_CLIENT_TIME = "maxGetClientTime";
-    public static final String POOL_CHECK_CONNECTION = "poolCheckConnection";
-    public static final String REPOSITORY_DESTINATION = "repositoryDestination";
-    public static final String REPOSITORY_USER = "repositoryUser";
-    public static final String REPOSITORY_PASSWORD = "repositoryPassword";
-    public static final String REPOSITORY_SNC_MODE = "repositorySncMode";
-    public static final String REPOSITORY_CHECK_INTERVAL = "repositoryCheckInterval";
-    public static final String TRACE = "trace";
-    public static final String GW_HOST = "gwHost";
-    public static final String GW_SERV = "gwServ";
-    public static final String TP_HOST = "tpHost";
-    public static final String TP_NAME = "tpName";
-    public static final String WS_HOST = "wsHost";
-    public static final String WS_PORT = "wsPort";
-    public static final String USE_TLS = "useTls";
-    public static final String TLS_TRUST_ALL = "tlsTrustAll";
-    public static final String TLS_P12_FILE = "tlsP12File";
-    public static final String TLS_P12_PASSWORD = "tlsP12Password";
-    public static final String TLS_CLIENT_CERTIFICATE_LOGON = "tlsClientCertificateLogon";
-    public static final String PROXY_HOST = "proxyHost";
-    public static final String PROXY_PORT = "proxyPort";
-    public static final String PROXY_USER = "proxyUser";
-    public static final String PROXY_PASSWORD = "proxyPassword";
-    public static final String WS_PING_CHECK_INTERVAL = "wsPingCheckInterval";
-    public static final String WS_PING_PERIOD = "wsPingPeriod";
-    public static final String WS_PONG_TIMEOUT = "wsPongTimeout";
-    public static final String JCO_TYPE = "jcoType";
-    public static final String USE_SAP_GUI = "useSapGui";
-    public static final String DENY_INITIAL_PASSWORD = "denyInitialPassword";
-    public static final String REPOSITORY_ROUNDTRIP_OPTIMIZATION = "repositoryRoundtripOptimization";
+    public static final Map<String, String> CONFIG_KEYS = Map.<String, String>ofEntries(
+            Map.entry("jcoClient", DestinationDataProvider.JCO_CLIENT),
+            Map.entry("user", DestinationDataProvider.JCO_USER),
+            Map.entry("password", DestinationDataProvider.JCO_PASSWD),
+            Map.entry("language", DestinationDataProvider.JCO_LANG),
+            Map.entry("host", DestinationDataProvider.JCO_ASHOST),
+            Map.entry("systemNumber", DestinationDataProvider.JCO_SYSNR),
+            Map.entry("group", DestinationDataProvider.JCO_GROUP),
+            Map.entry("authType", DestinationDataProvider.JCO_AUTH_TYPE),
+            Map.entry("codePage", DestinationDataProvider.JCO_CODEPAGE),
+            Map.entry("aliasUser", DestinationDataProvider.JCO_ALIAS_USER),
+            Map.entry("pcs", DestinationDataProvider.JCO_PCS),
+            Map.entry("msHost", DestinationDataProvider.JCO_MSHOST),
+            Map.entry("msServer", DestinationDataProvider.JCO_MSSERV),
+            Map.entry("r3Name", DestinationDataProvider.JCO_R3NAME),
+            Map.entry("sticky", DestinationDataProvider.JCO_STICKY_ASHOST),
+            Map.entry("sapRouter", DestinationDataProvider.JCO_SAPROUTER),
+            Map.entry("mySapSso2", DestinationDataProvider.JCO_MYSAPSSO2),
+            Map.entry("getSso2", DestinationDataProvider.JCO_GETSSO2),
+            Map.entry("x509Cert", DestinationDataProvider.JCO_X509CERT),
+            Map.entry("oidcBearerToken", DestinationDataProvider.JCO_OIDC_BEARER_TOKEN),
+            Map.entry("extIdData", DestinationDataProvider.JCO_EXTID_DATA),
+            Map.entry("extIdType", DestinationDataProvider.JCO_EXTID_TYPE),
+            Map.entry("lCheck", DestinationDataProvider.JCO_LCHECK),
+            Map.entry("useBasXml", DestinationDataProvider.JCO_USE_BASXML),
+            Map.entry("network", DestinationDataProvider.JCO_CLIENT),
+            Map.entry("serializationFormat", DestinationDataProvider.JCO_SERIALIZATION_FORMAT),
+            Map.entry("delta", DestinationDataProvider.JCO_DELTA),
+            Map.entry("sncMode", DestinationDataProvider.JCO_SNC_MODE),
+            Map.entry("sncSso", DestinationDataProvider.JCO_SNC_SSO),
+            Map.entry("sncPartnerName", DestinationDataProvider.JCO_SNC_PARTNERNAME),
+            Map.entry("sncQop", DestinationDataProvider.JCO_SNC_QOP),
+            Map.entry("sncMyName", DestinationDataProvider.JCO_SNC_MYNAME),
+            Map.entry("peakLimit", DestinationDataProvider.JCO_PEAK_LIMIT),
+            Map.entry("poolCapacity", DestinationDataProvider.JCO_POOL_CAPACITY),
+            Map.entry("expirationTime", DestinationDataProvider.JCO_EXPIRATION_TIME),
+            Map.entry("expirationCheckPeriod", DestinationDataProvider.JCO_EXPIRATION_PERIOD),
+            Map.entry("maxGetClientTime", DestinationDataProvider.JCO_MAX_GET_TIME),
+            Map.entry("poolCheckConnection", DestinationDataProvider.JCO_POOL_CHECK_CONNECTION),
+            Map.entry("repositoryDestination", DestinationDataProvider.JCO_REPOSITORY_DEST),
+            Map.entry("repositoryUser", DestinationDataProvider.JCO_REPOSITORY_USER),
+            Map.entry("repositoryPassword", DestinationDataProvider.JCO_REPOSITORY_PASSWD),
+            Map.entry("repositorySncMode", DestinationDataProvider.JCO_REPOSITORY_SNC),
+            Map.entry("repositoryCheckInterval", DestinationDataProvider.JCO_REPOSITORY_CHECK_INTERVAL),
+            Map.entry("trace", DestinationDataProvider.JCO_TRACE),
+            Map.entry("gwHost", DestinationDataProvider.JCO_GWHOST),
+            Map.entry("gwServ", DestinationDataProvider.JCO_GWSERV),
+            Map.entry("tpHost", DestinationDataProvider.JCO_TPHOST),
+            Map.entry("tpName", DestinationDataProvider.JCO_TPNAME),
+            Map.entry("wsHost", DestinationDataProvider.JCO_WSHOST),
+            Map.entry("wsPort", DestinationDataProvider.JCO_WSPORT),
+            Map.entry("useTls", DestinationDataProvider.JCO_USE_TLS),
+            Map.entry("tlsTrustAll", DestinationDataProvider.JCO_TLS_TRUST_ALL),
+            Map.entry("tlsP12File", DestinationDataProvider.JCO_TLS_P12FILE),
+            Map.entry("tlsP12Password", DestinationDataProvider.JCO_TLS_P12PASSWD),
+            Map.entry("tlsClientCertificateLogon", DestinationDataProvider.JCO_TLS_CLIENT_CERTIFICATE_LOGON),
+            Map.entry("proxyHost", DestinationDataProvider.JCO_PROXY_HOST),
+            Map.entry("proxyPort", DestinationDataProvider.JCO_PROXY_PORT),
+            Map.entry("proxyUser", DestinationDataProvider.JCO_PROXY_USER),
+            Map.entry("proxyPassword", DestinationDataProvider.JCO_PROXY_PASSWD),
+            Map.entry("wsPingCheckInterval", DestinationDataProvider.JCO_PING_CHECK_INTERVAL),
+            Map.entry("wsPingPeriod", DestinationDataProvider.JCO_PING_PERIOD),
+            Map.entry("wsPongTimeout", DestinationDataProvider.JCO_PONG_TIMEOUT),
+            Map.entry("jcoType", DestinationDataProvider.JCO_TYPE),
+            Map.entry("useSapGui", DestinationDataProvider.JCO_USE_SAPGUI),
+            Map.entry("denyInitialPassword", DestinationDataProvider.JCO_DENY_INITIAL_PASSWORD),
+            Map.entry("repositoryRoundtripOptimization", DestinationDataProvider.JCO_REPOSITORY_ROUNDTRIP_OPTIMIZATION)
+    );
 
     // Constants for SAP Listener
-    public static final String SERVICE_NAME = "serviceName";
     public static final String JCO_SERVER = "JCO_SERVER";
     public static final String JCO_SERVICES = "JCO_SERVICES";
     public static final String JCO_STARTED_SERVICES = "JCO_STARTED_SERVICES";
-    public static final String ON_IDOC = "onIDoc";
+    public static final String ON_RECEIVE = "onReceive";
     public static final String ON_ERROR = "onError";
 
 }

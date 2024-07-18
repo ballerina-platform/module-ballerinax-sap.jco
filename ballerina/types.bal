@@ -217,4 +217,12 @@ public type DestinationConfig record {
     string repositoryRoundtripOptimization?;
 };
 
+public enum IDocType {
+    DEFULT = "0",
+    VERSION_2 = "2",
+    VERSION_3 = "3",
+    VERSION_3_IN_QUEUE = "Q",
+    VERSION_3_IN_QUEUE_VIA_QRFC = "I"
+};
+
 public type Error distinct error;

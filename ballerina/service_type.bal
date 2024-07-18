@@ -14,7 +14,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
-# The RabbitMQ service type.
+# The SAP JCo service type.
 public type Service distinct service object {
-    // TBD when support for optional params in remote functions is available in lang
+    # The remote function to be invoked when a iDoc is received.
+    # 
+    # + iDoc - The iDoc XML.
+    # + return - An error if an error occurs.
+    remote function onReceive(xml iDoc) returns error?;
+
+    # The remote function to be invoked when an error occurs.
+    # 
+    # + 'error - The error.
+    # + return - An error if an error occurs.
+    remote function onError(Error 'error) returns error?;
 };

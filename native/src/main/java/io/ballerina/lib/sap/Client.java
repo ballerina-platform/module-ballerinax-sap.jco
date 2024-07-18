@@ -41,6 +41,7 @@ import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
 import io.ballerina.runtime.api.values.BString;
 import io.ballerina.runtime.api.values.BTypedesc;
+import io.ballerina.runtime.api.values.BXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,86 +50,77 @@ import java.math.BigDecimal;
 public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
-    public static Object initializeClient(BObject client, BMap<BString, Object> jcoDestinationConfig) {
+    public static Object initializeClient(BObject client, BMap<BString, Object> jcoDestinationConfig,
+                                          BString destinationId) {
         try {
-            String destinationName = jcoDestinationConfig.getStringValue(StringUtils.fromString(
-                    SAPConstants.DESTINATION_ID)).getValue();
             BallerinaDestinationDataProvider dp = new BallerinaDestinationDataProvider();
             com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
-            dp.addDestination(jcoDestinationConfig);
-            JCoDestination destination = JCoDestinationManager.getDestination(destinationName);
+            dp.addDestination(jcoDestinationConfig, destinationId);
+            JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
             logger.debug("JCo Client initialized");
-            setDestination(client, destination);
+            client.addNativeData(SAPConstants.RFC_DESTINATION, destination);
             return null;
         } catch (JCoException e) {
-            logger.error("Destination lookup failed!!!!");
+            logger.error("Destination lookup failed.");
             return SAPErrorCreator.fromJCoException(e);
+        } catch (Exception e) {
+            logger.error("Client initialization failed.");
+            return SAPErrorCreator.createError("Client initialization failed.", e);
         }
     }
 
     public static Object execute(BObject client, BString functionName,
                                   BMap<BString, Object> inputParams, BTypedesc outputParamType) {
             try {
-                int outputParamsTypeTag = outputParamType.getDescribingType().getTag();
-                if (outputParamsTypeTag != TypeTags.RECORD_TYPE_TAG) {
-                    return SAPErrorCreator.fromBError("Output parameters should be of type record",
-                            null);
-                }
                 StructureType outputParamsStructType = (StructureType) outputParamType.getDescribingType();
 
-                // Get the destination and function
-                JCoDestination destination = getDestination(client);
+                JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
                 JCoRepository repository = destination.getRepository();
+                if (functionName.toString().isEmpty()) {
+                    return SAPErrorCreator.fromBError("Function name is empty", null);
+                }
                 JCoFunction function = repository.getFunction(functionName.toString());
-
                 if (function == null) {
-                    throw new RuntimeException("RFC function not found in SAP.");
+                    return SAPErrorCreator.fromBError("RFC function '" + functionName + "' not found in SAP."
+                            , null);
                 }
 
-                // Set input parameters if required
                 JCoParameterList importParams = function.getImportParameterList();
+                setImportParams(importParams, inputParams);
 
-                // Set the import parameters
-                getImportParams(importParams, inputParams);
-
-                // Execute the function
                 function.execute(destination);
 
-                // Process the results
                 JCoParameterList exportParams = function.getExportParameterList();
                 JCoStructure exportStructure = exportParams.getStructure(SAPConstants.RETURN);
 
+                // This checks if the "TYPE" field value is not "S" (Success), "I" (Information), "W" (Warning),
+                // or an empty string. If the "TYPE" is any other value, it implies an erroneous response.
                 if (!exportStructure.getString(SAPConstants.TYPE).isEmpty() &&
                         !exportStructure.getString(SAPConstants.TYPE).equals(SAPConstants.S)) {
                     return SAPErrorCreator.fromBError(exportStructure.getString(SAPConstants.MESSAGE), null);
                 }
-                return getOutputMap(exportStructure, outputParamsStructType);
-
+                return populateOutputMap(exportStructure, outputParamsStructType);
             } catch (JCoException e) {
-                logger.error("Destination lookup failed!!!!");
+                logger.error("JCoException occurred. Error: " + e.getMessage());
                 return SAPErrorCreator.fromJCoException(e);
             }
     }
-    public static Object sendIDoc(BObject client, BString iDoc) {
-        try {
-            // Get the destination and IDoc XMLc
-            JCoDestination destination = getDestination(client);
-            String iDocXML = iDoc.toString();
 
-            // Create a TID
+    public static Object sendIDoc(BObject client, BXml iDoc, BString iDocType) {
+        try {
+            JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
+            String iDocXML = iDoc.toString();
+            char version = iDocType.toString().charAt(0);
+
             String tid = destination.createTID();
             logger.debug("TID created: " + tid);
 
-            // Create an IDocFactory and IDocRepository
             IDocFactory iDocFactory = JCoIDoc.getIDocFactory();
             IDocRepository iDocRepository = JCoIDoc.getIDocRepository(destination);
-
-            // Parse the IDoc XML
             IDocXMLProcessor processor = iDocFactory.getIDocXMLProcessor();
             IDocDocumentList iDocList = processor.parse(iDocRepository, iDocXML);
 
-            // Send the IDoc
-            JCoIDoc.send(iDocList, IDocFactory.IDOC_VERSION_DEFAULT, destination, tid);
+            JCoIDoc.send(iDocList, version, destination, tid);
             destination.confirmTID(tid);
             logger.debug("IDoc sent successfully with TID: " + tid);
             return null;
@@ -140,13 +132,9 @@ public class Client {
             return SAPErrorCreator.fromIDocException(e);
         }
     }
-    private static void setDestination(BObject bapiClientObject, JCoDestination destination) {
-        bapiClientObject.addNativeData(SAPConstants.RFC_DESTINATION, destination);
-    }
-    private static JCoDestination getDestination(BObject bapiClientObject) {
-        return (JCoDestination) bapiClientObject.getNativeData(SAPConstants.RFC_DESTINATION);
-    }
-    private static BMap<BString, Object> getOutputMap(JCoStructure exportStructure, StructureType outputParamType) {
+
+    private static BMap<BString, Object> populateOutputMap(JCoStructure exportStructure,
+                                                           StructureType outputParamType) {
         BMap<BString, Object> outputMap = ValueCreator.createRecordValue((RecordType) outputParamType);
         for (int i = 0; i < exportStructure.getMetaData().getFieldCount(); i++) {
             String fieldName = exportStructure.getMetaData().getName(i);
@@ -169,12 +157,7 @@ public class Client {
                         BigDecimal decimalValue = exportStructure.getBigDecimal(i);
                         outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
                         break;
-                    case TypeTags.OBJECT_TYPE_TAG:
-                    case TypeTags.RECORD_TYPE_TAG:
-                        JCoStructure structure = exportStructure.getStructure(i);
-                        outputMap.put(StringUtils.fromString(fieldName), getOutputMap(structure,
-                                (StructureType) outputParamType.getFields().get(fieldName).getFieldType()));
-                        break;
+                    // Add support for other types including structs as required.
                     default:
                         throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
                                 fieldName + ". Unsupported type " + type, null);
@@ -183,7 +166,8 @@ public class Client {
         }
         return outputMap;
     }
-    private static void getImportParams(JCoParameterList jcoPramList, BMap<BString, Object> inputParams) {
+
+    private static void setImportParams(JCoParameterList jcoPramList, BMap<BString, Object> inputParams) {
         inputParams.entrySet().forEach(entry -> {
             int type = TypeUtils.getType(entry.getValue()).getTag();
             switch (type) {
@@ -202,7 +186,8 @@ public class Client {
                     // Add support for other types including structs as required.
                 default:
                     throw SAPErrorCreator.fromBError("Error while setting input parameter for field: " +
-                            entry.getKey().toString() + ". Unsupported type " + type, null);
+                            entry.getKey().toString() + ". Unsupported type " + type + " Supported types are: " +
+                            "string, int, float, decimal", null);
             }
         });
     }

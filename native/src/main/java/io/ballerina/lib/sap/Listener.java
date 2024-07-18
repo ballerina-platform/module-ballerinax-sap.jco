@@ -25,9 +25,6 @@ import com.sap.conn.jco.JCoDestinationManager;
 import com.sap.conn.jco.JCoException;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.Runtime;
-import io.ballerina.runtime.api.TypeTags;
-import io.ballerina.runtime.api.utils.StringUtils;
-import io.ballerina.runtime.api.utils.TypeUtils;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
 import io.ballerina.runtime.api.values.BString;
@@ -45,50 +42,46 @@ public class Listener {
     private static ArrayList<BObject> services = new ArrayList<>();
     private static Runtime runtime;
 
-    public static Object init(BObject listenerBObject, BMap<BString, Object> jcoDestinationConfig) {
+    public static Object init(BObject listenerBObject, BMap<BString, Object> jcoDestinationConfig,
+                              BString destinationId) {
         try {
-            String destinationName = jcoDestinationConfig.getStringValue(
-                    StringUtils.fromString(SAPConstants.DESTINATION_ID)).getValue();
             BallerinaDestinationDataProvider dp = new BallerinaDestinationDataProvider();
             com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
-            dp.addDestination(jcoDestinationConfig);
-            JCoDestination destination = JCoDestinationManager.getDestination(destinationName);
+            dp.addDestination(jcoDestinationConfig, destinationId);
+            JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
             JCoIDocServer server = JCoIDoc.getServer(destination.getDestinationName());
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(SAPConstants.JCO_SERVICES, services);
             listenerBObject.addNativeData(SAPConstants.JCO_STARTED_SERVICES, startedServices);
             return null;
         } catch (JCoException e) {
-            logger.error("Destination lookup failed!!!!");
+            logger.error("Destination lookup failed.");
             return SAPErrorCreator.fromJCoException(e);
         } catch (Exception e) {
-            logger.error("Server initialization failed!!!!");
-            return SAPErrorCreator.createError("Server initialization failed!!!!", e);
+            logger.error("Server initialization failed.");
+            return SAPErrorCreator.createError("Server initialization failed.", e);
         }
     }
 
-    public static Object attach(Environment environment, BObject listenerBObject, BObject service,
-                                Object name) {
+    @SuppressWarnings("unchecked")
+    public static Object attach(Environment environment, BObject listenerBObject, BObject service, Object name) {
         runtime = environment.getRuntime();
         try {
             JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
             if (service == null) {
                 return null;
             }
-            if (name != null && TypeUtils.getType(name).getTag() == TypeTags.STRING_TAG) {
-                service.addNativeData(SAPConstants.SERVICE_NAME, ((BString) name).getValue());
-            }
             if (isStarted()) {
-                services =
-                        (ArrayList<BObject>) listenerBObject.getNativeData(SAPConstants.JCO_SERVICES);
+                services = (ArrayList<BObject>) listenerBObject.getNativeData(SAPConstants.JCO_SERVICES);
                 startReceivingIDocs(service, server, listenerBObject);
+                // todo: compiler plugin validation for multiple service attachments
             }
             services.add(service);
             return null;
 
         } catch (Exception e) {
-            logger.error("Server attach failed!!!!");
-            return SAPErrorCreator.createError("Server attach failed!!!!", e);
+            logger.error("Server attach failed.");
+            return SAPErrorCreator.createError("Server attach failed.", e);
         }
     }
 
@@ -97,8 +90,8 @@ public class Listener {
             JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
             server.start();
         } catch (Exception e) {
-            logger.error("Server start failed!!!!");
-            return SAPErrorCreator.createError("Server start failed!!!!", e);
+            logger.error("Server start failed.");
+            return SAPErrorCreator.createError("Server start failed.", e);
         }
         return null;
     }
@@ -111,6 +104,7 @@ public class Listener {
         return stopListener(client);
     }
 
+    @SuppressWarnings("unchecked")
     public static Object detach(BObject listener, BObject service) {
         ArrayList<BObject> startedServices = (ArrayList<BObject>) listener.getNativeData(
                 SAPConstants.JCO_STARTED_SERVICES);
@@ -120,8 +114,8 @@ public class Listener {
             services.remove(service);
             return null;
         } catch (Exception e) {
-            logger.error("Server detach failed!!!!");
-            return SAPErrorCreator.createError("Server detach failed!!!!", e);
+            logger.error("Server detach failed.");
+            return SAPErrorCreator.createError("Server detach failed.", e);
         }
     }
 
@@ -130,8 +124,8 @@ public class Listener {
             JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
             server.stop();
         } catch (Exception e) {
-            logger.error("Server start failed!!!!");
-            return SAPErrorCreator.createError("Server start failed!!!!", e);
+            logger.error("Server start failed.");
+            return SAPErrorCreator.createError("Server start failed.", e);
         }
         return null;
     }

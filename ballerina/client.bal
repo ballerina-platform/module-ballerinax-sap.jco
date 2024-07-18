@@ -26,8 +26,7 @@ public isolated client class Client {
     # + configurations - The configurations required to initialize the BAPI client.
     # + return - An error if the initialization fails.
     public isolated function init(*DestinationConfig configurations) returns Error? {
-        configurations["destinationId"] = uuid:createType4AsString();
-        check initializeClient(self, configurations);
+        check initializeClient(self, configurations, uuid:createType4AsString());
     }
 
     # Executes the RFC function.
@@ -43,13 +42,14 @@ public isolated client class Client {
     # Send the iDoc.
     #
     # + iDoc - The XML string of the iDoc.
+    # + iDocType - The type of the iDoc.
     # + return - An error if the execution fails.
-    isolated remote function sendIDoc(string iDoc) returns Error? = @java:Method {
+    isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFULT) returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
 }
 
-isolated function initializeClient(Client jcoClient, DestinationConfig configurations) returns Error? = @java:Method {
+isolated function initializeClient(Client jcoClient, DestinationConfig configurations, string destinationId) returns Error? = @java:Method {
     'class: "io.ballerina.lib.sap.Client"
 } external;

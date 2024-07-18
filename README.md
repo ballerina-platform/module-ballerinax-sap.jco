@@ -1,4 +1,4 @@
-# Ballerina SAP Connector
+# Ballerina SAP JCo Connector
 
 [![Build](https://github.com/ballerina-platform/module-ballerinax-sap.jco/actions/workflows/ci.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-sap.jco/actions/workflows/ci.yml)
 [![Trivy](https://github.com/ballerina-platform/module-ballerinax-sap.jco/actions/workflows/trivy-scan.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-sap.jco/actions/workflows/trivy-scan.yml)
@@ -19,9 +19,8 @@ The `ballerinax/sap.jco` package exposes the SAP JCo library as ballerina functi
 ### Obtain SAP Connection Parameters
 
 To connect to an SAP system, you need to obtain the following connection parameters from your SAP administrator. These
-parameters are required to establish a connection to the SAP system:
-
-#### Required Parameters:
+are some common
+parameters required to establish a client:
 
 - **Host**: The hostname or IP address of the SAP server.
 - **System Number**: Identifies the system within the landscape.
@@ -30,8 +29,41 @@ parameters are required to establish a connection to the SAP system:
 - **Password**: Your account password.
 
 There may be additional parameters required based on your organization's SAP configuration. Consult your SAP
-administrator
-for the complete list of parameters needed for your setup.
+administrator for the complete list of parameters needed for your setup.
+
+### Download and Add Middleware Libraries
+
+To use the SAP JCo connector, you need to download the `sapidoc3.jar` and `sapjco3.jar` middleware libraries from the
+SAP
+support portal and add the dependencies to your Ballerina project.
+
+#### Step 1: Download Middleware Libraries
+
+1. Go to the [SAP Support Portal](https://support.sap.com/en/index.html).
+2. Search for and download the following files:
+   - sapjco3.jar
+   - sapidoc3.jar
+
+#### Step 2: Add Dependencies to Ballerina.toml
+
+After downloading the libraries, add them to your `Ballerina.toml` file in the Ballerina project by specifying the
+paths and relevant details.
+
+```toml
+[[platform.java17.dependency]]
+path = "../sapidoc3.jar"
+groupId = "com.sap"
+artifactId = "com.sap.conn.idoc"
+version = "3.1.3"
+
+[[platform.java17.dependency]]
+path = "../sapjco3.jar"
+groupId = "com.sap"
+artifactId = "com.sap.conn.jco"
+version = "3.1.9"
+```
+
+Ensure that the paths to the JAR files are correct and relative to your project directory.
 
 ## Quickstart
 
@@ -105,12 +137,12 @@ public function main() returns error? {
 listener jco:Listener iDocListener = new (configurations);
 
 service jco:Service on iDocListener {
-    remote function onIDoc(xml idoc) returns error? {
-        check io:fileWriteXml("resources/received_idoc.xml", idoc);
+    remote function onReceive(xml iDoc) returns error? {
+        check io:fileWriteXml("resources/received_idoc.xml", iDoc);
         io:println("IDoc received and saved.");
     }
-    remote function onError(error err) returns error? {
-        io:println("Error occurred: ", err);
+    remote function onError(error 'error) returns error? {
+        io:println("Error occurred: ", 'error.message());
     }
 }
 ```
