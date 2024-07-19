@@ -1,0 +1,77 @@
+name: PR Build
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+on: pull_request
+
+jobs:
+    ubuntu-build:
+        name: Build on Ubuntu
+        runs-on: ubuntu-latest
+        concurrency:
+          group: ${{ github.head_ref }}-ubuntu-build
+          cancel-in-progress: true
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+              with:
+                path: jco
+
+            - name: Set up JDK 17
+              uses: actions/setup-java@v3
+              with:
+                distribution: 'temurin'
+                ava-version: 17.0.7
+                    
+            - name: Clone lib repo
+              uses: actions/checkout@v4
+              with:
+                repository: wso2-enterprise/wso2-sap-resources
+                token: ${{ secrets.BALLERINA_BOT_TOKEN }}
+                path: libs
+      
+            - name: Copy Libs to SAP Connector Directory
+              run: |
+                cp -r libs/ballerina_resources/lib/. jco/native/libs/
+
+            - name: Build the Package
+              env:
+                packageUser: ${{ github.actor }}
+                packagePAT: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                cd jco
+                ./gradlew build -x test
+
+            - name: Generate Codecov Report
+              uses: codecov/codecov-action@v3
+              with:
+                token: ${{ secrets.CODECOV_TOKEN }}
+                
+    windows-build:
+        name: Build on Windows
+        runs-on: windows-latest
+        concurrency:
+          group: ${{ github.head_ref }}-windows-build
+          cancel-in-progress: true
+        steps:
+           -  name: Checkout Repository
+              uses: actions/checkout@v4
+              with:
+                path: jco
+
+           -  name: Set up JDK 17
+              uses: actions/setup-java@v3
+              with:
+                  distribution: 'temurin'
+                  java-version: 17.0.7
+                    
+           -  name: Build the Project
+              env:
+                  packageUser: ${{ github.actor }}
+                  packagePAT: ${{ secrets.GITHUB_TOKEN }}
+                  JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF8
+              run: |
+                cd jco
+                ./gradlew.bat build -x test
