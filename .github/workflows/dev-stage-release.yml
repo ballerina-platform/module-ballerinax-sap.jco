@@ -42,16 +42,12 @@ jobs:
           distribution: "temurin"
           java-version: 17.0.7
 
-      - name: Set ENV Variables
-        run: |
-          echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
-
       - name: Clone lib repo
         uses: actions/checkout@v4
         with:
           repository: wso2-enterprise/wso2-sap-resources
           token: ${{ secrets.BALLERINA_BOT_TOKEN }}
-          path: 'libs'
+          path: libs
 
       - name: Copy Libs to SAP Connector Directory
         run: |

@@ -42,16 +42,12 @@ jobs:
           distribution: "temurin"
           java-version: 17.0.7
 
-      - name: Set ENV Variables
-        run: |
-          echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
-
       - name: Clone lib repo
         uses: actions/checkout@v4
         with:
           repository: wso2-enterprise/wso2-sap-resources
           token: ${{ secrets.BALLERINA_BOT_TOKEN }}
-          path: 'libs'
+          path: libs
 
       - name: Copy Libs to SAP Connector Directory
         run: |
@@ -67,19 +63,3 @@ jobs:
 
       - name: Generate Codecov Report
         uses: codecov/codecov-action@v3
-
-      # Send notification when build fails
-      - name: Alert notifier on failure
-        if: failure() && (github.event.action == 'check_connector_for_breaking_changes')
-        run: |
-          curl -X POST \
-          'https://api.github.com/repos/ballerina-platform/ballerina-release/dispatches' \
-          --header 'Accept: application/vnd.github.v3+json' \
-          --header 'Authorization: Bearer ${{ secrets.BALLERINA_BOT_TOKEN }}' \
-          --data-raw '{
-            "event_type": "notify-ballerinax-connector-build-failure",
-            "client_payload": {
-              "repoName": "module-ballerinax-sap.jco",
-              "workflow": "CI"
-            }
-          }'
