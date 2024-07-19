@@ -60,6 +60,3 @@ examples/**/Config.toml
 
 # Environment files
 *.env
-
-# Ignore the resource libs
-wso2-sap-resources/
