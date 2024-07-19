@@ -62,6 +62,18 @@ jobs:
         run: |
           echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
 
+      - name: Clone lib repo
+        uses: actions/checkout@v3
+        with:
+          repository: wso2-enterprise/wso2-sap-resources
+          token: ${{ secrets.BALLERINA_BOT_TOKEN }}
+          path: 'wso2-sap-resources'
+
+      - name: Copy Libs to SAP Connector Directory
+        run: |
+          cd $GITHUB_WORKSPACE
+          cp -r wso2-sap-resources/ballerina_resources/lib/. native/libs/
+
       - name: Build Package
         run: ./gradlew build
         env:
