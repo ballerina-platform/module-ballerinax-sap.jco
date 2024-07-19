@@ -17,10 +17,13 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          path: jco
 
       - name: Get Ballerina Version
         run: |
+          cd jco
           BAL_VERSION=$(grep -w 'ballerinaLangVersion' gradle.properties | cut -d= -f2 | rev | cut --complement -d- -f1 | rev) 
           if [ -z "$BAL_VERSION" ]; then
             BAL_VERSION="latest"
@@ -44,22 +47,22 @@ jobs:
           echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
 
       - name: Clone lib repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: wso2-enterprise/wso2-sap-resources
           token: ${{ secrets.BALLERINA_BOT_TOKEN }}
-          path: 'wso2-sap-resources'
+          path: 'libs'
 
       - name: Copy Libs to SAP Connector Directory
         run: |
-          cd $GITHUB_WORKSPACE
-          cp -r wso2-sap-resources/ballerina_resources/lib/. native/libs/
+          cp -r libs/ballerina_resources/lib/. jco/native/libs/
 
       - name: Build the Package
         env:
           packageUser: ${{ github.actor }}
           packagePAT: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          cd jco
           ./gradlew build -x test
 
       - name: Generate Codecov Report

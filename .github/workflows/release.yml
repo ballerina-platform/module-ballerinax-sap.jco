@@ -12,10 +12,13 @@ jobs:
     if: github.repository_owner == 'ballerina-platform'
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          path: jco
 
       - name: Get Ballerina Version
         run: |
+          cd jco
           BAL_VERSION=$(grep -w 'ballerinaLangVersion' gradle.properties | cut -d= -f2 | rev | cut --complement -d- -f1 | rev) 
           if [ -z "$BAL_VERSION" ]; then
             BAL_VERSION="latest"
@@ -39,63 +42,55 @@ jobs:
           echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
 
       - name: Clone lib repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: wso2-enterprise/wso2-sap-resources
           token: ${{ secrets.BALLERINA_BOT_TOKEN }}
-          path: 'wso2-sap-resources'
+          path: 'libs'
 
       - name: Copy Libs to SAP Connector Directory
         run: |
-          cd $GITHUB_WORKSPACE
-          cp -r wso2-sap-resources/ballerina_resources/lib/. native/libs/
+          cp -r libs/ballerina_resources/lib/. jco/native/libs/
 
       - name: Build without Tests
         env:
           packageUser: ${{ github.actor }}
           packagePAT: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          cd jco
           git config --global user.name ${{ secrets.BALLERINA_BOT_USERNAME }}
           git config --global user.email ${{ secrets.BALLERINA_BOT_EMAIL }}
           ./gradlew build -x test
 
       - name: Create lib Directory if not Exists
-        run: mkdir -p ballerina/lib
+        run: |
+          mkdir -p jco/ballerina/lib
 
       - name: Run Trivy Vulnerability Scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "rootfs"
-          scan-ref: "/github/workspace/ballerina/lib"
+          scan-ref: "/github/workspace/jco/ballerina/lib"
           format: "table"
           timeout: "10m0s"
           exit-code: "1"
           skip-dirs: "examples"
 
       - name: Get Release Version
-        run: echo "VERSION=$((grep -w 'version' | cut -d= -f2) < gradle.properties | rev | cut -d- -f2 | rev)" >> $GITHUB_ENV
+        run: |
+          cd jco
+          echo "VERSION=$((grep -w 'version' | cut -d= -f2) < gradle.properties | rev | cut -d- -f2 | rev)" >> $GITHUB_ENV
 
       - name: Checkout to Release Branch
         run: |
+          cd jco
           echo "Version: ${VERSION}"
           git checkout -b release-${VERSION}
 
       - name: Remove Target Directory
         run: |
-          sudo rm -rf ballerina/target
-          sudo rm -rf ballerina/build
-
-      - name: Clone lib repo
-        uses: actions/checkout@v3
-        with:
-          repository: wso2-enterprise/wso2-sap-resources
-          token: ${{ secrets.BALLERINA_BOT_TOKEN }}
-          path: 'wso2-sap-resources'
-  
-      - name: Copy Libs to SAP Connector Directory
-        run: |
-          cd $GITHUB_WORKSPACE
-          cp -r wso2-sap-resources/ballerina_resources/lib/. native/libs/
+          sudo rm -rf jco/ballerina/target
+          sudo rm -rf jco/ballerina/build
   
       - name: Publish Package
         env:
@@ -106,6 +101,7 @@ jobs:
           publishUser: ${{ secrets.BALLERINA_BOT_USERNAME }}
           publishPAT: ${{ secrets.BALLERINA_BOT_TOKEN }}
         run: |
+          cd jco
           ./gradlew clean release -Prelease.useAutomaticVersion=true
           ./gradlew -Pversion=${VERSION} publish -x test -PpublishToCentral=true
 
@@ -113,5 +109,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.BALLERINA_BOT_TOKEN }}
         run: |
+          cd jco
           gh release create v$VERSION --title "module-ballerinax-sap.jco-v$VERSION"
           gh pr create --base ${GITHUB_REF##*/} --title "[Automated] Sync ${GITHUB_REF##*/} after $VERSION release" --body "Sync ${GITHUB_REF##*/} after $VERSION release"
