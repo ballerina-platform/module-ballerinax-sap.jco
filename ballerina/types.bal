@@ -218,7 +218,7 @@ public type DestinationConfig record {
 };
 
 public enum IDocType {
-    DEFULT = "0",
+    DEFAULT = "0",
     VERSION_2 = "2",
     VERSION_3 = "3",
     VERSION_3_IN_QUEUE = "Q",
