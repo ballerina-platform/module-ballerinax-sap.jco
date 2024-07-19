@@ -26,30 +26,21 @@ jobs:
           distribution: "temurin"
           java-version: 17.0.7
 
-      - name: Check and Download JAR Files
-        run: |
-          libs_dir="native/libs"
-          sapidoc_jar="${libs_dir}/sapidoc3.jar"
-          sapjco_jar="${libs_dir}/sapjco3.jar"
-
-          mkdir -p $libs_dir
-
-          if [ ! -f "$sapidoc_jar" ] || [ ! -f "$sapjco_jar" ]; then
-            echo 'JAR files are missing. Downloading...'
-
-            user=${{ secrets.BALLERINA_BOT_USERNAME }}
-            token=${{ secrets.BALLERINA_BOT_TOKEN }}
-            encoded_auth=$(echo -n "$user:$token" | base64)
-
-            curl -fL -o "$sapidoc_jar" -H "Authorization: Basic $encoded_auth" "https://github.com/wso2-enterprise/wso2-sap-resources/blob/master/resources/lib/sapidoc3.jar?raw=true" || { echo 'Failed to download sapidoc3.jar'; exit 1; }
-            curl -fL -o "$sapjco_jar" -H "Authorization: Basic $encoded_auth" "https://github.com/wso2-enterprise/wso2-sap-resources/blob/master/resources/lib/sapjco3.jar?raw=true" || { echo 'Failed to download sapjco3.jar'; exit 1; }
-          else
-            echo 'JAR files already exist in native/libs/ directory.'
-          fi
-
       - name: Set ENV Variables
         run: |
           echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
+
+      - name: Clone lib repo
+        uses: actions/checkout@v3
+        with:
+          repository: wso2-enterprise/wso2-sap-resources
+          token: ${{ secrets.BALLERINA_BOT_TOKEN }}
+          path: 'wso2-sap-resources'
+
+      - name: Copy Libs to SAP Connector Directory
+        run: |
+          cd $GITHUB_WORKSPACE
+          cp -r wso2-sap-resources/ballerina_resources/lib/. native/libs/
 
       - name: Build the Package
         env:
