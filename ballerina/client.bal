@@ -44,7 +44,7 @@ public isolated client class Client {
     # + iDoc - The XML string of the iDoc.
     # + iDocType - The type of the iDoc.
     # + return - An error if the execution fails.
-    isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFULT) returns Error? = @java:Method {
+    isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
