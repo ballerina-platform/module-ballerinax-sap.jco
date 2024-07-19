@@ -9,10 +9,83 @@ on:
     types: check_connector_for_breaking_changes
 
 jobs:
-  call_workflow:
-    name: Run Connector Build Workflow
-    if: ${{ github.repository_owner == 'ballerina-platform' }}
-    uses: ballerina-platform/ballerina-library/.github/workflows/build-connector-template.yml@main
-    secrets: inherit
-    with:
-      repo-name: module-ballerinax-sap.jco
+  ubuntu-build:
+    name: Build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.head_ref }}-ubuntu-build
+      cancel-in-progress: true
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Get Ballerina Version
+        run: |
+          BAL_VERSION=$(grep -w 'ballerinaLangVersion' gradle.properties | cut -d= -f2 | rev | cut --complement -d- -f1 | rev) 
+          if [ -z "$BAL_VERSION" ]; then
+            BAL_VERSION="latest"
+          fi
+          echo "BAL_VERSION=$BAL_VERSION" >> $GITHUB_ENV
+          echo "Ballerina Version: $BAL_VERSION"
+
+      - name: Set Up Ballerina
+        uses: ballerina-platform/setup-ballerina@v1.1.0
+        with:
+          version: ${{ env.BAL_VERSION }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: 17.0.7
+
+      - name: Set ENV Variables
+        run: |
+          echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
+
+      - name: Check and Download JAR Files
+        run: |
+          libs_dir="native/libs"
+          sapidoc_jar="${libs_dir}/sapidoc3.jar"
+          sapjco_jar="${libs_dir}/sapjco3.jar"
+
+          mkdir -p $libs_dir
+
+          if [ ! -f "$sapidoc_jar" ] || [ ! -f "$sapjco_jar" ]; then
+            echo 'JAR files are missing. Downloading...'
+
+            user=${{ secrets.BALLERINA_BOT_USERNAME }}
+            token=${{ secrets.BALLERINA_BOT_TOKEN }}
+            encoded_auth=$(echo -n "$user:$token" | base64)
+
+            curl -fL -o "$sapidoc_jar" -H "Authorization: Basic $encoded_auth" "https://github.com/wso2-enterprise/wso2-sap-resources/blob/master/resources/lib/sapidoc3.jar?raw=true" || { echo 'Failed to download sapidoc3.jar'; exit 1; }
+            curl -fL -o "$sapjco_jar" -H "Authorization: Basic $encoded_auth" "https://github.com/wso2-enterprise/wso2-sap-resources/blob/master/resources/lib/sapjco3.jar?raw=true" || { echo 'Failed to download sapjco3.jar'; exit 1; }
+          else
+            echo 'JAR files already exist in native/libs/ directory.'
+          fi
+
+      - name: Build the Package
+        env:
+          packageUser: ${{ github.actor }}
+          packagePAT: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./gradlew build -x test
+
+      - name: Generate Codecov Report
+        uses: codecov/codecov-action@v3
+
+      # Send notification when build fails
+      - name: Alert notifier on failure
+        if: failure() && (github.event.action == 'check_connector_for_breaking_changes')
+        run: |
+          curl -X POST \
+          'https://api.github.com/repos/ballerina-platform/ballerina-release/dispatches' \
+          --header 'Accept: application/vnd.github.v3+json' \
+          --header 'Authorization: Bearer ${{ secrets.BALLERINA_BOT_TOKEN }}' \
+          --data-raw '{
+            "event_type": "notify-ballerinax-connector-build-failure",
+            "client_payload": {
+              "repoName": "module-ballerinax-sap.jco",
+              "workflow": "CI"
+            }
+          }'

@@ -14,12 +14,23 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/jballerina.java as java;
+// Define the record to hold the API response
+type ApiInventoryData record {
+    string widgetId;
+    int quantity;
+    string location;
+    string lastUpdated;
+};
 
-isolated function init() {
-    setModule();
-}
+// Define the record for SAP RFC function input
+type SapInventoryInput record {|
+    string materialId;
+    int stockLevel;
+    string plant;
+|};
 
-isolated function setModule() = @java:Method {
-    'class: "io.ballerina.lib.sap.ModuleUtils"
-} external;
+// Define the record for RFC function output
+type SapUpdateResponse record {|
+    string status;
+    string message;
+|};

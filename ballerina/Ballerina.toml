@@ -9,6 +9,7 @@ repository = "https://github.com/ballerina-platform/module-ballerinax-sap.jco"
 icon = "icon.png"
 license = ["Apache-2.0"]
 
+
 [[platform.java17.dependency]]
 groupId = "io.ballerina.lib.sap"
 artifactId = "sap.jco-native"
@@ -28,3 +29,4 @@ scope = "provided"
 groupId="com.sap"
 artifactId="com.sap.conn.jco"
 version="3.1.9"
+

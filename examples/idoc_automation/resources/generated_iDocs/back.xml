@@ -1,0 +1,28 @@
+<DELVRY03>
+        <IDOC BEGIN="1">
+            <EDI_DC40 SEGMENT="1">
+                <TABNAM>EDI_DC40</TABNAM>
+                <MANDT>800</MANDT>
+                <DOCNUM>back</DOCNUM>
+                <DOCREL>700</DOCREL>
+                <STATUS>30</STATUS>
+                <DIRECT>1</DIRECT>
+                <OUTMOD>2</OUTMOD>
+                <IDOCTYP>DELVRY03</IDOCTYP>
+                <MESTYP>DESADV</MESTYP>
+                <SNDPOR>SAPR3</SNDPOR>
+                <SNDPRT>LS</SNDPRT>
+                <SNDPRN>YOUR_SAP</SNDPRN>
+                <RCVPOR>SAPR3</RCVPOR>
+                <RCVPRT>LS</RCVPRT>
+                <RCVPRN>RECIPIENT_SAP</RCVPRN>
+            </EDI_DC40>
+            <E1EDL20 SEGMENT="1">
+                <VBELN>back</VBELN>
+                <NTGEW>40</NTGEW>
+                <GEWEI>KGM</GEWEI>
+                <INCO1>Security</INCO1>
+                <INCO2>01</INCO2>
+            </E1EDL20>
+        </IDOC>
+    </DELVRY03>

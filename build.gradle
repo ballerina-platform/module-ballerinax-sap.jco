@@ -16,6 +16,8 @@
  * under the License.
  */
 
+import java.util.Base64
+
 plugins {
     id 'com.github.spotbugs-base'
     id 'de.undercouch.download'

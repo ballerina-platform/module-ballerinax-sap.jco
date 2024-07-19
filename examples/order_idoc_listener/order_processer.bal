@@ -14,12 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import ballerina/jballerina.java as java;
-
-isolated function init() {
-    setModule();
+public function processOrder(InternalOrder internalOrder) returns error? {
+    // Logic to process the order in the inventory system
+    return null;
 }
-
-isolated function setModule() = @java:Method {
-    'class: "io.ballerina.lib.sap.ModuleUtils"
-} external;
