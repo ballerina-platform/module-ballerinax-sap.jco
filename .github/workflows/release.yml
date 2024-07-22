@@ -18,13 +18,13 @@ jobs:
 
       - name: Get Ballerina Version
         run: |
-          cd jco
           BAL_VERSION=$(grep -w 'ballerinaLangVersion' gradle.properties | cut -d= -f2 | rev | cut --complement -d- -f1 | rev) 
           if [ -z "$BAL_VERSION" ]; then
             BAL_VERSION="latest"
           fi
           echo "BAL_VERSION=$BAL_VERSION" >> $GITHUB_ENV
           echo "Ballerina Version: $BAL_VERSION"
+        working-directory: jco
 
       - name: Set Up Ballerina
         uses: ballerina-platform/setup-ballerina@v1.1.0
@@ -53,14 +53,15 @@ jobs:
           packageUser: ${{ github.actor }}
           packagePAT: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd jco
           git config --global user.name ${{ secrets.BALLERINA_BOT_USERNAME }}
           git config --global user.email ${{ secrets.BALLERINA_BOT_EMAIL }}
           ./gradlew build -x test
+        working-directory: jco
 
       - name: Create lib Directory if not Exists
         run: |
-          mkdir -p jco/ballerina/lib
+          mkdir -p ballerina/lib
+        working-directory: jco
 
       - name: Run Trivy Vulnerability Scanner
         uses: aquasecurity/trivy-action@master
@@ -74,19 +75,20 @@ jobs:
 
       - name: Get Release Version
         run: |
-          cd jco
           echo "VERSION=$((grep -w 'version' | cut -d= -f2) < gradle.properties | rev | cut -d- -f2 | rev)" >> $GITHUB_ENV
+        working-directory: jco
 
       - name: Checkout to Release Branch
         run: |
-          cd jco
           echo "Version: ${VERSION}"
           git checkout -b release-${VERSION}
+        working-directory: jco
 
       - name: Remove Target Directory
         run: |
-          sudo rm -rf jco/ballerina/target
-          sudo rm -rf jco/ballerina/build
+          sudo rm -rf ballerina/target
+          sudo rm -rf ballerina/build
+        working-directory: jco
   
       - name: Publish Package
         env:
@@ -97,14 +99,14 @@ jobs:
           publishUser: ${{ secrets.BALLERINA_BOT_USERNAME }}
           publishPAT: ${{ secrets.BALLERINA_BOT_TOKEN }}
         run: |
-          cd jco
           ./gradlew clean release -Prelease.useAutomaticVersion=true
           ./gradlew -Pversion=${VERSION} publish -x test -PpublishToCentral=true
+        working-directory: jco
 
       - name: GitHub Release and Release Sync PR
         env:
           GITHUB_TOKEN: ${{ secrets.BALLERINA_BOT_TOKEN }}
         run: |
-          cd jco
           gh release create v$VERSION --title "module-ballerinax-sap.jco-v$VERSION"
           gh pr create --base ${GITHUB_REF##*/} --title "[Automated] Sync ${GITHUB_REF##*/} after $VERSION release" --body "Sync ${GITHUB_REF##*/} after $VERSION release"
+        working-directory: jco
