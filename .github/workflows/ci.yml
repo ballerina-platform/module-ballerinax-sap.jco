@@ -23,13 +23,13 @@ jobs:
 
       - name: Get Ballerina Version
         run: |
-          cd jco
           BAL_VERSION=$(grep -w 'ballerinaLangVersion' gradle.properties | cut -d= -f2 | rev | cut --complement -d- -f1 | rev) 
           if [ -z "$BAL_VERSION" ]; then
             BAL_VERSION="latest"
           fi
           echo "BAL_VERSION=$BAL_VERSION" >> $GITHUB_ENV
           echo "Ballerina Version: $BAL_VERSION"
+        working-directory: jco
 
       - name: Set Up Ballerina
         uses: ballerina-platform/setup-ballerina@v1.1.0
@@ -57,9 +57,8 @@ jobs:
         env:
           packageUser: ${{ github.actor }}
           packagePAT: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd jco
-          ./gradlew build -x test
+        run: ./gradlew build -x test
+        working-directory: jco
 
       - name: Generate Codecov Report
         uses: codecov/codecov-action@v3
