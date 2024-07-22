@@ -1,4 +1,4 @@
-name: Publish to the Ballerina Dev\Stage Central
+name: Publish to the Ballerina Dev/Stage Central
 
 on:
   workflow_dispatch:
@@ -17,7 +17,9 @@ jobs:
     if: github.repository_owner == 'ballerina-platform'
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          path: jco
 
       - name: Get Ballerina Version
         run: |
@@ -27,6 +29,7 @@ jobs:
           fi
           echo "BAL_VERSION=$BAL_VERSION" >> $GITHUB_ENV
           echo "Ballerina Version: $BAL_VERSION"
+        working-directory: jco
 
       - name: Set Up Ballerina
         uses: ballerina-platform/setup-ballerina@v1.1.0
@@ -39,21 +42,16 @@ jobs:
           distribution: "temurin"
           java-version: 17.0.7
 
-      - name: Set ENV Variables
-        run: |
-          echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
-
       - name: Clone lib repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: wso2-enterprise/wso2-sap-resources
           token: ${{ secrets.BALLERINA_BOT_TOKEN }}
-          path: 'wso2-sap-resources'
+          path: libs
 
       - name: Copy Libs to SAP Connector Directory
         run: |
-          cd $GITHUB_WORKSPACE
-          cp -r wso2-sap-resources/ballerina_resources/lib/. native/libs/
+          cp -r libs/ballerina_resources/lib/. jco/native/libs/
   
       - name: Ballerina Central Dev Push
         if: ${{ inputs.environment == 'DEV CENTRAL' }}
@@ -67,6 +65,7 @@ jobs:
         run: |
           sed -i 's/version=\(.*\)-SNAPSHOT/version=\1/g' gradle.properties
           ./gradlew clean build -PpublishToCentral=true
+        working-directory: jco
 
       - name: Ballerina Central Stage Push
         if: ${{ inputs.environment == 'STAGE CENTRAL' }}
@@ -80,3 +79,4 @@ jobs:
         run: |
           sed -i 's/version=\(.*\)-SNAPSHOT/version=\1/g' gradle.properties
           ./gradlew clean build -PpublishToCentral=true
+        working-directory: jco
