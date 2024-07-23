@@ -108,7 +108,7 @@ public class Client {
                     return SAPErrorCreator.fromBError(exportStructure.getString(SAPConstants.MESSAGE), null);
                 }
                 return populateOutputMap(exportStructure, outputParamsStructType);
-            } catch (JCoException e) {
+            } catch (Throwable e) {
                 logger.error("JCoException occurred. Error: " + e.getMessage());
                 return SAPErrorCreator.fromJCoException(e);
             }
