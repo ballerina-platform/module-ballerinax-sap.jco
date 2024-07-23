@@ -193,10 +193,10 @@ public class Client {
                     } else if (unionType.getMemberTypes().get(1).getTag() == TypeTags.NULL_TAG) {
                         type = unionType.getMemberTypes().get(0).getTag();
                     } else {
-                        throwUnsupportedUnionTypeError(entry.getKey());
+                        throwUnsupportedUnionTypeError(entry.getKey(), TypeUtils.getType(entry.getValue()).getName());
                     }
                 } else {
-                    throwUnsupportedUnionTypeError(entry.getKey());
+                    throwUnsupportedUnionTypeError(entry.getKey(), TypeUtils.getType(entry.getValue()).getName());
                 }
             }
             switch (type) {
@@ -250,14 +250,15 @@ public class Client {
                     }
                     break;
                 default:
-                    throw SAPErrorCreator.fromBError("Error while setting input parameter for field: " +
-                            entry.getKey().toString() + ". Unsupported type " + type + " Supported types are: " +
-                            "string, int, float, decimal", null);
+                    throw SAPErrorCreator.fromBError("Error while processing destination properties: " +
+                            entry.getKey().toString() + ". Unsupported union type '" + type + "'. Supported types " +
+                            "are: string, int, float, decimal and nil able supported types.", null);
             }
         });
     }
-    private static void throwUnsupportedUnionTypeError(Object key) {
-        throw SAPErrorCreator.fromBError("Error while setting input parameter for field: " +
-                key.toString() + ". Unsupported union type. Supported types are: string, int, float, decimal", null);
+    private static void throwUnsupportedUnionTypeError(Object key, String type) {
+        throw SAPErrorCreator.fromBError("Error while processing destination properties: " +
+                key.toString() + ". Unsupported union type '" + type + "'. Supported types " +
+                "are: string, int, float, decimal and nil able supported types.", null);
     }
 }
