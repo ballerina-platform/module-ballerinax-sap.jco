@@ -30,6 +30,7 @@ public class SAPConstants {
     public static final String TYPE = "TYPE";
     public static final String MESSAGE = "MESSAGE";
     public static final String S = "S";
+    public static final String SET_NULL = "setImportParamNull";
 
     // Constants for SAP Destination Provider Configurations
     public static final Map<String, String> CONFIG_KEYS = Map.<String, String>ofEntries(
