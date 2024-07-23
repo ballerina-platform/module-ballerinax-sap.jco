@@ -44,7 +44,19 @@ support portal and add the dependencies to your Ballerina project.
    - sapjco3.jar
    - sapidoc3.jar
 
-#### Step 2: Add Dependencies to Ballerina.toml
+#### Step 2: Setting Up Environment
+
+1. **Install JRE**: Ensure you have Java Runtime Environment (JRE) version 17 installed on your system.
+
+2. **Set CLASSPATH**: Configure the CLASSPATH environment variable to include the JAR files and the following native SAP JCo libraries based on your operating system:
+
+   | Operating System | Native SAP JCo Library  |
+   |------------------|-------------------------|
+   | Linux            | `libsapjco3.so`         |
+   | Windows          | `sapjco3.dll`           |
+   | MacOS            | `libsapjco3.dylib`      |
+
+#### Step 3: Add Dependencies to Ballerina.toml
 
 After downloading the libraries, add them to your `Ballerina.toml` file in the Ballerina project by specifying the
 paths and relevant details.
@@ -82,7 +94,7 @@ import ballerinax/sap.jco;
 Configure the necessary SAP connection parameters in `Config.toml` in the project directory:
 
 ```toml
-[DestinationConfig]
+[configurations]
 host = "XXXXXXXX"
 systemNumber = "XXXXXXXX"
 jcoClient = "XXXXXXXX"
