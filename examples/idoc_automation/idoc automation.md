@@ -38,6 +38,8 @@ Configure the necessary SAP connection parameters and the external API endpoint 
 directory:
 
 ```toml
+apiEndpoint = "https://api.example.com/inventory"
+
 [sapConfig]
 host = "localhost"
 systemNumber = "00"
@@ -45,9 +47,6 @@ jcoClient = "000"
 user = "JCOTESTER"
 password = "SECRET"
 group = "DEV2"
-
-[apiEndpoint]
-apiEndpoint = "https://api.example.com/inventory"
 ```
 
 ## Run the Example
