@@ -35,12 +35,12 @@ public class SAPErrorCreator {
     }
     public static BError fromBError(String message, BError cause) {
         return ErrorCreator.createError(
-                ModuleUtils.getModule(), "ERROR", StringUtils.fromString(message), cause, null);
+                ModuleUtils.getModule(), "Error", StringUtils.fromString(message), cause, null);
     }
 
     public static BError createError(String message, Throwable throwable) {
         BError cause = ErrorCreator.createError(throwable);
         return ErrorCreator.createError(
-                ModuleUtils.getModule(), "ERROR", StringUtils.fromString(message), cause, null);
+                ModuleUtils.getModule(), "Error", StringUtils.fromString(message), cause, null);
     }
 }
