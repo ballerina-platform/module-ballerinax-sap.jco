@@ -43,6 +43,8 @@ credentials to connect to your SAP system. Refer to the [Setup Guide](../../READ
 Configure the necessary SAP connection parameters in `Config.toml` in the example directory:
 
 ```toml
+apiEndpoint = "https://api.example.com/inventory"
+
 [sapConfig]
 host = "localhost"
 systemNumber = "00"
@@ -50,9 +52,6 @@ jcoClient = "000"
 user = "JCOTESTER"
 password = "SECRET"
 group = "DEV2"
-
-[apiEndpoint]
-apiEndpoint = "https://api.example.com/inventory"
 ```
 
 ## Run the Example

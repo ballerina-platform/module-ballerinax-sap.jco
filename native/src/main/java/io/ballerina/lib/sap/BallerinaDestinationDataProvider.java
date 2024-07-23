@@ -51,11 +51,15 @@ public class BallerinaDestinationDataProvider implements DestinationDataProvider
 
     public void addDestination(BMap<BString, Object> jcoDestinationConfig, BString destinationName) {
         Properties properties = new Properties();
-        jcoDestinationConfig.entrySet().forEach(entry -> {
-            BString key = entry.getKey();
-            BString value = (BString) entry.getValue();
-            properties.setProperty(SAPConstants.CONFIG_KEYS.get(key.toString()), value.toString());
-        });
-        destinationProperties.put(destinationName.toString(), properties);
+        try {
+            jcoDestinationConfig.entrySet().forEach(entry -> {
+                BString key = entry.getKey();
+                BString value = (BString) entry.getValue();
+                properties.setProperty(SAPConstants.CONFIG_KEYS.get(key.toString()), value.toString());
+            });
+            destinationProperties.put(destinationName.toString(), properties);
+        } catch (Exception e) {
+            throw new RuntimeException("Error while adding destination: " + e.getMessage());
+        }
     }
 }

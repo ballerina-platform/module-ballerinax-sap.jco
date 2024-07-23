@@ -13,6 +13,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+import ballerina/time;
 
 # Holds the configuration details needed to create a BAPI connection.
 #
@@ -224,5 +225,7 @@ public enum IDocType {
     VERSION_3_IN_QUEUE = "Q",
     VERSION_3_IN_QUEUE_VIA_QRFC = "I"
 };
+
+public type FieldType string|int|float|decimal|time:Date|byte[];
 
 public type Error distinct error;

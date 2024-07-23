@@ -25,8 +25,8 @@ public isolated client class Client {
     #
     # + configurations - The configurations required to initialize the BAPI client.
     # + return - An error if the initialization fails.
-    public isolated function init(*DestinationConfig configurations) returns Error? {
-        check initializeClient(self, configurations, uuid:createType4AsString());
+    public isolated function init(DestinationConfig configurations, boolean setImportParamNull = false) returns Error? {
+        check initializeClient(self, configurations, uuid:createType4AsString(), setImportParamNull);
     }
 
     # Executes the RFC function.
@@ -35,7 +35,7 @@ public isolated client class Client {
     # + importParams - The input parameters for the function.
     # + exportParams - The output parameters for the function.
     # + return - An error if the execution fails.
-    isolated remote function execute(string functionName, record {|string|int|float|decimal...;|} importParams, typedesc<record {|string|int|float|decimal...;|}> exportParams = <>) returns exportParams|Error? = @java:Method {
+    isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|string|int|float|decimal...;|}?> exportParams = <>) returns exportParams|Error = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
@@ -50,6 +50,6 @@ public isolated client class Client {
 
 }
 
-isolated function initializeClient(Client jcoClient, DestinationConfig configurations, string destinationId) returns Error? = @java:Method {
+isolated function initializeClient(Client jcoClient, DestinationConfig configurations, string destinationId, boolean setImportParamNull) returns Error? = @java:Method {
     'class: "io.ballerina.lib.sap.Client"
 } external;

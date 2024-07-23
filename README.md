@@ -54,13 +54,13 @@ paths and relevant details.
 path = "../sapidoc3.jar"
 groupId = "com.sap"
 artifactId = "com.sap.conn.idoc"
-version = "3.1.3"
+version = "3.1.*"
 
 [[platform.java17.dependency]]
 path = "../sapjco3.jar"
 groupId = "com.sap"
 artifactId = "com.sap.conn.jco"
-version = "3.1.9"
+version = "3.1.*"
 ```
 
 Ensure that the paths to the JAR files are correct and relative to your project directory.
