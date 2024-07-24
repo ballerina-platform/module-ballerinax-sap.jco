@@ -42,16 +42,18 @@ jobs:
         env:
           packageUser: ${{ github.actor }}
           packagePAT: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: jco
         run: ./gradlew build -x test
 
       - name: Create lib directory if not exists
+        working-directory: jco
         run: mkdir -p ballerina/lib
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "rootfs"
-          scan-ref: "/github/workspace/ballerina/lib"
+          scan-ref: "/github/workspace/jco/ballerina/lib"
           format: "table"
           timeout: "10m0s"
           exit-code: "1"
