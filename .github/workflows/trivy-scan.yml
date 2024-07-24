@@ -6,8 +6,52 @@ on:
     - cron: "30 20 * * *"
 
 jobs:
-  call_workflow:
-    name: Run Trivy Scan Workflow
-    if: ${{ github.repository_owner == 'ballerina-platform' }}
-    uses: ballerina-platform/ballerina-library/.github/workflows/trivy-scan-template.yml@main
-    secrets: inherit
+  ubuntu-build:
+    name: Build on Ubuntu
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'ballerina-platform'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          path: jco
+
+      - name: Set Up Ballerina
+        uses: ballerina-platform/setup-ballerina@v1.1.0
+        with:
+          version: latest
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: 17.0.7
+
+      - name: Clone lib repo
+        uses: actions/checkout@v4
+        with:
+          repository: wso2-enterprise/wso2-sap-resources
+          token: ${{ secrets.BALLERINA_BOT_TOKEN }}
+          path: libs
+
+      - name: Copy Libs to SAP Connector Directory
+        run: |
+          cp -r libs/ballerina_resources/lib/. jco/native/libs/
+          
+      - name: Build with Gradle
+        env:
+          packageUser: ${{ github.actor }}
+          packagePAT: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew build -x test
+
+      - name: Create lib directory if not exists
+        run: mkdir -p ballerina/lib
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "rootfs"
+          scan-ref: "/github/workspace/ballerina/lib"
+          format: "table"
+          timeout: "10m0s"
+          exit-code: "1"
