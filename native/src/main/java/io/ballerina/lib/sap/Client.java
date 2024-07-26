@@ -33,7 +33,6 @@ import com.sap.conn.jco.JCoRepository;
 import com.sap.conn.jco.JCoStructure;
 import io.ballerina.runtime.api.TypeTags;
 import io.ballerina.runtime.api.creators.ValueCreator;
-import io.ballerina.runtime.api.types.ArrayType;
 import io.ballerina.runtime.api.types.RecordType;
 import io.ballerina.runtime.api.types.StructureType;
 import io.ballerina.runtime.api.types.UnionType;
@@ -236,7 +235,7 @@ public class Client {
                     jcoParamList.setValue(key, new BigDecimal(value.toString()));
                     break;
                 case TypeTags.BYTE_ARRAY_TAG:
-                    jcoParamList.setValue(key,(ValueCreator.createArrayValue((byte[]) value)));
+                    jcoParamList.setValue(key, ValueCreator.createArrayValue((byte[]) value));
                     break;
                 case TypeTags.RECORD_TYPE_TAG:
                     handleRecordType(jcoParamList, key, value);
