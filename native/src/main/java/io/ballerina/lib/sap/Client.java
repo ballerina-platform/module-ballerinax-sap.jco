@@ -172,7 +172,7 @@ public class Client {
                         BigDecimal decimalValue = exportStructure.getBigDecimal(i);
                         outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
                         break;
-                    case TypeTags.ARRAY_TAG:
+                    case TypeTags.BYTE_ARRAY_TAG:
                         byte[] byteArray = exportStructure.getByteArray(i);
                         outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createArrayValue(byteArray));
                         break;
@@ -235,10 +235,8 @@ public class Client {
                 case TypeTags.DECIMAL_TAG:
                     jcoParamList.setValue(key, new BigDecimal(value.toString()));
                     break;
-                case TypeTags.ARRAY_TAG:
-                    if (isByteArray(value)) {
-                        jcoParamList.setValue(key, ValueCreator.createArrayValue((byte[]) value));
-                    }
+                case TypeTags.BYTE_ARRAY_TAG:
+                    jcoParamList.setValue(key,(ValueCreator.createArrayValue((byte[]) value)));
                     break;
                 case TypeTags.RECORD_TYPE_TAG:
                     handleRecordType(jcoParamList, key, value);
@@ -266,11 +264,6 @@ public class Client {
             }
         }
         return type;
-    }
-
-    private static boolean isByteArray(Object value) {
-        return TypeUtils.getReferredType(((ArrayType) TypeUtils.getType(value)).getElementType()).getTag() ==
-                TypeTags.BYTE_TAG;
     }
 
     @SuppressWarnings("unchecked")
@@ -331,6 +324,9 @@ public class Client {
                     break;
                 case TypeTags.DECIMAL_TAG:
                     structure.setValue(key, new BigDecimal(entry.getValue().toString()));
+                    break;
+                case TypeTags.BYTE_ARRAY_TAG:
+                    structure.setValue(key, ((byte[]) entry.getValue()));
                     break;
                 case TypeTags.RECORD_TYPE_TAG:
                     handleNestedRecordType(structure, key, entry.getValue());
