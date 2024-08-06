@@ -226,6 +226,6 @@ public enum IDocType {
     VERSION_3_IN_QUEUE_VIA_QRFC = "I"
 };
 
-public type FieldType string|int|float|decimal|time:Date|byte[];
+public type FieldType string|int|float|decimal|time:Date|time:TimeOfDay|byte[]|record {|FieldType...;|}|record {|FieldType...;|}[];
 
 public type Error distinct error;
