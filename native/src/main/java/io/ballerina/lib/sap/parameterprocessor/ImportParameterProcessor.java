@@ -5,6 +5,7 @@ import com.sap.conn.jco.JCoStructure;
 import com.sap.conn.jco.JCoTable;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.lib.sap.SAPErrorCreator;
+import io.ballerina.lib.sap.Testers;
 import io.ballerina.runtime.api.TypeTags;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.utils.StringUtils;
@@ -53,7 +54,7 @@ public class ImportParameterProcessor {
                                     "and day must be provided.", null);
                         }
                     } else {
-                        JCoStructure structure = jcoParamList.getStructure(key);
+                        JCoStructure structure = Testers.createStructure();
                         BMap<BString, Object> record = (BMap<BString, Object>) value;
                         createStructure(structure, record);
                         jcoParamList.setValue(key, structure);

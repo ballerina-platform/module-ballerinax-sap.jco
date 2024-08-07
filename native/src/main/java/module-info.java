@@ -22,6 +22,7 @@ module io.ballerina.lib.sap {
     requires io.ballerina.runtime;
     requires org.slf4j;
     requires io.ballerina.stdlib.time;
+    requires com.google.gson;
     exports io.ballerina.lib.sap;
     exports io.ballerina.lib.sap.parameterprocessor;
 }

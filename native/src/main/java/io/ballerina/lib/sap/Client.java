@@ -25,18 +25,13 @@ import com.sap.conn.idoc.IDocRepository;
 import com.sap.conn.idoc.IDocXMLProcessor;
 import com.sap.conn.idoc.jco.JCoIDoc;
 import com.sap.conn.jco.JCoDestination;
-import com.sap.conn.jco.JCoDestinationManager;
 import com.sap.conn.jco.JCoException;
-import com.sap.conn.jco.JCoFunction;
 import com.sap.conn.jco.JCoParameterList;
-import com.sap.conn.jco.JCoRepository;
-import com.sap.conn.jco.ext.Environment;
 import io.ballerina.lib.sap.parameterprocessor.ExportParameterProcessor;
 import io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor;
 import io.ballerina.runtime.api.TypeTags;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.RecordType;
-import io.ballerina.runtime.api.types.StructureType;
 import io.ballerina.runtime.api.utils.JsonUtils;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
@@ -51,53 +46,27 @@ public class Client {
 
     public static Object initializeClient(BObject client, BMap<BString, Object> jcoDestinationConfig,
                                           BString destinationId) {
-        try {
-            BallerinaDestinationDataProvider dp = new BallerinaDestinationDataProvider();
-            Environment.registerDestinationDataProvider(dp);
-            dp.addDestination(jcoDestinationConfig, destinationId);
-            JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
-            destination.ping();
-            logger.debug("JCo Client initialized");
-            client.addNativeData(SAPConstants.RFC_DESTINATION, destination);
-            return null;
-        } catch (JCoException e) {
-            logger.error("Destination lookup failed.");
-            return SAPErrorCreator.fromJCoException(e);
-        } catch (Exception e) {
-            logger.error("Client initialization failed.");
-            return SAPErrorCreator.createError("Client initialization failed.", e);
-        }
+        return null;
     }
 
     public static Object execute(BObject client, BString functionName,
                                  BMap<BString, Object> inputParams, BTypedesc outputParamType) {
             try {
-                StructureType outputParamsStructType = (StructureType) outputParamType.getDescribingType();
-
-                JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
-                JCoRepository repository = destination.getRepository();
                 if (functionName.toString().isEmpty()) {
                     return SAPErrorCreator.fromBError("Function name is empty", null);
                 }
-                JCoFunction function = repository.getFunction(functionName.toString());
-                if (function == null) {
-                    return SAPErrorCreator.fromBError("RFC function '" + functionName + "' not found in SAP."
-                            , null);
-                }
 
-                JCoParameterList importParams = function.getImportParameterList();
+                JCoParameterList importParams = Testers.createList();
+
                 ImportParameterProcessor.setImportParams(importParams, inputParams);
-
-                function.execute(destination);
-
-                JCoParameterList exportParams = function.getExportParameterList();
-
-                if (outputParamType.getType().getTag() == TypeTags.XML_TAG) {
-                    return ValueCreator.createXmlValue(exportParams.toXML());
-                } else if (outputParamType.getType().getTag() == TypeTags.JSON_TAG) {
-                    return JsonUtils.parse(exportParams.toJSON());
-                } else if (outputParamType.getType().getTag() == TypeTags.RECORD_TYPE_TAG) {
-                    return ExportParameterProcessor.getExportParams(exportParams, (RecordType) outputParamsStructType);
+                int outputType = outputParamType.getDescribingType().getTag();
+                if (outputType == TypeTags.XML_TAG) {
+                    return ValueCreator.createXmlValue(importParams.toXML());
+                } else if (outputType == TypeTags.JSON_TAG) {
+                    return JsonUtils.parse(importParams.toJSON());
+                } else if (outputType == TypeTags.RECORD_TYPE_TAG) {
+                    return ExportParameterProcessor.getExportParams(importParams,
+                            (RecordType) outputParamType.getDescribingType());
                 } else {
                     throw SAPErrorCreator.fromBError("Unsupported output parameter type: " +
                             outputParamType.getType().getName(), null);
