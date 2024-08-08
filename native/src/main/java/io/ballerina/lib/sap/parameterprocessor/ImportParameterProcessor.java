@@ -17,6 +17,7 @@ import io.ballerina.runtime.api.values.BString;
 import java.math.BigDecimal;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Optional;
 
 public class ImportParameterProcessor {
 
@@ -25,6 +26,10 @@ public class ImportParameterProcessor {
         inputParams.entrySet().forEach(entry -> {
             Object value = entry.getValue();
             String key = entry.getKey().toString();
+            if (value == null) {
+                jcoParamList.setValue(key, Optional.empty());
+                return;
+            }
             int type = TypeUtils.getType(value).getTag();
             switch (type) {
                 case TypeTags.STRING_TAG:
@@ -79,6 +84,10 @@ public class ImportParameterProcessor {
             value.entrySet().forEach(entry -> {
                 Object fieldValue = entry.getValue();
                 String fieldName = entry.getKey().toString();
+                if (fieldValue == null) {
+                    table.setValue(fieldName, Optional.empty());
+                    return;
+                }
                 int type = TypeUtils.getType(fieldValue).getTag();
                 switch (type) {
                     case TypeTags.STRING_TAG:
@@ -131,6 +140,10 @@ public class ImportParameterProcessor {
         inputParams.entrySet().forEach(entry -> {
             Object value = entry.getValue();
             String key = entry.getKey().toString();
+            if (value == null) {
+                structure.setValue(key, Optional.empty());
+                return;
+            }
             int type = TypeUtils.getType(value).getTag();
             switch (type) {
                 case TypeTags.STRING_TAG:
