@@ -32,6 +32,7 @@ public class SAPConstants {
     public static final String S = "S";
     public static final String SET_NULL = "setImportParamNull";
     public static final String DATE = "Date";
+    public static final String TIME_OF_DAY = "TimeOfDay";
 
     // Constants for SAP Destination Provider Configurations
     public static final Map<String, String> CONFIG_KEYS = Map.<String, String>ofEntries(
@@ -110,4 +111,20 @@ public class SAPConstants {
     public static final String ON_RECEIVE = "onReceive";
     public static final String ON_ERROR = "onError";
 
+
+    // Class names
+    public static final String JCO_STRING = "java.lang.String";
+    public static final String JCO_DATE = "java.util.Date";
+    public static final String JCO_BIG_DECIMAL = "java.math.BigDecimal";
+    public static final String JCO_BYTE_ARRAY = "byte[]";
+    public static final String JCO_OBJECT = "java.lang.Object";
+    public static final String JCO_DOUBLE = "java.lang.Double";
+    public static final String JCO_INTEGER = "java.lang.Integer";
+    public static final String JCO_STRUCTURE = "com.sap.conn.jco.JCoStructure";
+    public static final String JCO_TABLE = "com.sap.conn.jco.JCoTable";
+    public static final String JCO_LONG = "java.lang.Long";
+
+    // Sub date types
+    public static final String JCO_DATE_TYPE_DATE = "DATE";
+    public static final String JCO_DATE_TYPE_TIME = "TIME";
 }
