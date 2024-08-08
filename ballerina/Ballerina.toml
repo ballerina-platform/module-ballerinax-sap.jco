@@ -1,7 +1,7 @@
 [package]
 org = "ballerinax"
 name = "sap.jco"
-version = "0.2.0"
+version = "0.2.1"
 distribution = "2201.9.0"
 authors = ["Ballerina"]
 keywords = ["Business Management/ERP", "Cost/Paid", "Vendor/SAP"]
@@ -13,8 +13,8 @@ license = ["Apache-2.0"]
 [[platform.java17.dependency]]
 groupId = "io.ballerina.lib.sap"
 artifactId = "sap.jco-native"
-version = "0.2.0"
-path = "../native/build/libs/sap.jco-native-0.2.0.jar"
+version = "0.2.1"
+path = "../native/build/libs/sap.jco-native-0.2.1.jar"
 
 [[platform.java17.dependency]]
 path = "../native/libs/sapidoc3.jar"
