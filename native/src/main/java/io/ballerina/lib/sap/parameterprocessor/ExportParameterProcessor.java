@@ -85,25 +85,25 @@ public class ExportParameterProcessor {
                     break;
                 case SAPConstants.JCO_STRUCTURE:
                     RecordType nestedRecordType;
-                    BMap<BString, Object> nestedRecord;
                     if (outputParamType.getFields().containsKey(fieldName)) {
-                        nestedRecordType = (RecordType) outputParamType.getFields().get(fieldName).getFieldType();
+                        nestedRecordType = (RecordType) TypeUtils.getReferredType(
+                                outputParamType.getFields().get(fieldName).getFieldType());
                     } else {
                         nestedRecordType = setFields(exportList.getStructure(i));
                     }
-                    nestedRecord = populateRecord(exportList.getStructure(i), nestedRecordType);
-                    outputMap.put(StringUtils.fromString(fieldName), nestedRecord);
+                    outputMap.put(StringUtils.fromString(fieldName),
+                            populateRecord(exportList.getStructure(i), nestedRecordType));
                     break;
                 case SAPConstants.JCO_TABLE:
                     RecordType recordType;
-                    BArray nestedRecordArray;
                     if (outputParamType.getFields().containsKey(fieldName)) {
-                        recordType = (RecordType) outputParamType.getFields().get(fieldName).getFieldType();
+                        recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
+                                outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
                     } else {
                         recordType = (RecordType) setTableFields(exportList.getTable(i)).getElementType();
                     }
-                    nestedRecordArray = populateRecordArray(exportList.getTable(i), recordType);
-                    outputMap.put(StringUtils.fromString(fieldName), nestedRecordArray);
+                    outputMap.put(StringUtils.fromString(fieldName),
+                            populateRecordArray(exportList.getTable(i), recordType));
                     break;
                 default:
                     throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
@@ -155,7 +155,8 @@ public class ExportParameterProcessor {
                 case SAPConstants.JCO_STRUCTURE:
                     RecordType nestedRecordType;
                     if (outputParamType.getFields().containsKey(fieldName)) {
-                        nestedRecordType = (RecordType) outputParamType.getFields().get(fieldName).getFieldType();
+                        nestedRecordType = (RecordType) TypeUtils.getReferredType(
+                                outputParamType.getFields().get(fieldName).getFieldType());
                     } else {
                         nestedRecordType = setFields(exportStructure.getStructure(i));
                     }
@@ -166,12 +167,13 @@ public class ExportParameterProcessor {
                 case SAPConstants.JCO_TABLE:
                     RecordType recordType;
                     if (outputParamType.getFields().containsKey(fieldName)) {
-                        recordType = (RecordType) outputParamType.getFields().get(fieldName).getFieldType();
+                        recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
+                                outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
                     } else {
                         recordType = (RecordType) setTableFields(exportStructure.getTable(i)).getElementType();
                     }
-                    BArray nestedRecordArray = populateRecordArray(exportStructure.getTable(i), recordType);
-                    outputMap.put(StringUtils.fromString(fieldName), nestedRecordArray);
+                    outputMap.put(StringUtils.fromString(fieldName),
+                            populateRecordArray(exportStructure.getTable(i), recordType));
                     break;
                 default:
                     throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
@@ -225,16 +227,18 @@ public class ExportParameterProcessor {
                         break;
                     case SAPConstants.JCO_STRUCTURE:
                         if (outputRecordType.getFields().containsKey(fieldName)) {
-                            nestedRecordType = (RecordType) outputRecordType.getFields().get(fieldName).getFieldType();
+                            nestedRecordType = (RecordType) TypeUtils.getReferredType(
+                                    outputRecordType.getFields().get(fieldName).getFieldType());
                         } else {
                             nestedRecordType = setFields(table.getStructure(j));
                         }
-                        BMap<BString, Object> nestedRecord = populateRecord(table.getStructure(j), nestedRecordType);
-                        record.put(StringUtils.fromString(fieldName), nestedRecord);
+                        record.put(StringUtils.fromString(fieldName), populateRecord(table.getStructure(j),
+                                nestedRecordType));
                         break;
                     case SAPConstants.JCO_TABLE:
                         if (outputRecordType.getFields().containsKey(fieldName)) {
-                            nestedRecordType = (RecordType) outputRecordType.getFields().get(fieldName).getFieldType();
+                            nestedRecordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
+                                    outputRecordType.getFields().get(fieldName).getFieldType()).getElementType());
                         } else {
                             nestedRecordType = (RecordType) setTableFields(table.getTable(j)).getElementType();
                         }
@@ -248,7 +252,7 @@ public class ExportParameterProcessor {
             }
             recordArray.append(record);
         }
-        return null;
+        return recordArray;
     }
 
     private static RecordType setFields(JCoStructure structure) {
