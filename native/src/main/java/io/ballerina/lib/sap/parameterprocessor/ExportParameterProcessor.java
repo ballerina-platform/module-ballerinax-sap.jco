@@ -80,14 +80,14 @@ public class ExportParameterProcessor {
                     break;
                 case SAPConstants.JCO_TABLE:
                     RecordType recordType;
-                    BArray nestedRecordArray;
                     if (outputParamType.getFields().containsKey(fieldName)) {
-                        recordType = (RecordType) outputParamType.getFields().get(fieldName).getFieldType();
+                        recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
+                                outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
                     } else {
                         recordType = (RecordType) setTableFields(exportList.getTable(i)).getElementType();
                     }
-                    nestedRecordArray = populateRecordArray(exportList.getTable(i), recordType);
-                    outputMap.put(StringUtils.fromString(fieldName), nestedRecordArray);
+                    outputMap.put(StringUtils.fromString(fieldName),
+                            populateRecordArray(exportList.getTable(i), recordType));
                     break;
                 default:
                     throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
@@ -232,7 +232,7 @@ public class ExportParameterProcessor {
             }
             recordArray.append(record);
         }
-        return null;
+        return recordArray;
     }
 
     private static RecordType setFields(JCoStructure structure) {

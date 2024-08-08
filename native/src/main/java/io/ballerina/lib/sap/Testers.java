@@ -2,6 +2,8 @@ package io.ballerina.lib.sap;
 
 import com.google.gson.Gson;
 import com.sap.conn.jco.JCoAbapObject;
+import com.sap.conn.jco.JCoClassMetaData;
+import com.sap.conn.jco.JCoExtendedFieldMetaData;
 import com.sap.conn.jco.JCoField;
 import com.sap.conn.jco.JCoFieldIterator;
 import com.sap.conn.jco.JCoListMetaData;
@@ -32,6 +34,7 @@ public class Testers {
     public static JCoTable createTable() {
         return new JCoTable() {
             private int currentRow = -1;
+
             private final Map<Integer, Map<String, Object>> rows = new HashMap<>();
 
             @Override
@@ -64,7 +67,7 @@ public class Testers {
 
             @Override
             public int getNumRows() {
-                return rows.size();
+                return 1;
             }
 
             @Override
@@ -179,7 +182,7 @@ public class Testers {
 
             @Override
             public JCoMetaData getMetaData() {
-                return null;
+                return createMetaDataForTable();
             }
 
             @Override
@@ -1177,9 +1180,216 @@ public class Testers {
         };
     }
 
+    public static JCoMetaData createMetaData() {
+        return new JCoMetaData() {
+            @Override
+            public int indexOf(String s) {
+                return 0;
+            }
+
+            @Override
+            public boolean hasField(String s) {
+                return false;
+            }
+
+            @Override
+            public String getName() {
+                return "";
+            }
+
+            @Override
+            public void setName(String s) {
+
+            }
+
+            @Override
+            public int getFieldCount() {
+                return 1;
+            }
+
+            @Override
+            public String getName(int i) {
+                return "ET_RETURN";
+            }
+
+            @Override
+            public String getRecordTypeName(int i) {
+                return "";
+            }
+
+            @Override
+            public String getRecordTypeName(String s) {
+                return "";
+            }
+
+            @Override
+            public JCoRecordMetaData getRecordMetaData(int i) {
+                return null;
+            }
+
+            @Override
+            public JCoRecordMetaData getRecordMetaData(String s) {
+                return null;
+            }
+
+            @Override
+            public JCoClassMetaData getClassMetaData(int i) {
+                return null;
+            }
+
+            @Override
+            public JCoClassMetaData getClassMetaData(String s) {
+                return null;
+            }
+
+            @Override
+            public JCoExtendedFieldMetaData getExtendedFieldMetaData(int i) {
+                return null;
+            }
+
+            @Override
+            public JCoExtendedFieldMetaData getExtendedFieldMetaData(String s) {
+                return null;
+            }
+
+            @Override
+            public int getUnicodeByteLength(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getUnicodeByteLength(String s) {
+                return 0;
+            }
+
+            @Override
+            public int getByteLength(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getByteLength(String s) {
+                return 0;
+            }
+
+            @Override
+            public int getLength(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getLength(String s) {
+                return 0;
+            }
+
+            @Override
+            public int getType(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getType(String s) {
+                return 0;
+            }
+
+            @Override
+            public String getTypeAsString(int i) {
+                return "";
+            }
+
+            @Override
+            public String getTypeAsString(String s) {
+                return "";
+            }
+
+            @Override
+            public String getClassNameOfField(String s) {
+                return "";
+            }
+
+            @Override
+            public String getClassNameOfField(int i) {
+                return "com.sap.conn.jco.JCoTable";
+            }
+
+            @Override
+            public int getDecimals(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getDecimals(String s) {
+                return 0;
+            }
+
+            @Override
+            public String getDescription(int i) {
+                return "";
+            }
+
+            @Override
+            public String getDescription(String s) {
+                return "";
+            }
+
+            @Override
+            public boolean isStructure(int i) {
+                return false;
+            }
+
+            @Override
+            public boolean isStructure(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean isNestedType1Structure(int i) {
+                return false;
+            }
+
+            @Override
+            public boolean isNestedType1Structure(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean isTable(int i) {
+                return false;
+            }
+
+            @Override
+            public boolean isTable(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean isAbapObject(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean isAbapObject(int i) {
+                return false;
+            }
+
+            @Override
+            public void lock() {
+
+            }
+
+            @Override
+            public boolean isLocked() {
+                return false;
+            }
+        };
+    }
+
     public static JCoParameterList createList() {
         return new JCoParameterList() {
-            private final Map<String, Object> fields = new HashMap<>();
+            //assign a field called ET_RETURN and assign a table
+            private final Map<String, Object> fields = new HashMap<>(
+                    Map.of("ET_RETURN", createTable())
+            );
 
             @Override
             public JCoListMetaData getListMetaData() {
@@ -1211,7 +1421,7 @@ public class Testers {
 
             @Override
             public JCoMetaData getMetaData() {
-                return null;
+                return createMetaData();
             }
 
             @Override
@@ -1697,6 +1907,228 @@ public class Testers {
                 } catch (CloneNotSupportedException e) {
                     throw new RuntimeException(e);
                 }
+            }
+        };
+    }
+    public static JCoMetaData createMetaDataForTable() {
+        return new JCoMetaData() {
+            @Override
+            public int indexOf(String s) {
+                return 0;
+            }
+
+            @Override
+            public boolean hasField(String s) {
+                return false;
+            }
+
+            @Override
+            public String getName() {
+                return "";
+            }
+
+            @Override
+            public void setName(String s) {
+
+            }
+
+            @Override
+            public int getFieldCount() {
+                return 14;
+            }
+
+            @Override
+            public String getName(int i) {
+                return switch (i) {
+                    case 0 -> "TYPE";
+                    case 1 -> "ID";
+                    case 2 -> "NUMBER";
+                    case 3 -> "MESSAGE";
+                    case 4 -> "LOG_NO";
+                    case 5 -> "LOG_MSG_NO";
+                    case 6 -> "MESSAGE_V1";
+                    case 7 -> "MESSAGE_V2";
+                    case 8 -> "MESSAGE_V3";
+                    case 9 -> "MESSAGE_V4";
+                    case 10 -> "PARAMETER";
+                    case 11 -> "ROW";
+                    case 12 -> "FIELD";
+                    case 13 -> "SYSTEM";
+                    default -> "";
+                };
+            }
+
+            @Override
+            public String getRecordTypeName(int i) {
+                return "";
+            }
+
+            @Override
+            public String getRecordTypeName(String s) {
+                return "";
+            }
+
+            @Override
+            public JCoRecordMetaData getRecordMetaData(int i) {
+                return null;
+            }
+
+            @Override
+            public JCoRecordMetaData getRecordMetaData(String s) {
+                return null;
+            }
+
+            @Override
+            public JCoClassMetaData getClassMetaData(int i) {
+                return null;
+            }
+
+            @Override
+            public JCoClassMetaData getClassMetaData(String s) {
+                return null;
+            }
+
+            @Override
+            public JCoExtendedFieldMetaData getExtendedFieldMetaData(int i) {
+                return null;
+            }
+
+            @Override
+            public JCoExtendedFieldMetaData getExtendedFieldMetaData(String s) {
+                return null;
+            }
+
+            @Override
+            public int getUnicodeByteLength(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getUnicodeByteLength(String s) {
+                return 0;
+            }
+
+            @Override
+            public int getByteLength(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getByteLength(String s) {
+                return 0;
+            }
+
+            @Override
+            public int getLength(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getLength(String s) {
+                return 0;
+            }
+
+            @Override
+            public int getType(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getType(String s) {
+                return 0;
+            }
+
+            @Override
+            public String getTypeAsString(int i) {
+                return "";
+            }
+
+            @Override
+            public String getTypeAsString(String s) {
+                return "";
+            }
+
+            @Override
+            public String getClassNameOfField(String s) {
+                return "";
+            }
+
+            @Override
+            public String getClassNameOfField(int i) {
+                return switch (i) {
+                    case 11 -> "java.lang.Integer";
+                    default -> "java.lang.String";
+                };
+            }
+
+            @Override
+            public int getDecimals(int i) {
+                return 0;
+            }
+
+            @Override
+            public int getDecimals(String s) {
+                return 0;
+            }
+
+            @Override
+            public String getDescription(int i) {
+                return "";
+            }
+
+            @Override
+            public String getDescription(String s) {
+                return "";
+            }
+
+            @Override
+            public boolean isStructure(int i) {
+                return false;
+            }
+
+            @Override
+            public boolean isStructure(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean isNestedType1Structure(int i) {
+                return false;
+            }
+
+            @Override
+            public boolean isNestedType1Structure(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean isTable(int i) {
+                return false;
+            }
+
+            @Override
+            public boolean isTable(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean isAbapObject(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean isAbapObject(int i) {
+                return false;
+            }
+
+            @Override
+            public void lock() {
+
+            }
+
+            @Override
+            public boolean isLocked() {
+                return false;
             }
         };
     }

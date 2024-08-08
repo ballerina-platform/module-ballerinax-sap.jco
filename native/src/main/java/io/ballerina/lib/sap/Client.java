@@ -58,14 +58,16 @@ public class Client {
 
                 JCoParameterList importParams = Testers.createList();
 
+                JCoParameterList exportParams = Testers.createList();
+
                 ImportParameterProcessor.setImportParams(importParams, inputParams);
                 int outputType = outputParamType.getDescribingType().getTag();
                 if (outputType == TypeTags.XML_TAG) {
-                    return ValueCreator.createXmlValue(importParams.toXML());
+                    return ValueCreator.createXmlValue(exportParams.toXML());
                 } else if (outputType == TypeTags.JSON_TAG) {
-                    return JsonUtils.parse(importParams.toJSON());
+                    return JsonUtils.parse(exportParams.toJSON());
                 } else if (outputType == TypeTags.RECORD_TYPE_TAG) {
-                    return ExportParameterProcessor.getExportParams(importParams,
+                    return ExportParameterProcessor.getExportParams(exportParams,
                             (RecordType) outputParamType.getDescribingType());
                 } else {
                     throw SAPErrorCreator.fromBError("Unsupported output parameter type: " +
