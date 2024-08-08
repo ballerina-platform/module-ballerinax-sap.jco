@@ -185,20 +185,17 @@ public class ImportParameterProcessor {
         Object minuteObj = dateMap.get(StringUtils.fromString("minute"));
         Object secondObj = dateMap.get(StringUtils.fromString("second"));
 
-        if (yearObj != null && monthObj != null && dayObj != null) {
-            int year = Integer.parseInt(yearObj.toString());
-            int month = Integer.parseInt(monthObj.toString());
-            int day = Integer.parseInt(dayObj.toString());
+        int year = (yearObj != null) ? Integer.parseInt(yearObj.toString()) : 1970;
+        int month = (monthObj != null) ? Integer.parseInt(monthObj.toString()) : 1;
+        int day = (dayObj != null) ? Integer.parseInt(dayObj.toString()) : 1;
 
-            int hour = (hourObj != null) ? Integer.parseInt(hourObj.toString()) : 0;
-            int minute = (minuteObj != null) ? Integer.parseInt(minuteObj.toString()) : 0;
-            int second = (secondObj != null) ? Integer.parseInt(secondObj.toString()) : 0;
+        int hour = (hourObj != null) ? Integer.parseInt(hourObj.toString()) : 0;
+        int minute = (minuteObj != null) ? Integer.parseInt(minuteObj.toString()) : 0;
+        int second = (secondObj != null) ? Integer.parseInt(secondObj.toString()) : 0;
 
-            Calendar calendar = Calendar.getInstance();
-            calendar.set(year, month - 1, day, hour, minute, second);
-            return calendar.getTime();
-        }
-        return null;
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(year, month - 1, day, hour, minute, second);
+        return calendar.getTime();
     }
 
     private static void throwUnsupportedUnionTypeError(Object key, String type) {
