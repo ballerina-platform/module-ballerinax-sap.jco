@@ -86,10 +86,23 @@ public class ExportParameterProcessor {
                 case SAPConstants.JCO_STRUCTURE:
                     RecordType nestedRecordType;
                     if (outputParamType.getFields().containsKey(fieldName)) {
-                        nestedRecordType = (RecordType) TypeUtils.getReferredType(
-                                outputParamType.getFields().get(fieldName).getFieldType());
+                        try {
+                            nestedRecordType = (RecordType) TypeUtils.getReferredType(
+                                    outputParamType.getFields().get(fieldName).getFieldType());
+                        } catch (ClassCastException e) {
+                            throw SAPErrorCreator.fromBError("Error while retrieving output structure " +
+                                    "parameter for field: " +
+                                    fieldName + ". Unsupported type " + TypeUtils.getReferredType(
+                                    outputParamType.getFields().get(fieldName).getFieldType()).toString(), null);
+                        }
                     } else {
-                        nestedRecordType = setFields(exportList.getStructure(i));
+                        try {
+                            nestedRecordType = setFields(exportList.getStructure(i));
+                        } catch (ClassCastException e) {
+                            throw SAPErrorCreator.fromBError("Error while retrieving output anonymous " +
+                                    "structure parameter for field: " + fieldName + ". Unsupported type "
+                                    + setFields(exportList.getStructure(i)), null);
+                        }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
                             populateRecord(exportList.getStructure(i), nestedRecordType));
@@ -97,10 +110,25 @@ public class ExportParameterProcessor {
                 case SAPConstants.JCO_TABLE:
                     RecordType recordType;
                     if (outputParamType.getFields().containsKey(fieldName)) {
-                        recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
+                        try {
+                            recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
+                                    outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
+                        } catch (ClassCastException e) {
+                            throw SAPErrorCreator.fromBError("Error while retrieving output table " +
+                                    "parameter for field: " +
+                                    fieldName + ". Unsupported type " + TypeUtils.getReferredType(((ArrayType)
+                                            outputParamType.getFields().get(fieldName).getFieldType()).getElementType())
+                                    .toString(), null);
+                        }
                     } else {
-                        recordType = (RecordType) setTableFields(exportList.getTable(i)).getElementType();
+                        try {
+                            recordType = (RecordType) setTableFields(exportList.getTable(i)).getElementType();
+                        } catch (ClassCastException e) {
+                            throw SAPErrorCreator.fromBError("Error while retrieving output anonymous " +
+                                    "table parameter for field: " +
+                                    fieldName + ". Unsupported type " + setTableFields(exportList.getTable(i)).
+                                    getElementType().toString(), null);
+                        }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
                             populateRecordArray(exportList.getTable(i), recordType));
