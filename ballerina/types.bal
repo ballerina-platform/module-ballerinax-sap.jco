@@ -85,15 +85,15 @@ import ballerina/time;
 # + repositoryRoundtripOptimization - The SAP repository roundtrip optimization (jco.destination.repository_roundtrip_optimization).
 public type DestinationConfig record {
     @display {label: "Host Name (jco.client.ashost)"}
-    string host;
+    string host?;
     @display {label: "System Number (jco.client.sysnr)"}
-    string systemNumber;
+    string systemNumber?;
     @display {label: "Client (jco.client.client)"}
-    string jcoClient;
+    string jcoClient?;
     @display {label: "User Name (jco.client.user)"}
-    string user;
+    string user?;
     @display {label: "Password (jco.client.passwd)"}
-    string password;
+    string password?;
     @display {label: "Language (jco.client.lang)"}
     string language = "EN";
     @display {label: "Group (jco.client.group)"}
