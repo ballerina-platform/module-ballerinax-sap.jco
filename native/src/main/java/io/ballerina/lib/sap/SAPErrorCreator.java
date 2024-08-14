@@ -24,7 +24,7 @@ import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BError;
 public class SAPErrorCreator {
     public static BError fromJCoException(Throwable e) {
-        return fromJavaException("JCo Error: " + e.getMessage(), e);
+        return fromJavaException("JCo Error: " + e.getMessage() + e.getCause().getMessage(), e);
     }
     public static BError fromIDocException(IDocException e) {
         return fromJavaException("IDoc Error: " + e.getMessage(), e);
