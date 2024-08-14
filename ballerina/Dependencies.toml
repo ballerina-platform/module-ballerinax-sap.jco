@@ -76,7 +76,7 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "sap.jco"
-version = "0.1.5"
+version = "0.3.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "time"},
