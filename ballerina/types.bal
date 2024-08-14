@@ -60,7 +60,7 @@ public type ServerDataConfig record {
     @display {label: "Program ID (jco.server.progid)"}
     string progid;
     @display {label: "Repository Destination (jco.server.repository_destination)"}
-    string connectionCount;
+    int connectionCount;
     @display {label: "Connection Count (jco.server.connection_count)"}
     string repositoryDestination;
     @display {label: "Advanced configurations"}

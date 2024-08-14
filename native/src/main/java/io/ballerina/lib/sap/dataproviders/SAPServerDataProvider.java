@@ -37,16 +37,16 @@ public class SAPServerDataProvider implements ServerDataProvider {
         Properties properties = new Properties();
         try {
             properties.setProperty(ServerDataProvider.JCO_GWHOST,
-                    serverDataConfig.get(SAPConstants.JCO_GWHOST).toString());
+                    serverDataConfig.getStringValue(SAPConstants.JCO_GWHOST).toString());
             properties.setProperty(ServerDataProvider.JCO_GWSERV,
-                    serverDataConfig.get(SAPConstants.JCO_GWSERV).toString());
+                    serverDataConfig.getStringValue(SAPConstants.JCO_GWSERV).toString());
             properties.setProperty(ServerDataProvider.JCO_PROGID,
-                    serverDataConfig.get(SAPConstants.JCO_PROGID).toString());
+                    serverDataConfig.getStringValue(SAPConstants.JCO_PROGID).toString());
             properties.setProperty(ServerDataProvider.JCO_REP_DEST,
-                    serverDataConfig.get(SAPConstants.JCO_REP_DEST).toString());
+                    serverDataConfig.getStringValue(SAPConstants.JCO_REP_DEST).toString());
             properties.setProperty(ServerDataProvider.JCO_CONNECTION_COUNT,
-                    serverDataConfig.get(SAPConstants.JCO_CONNECTION_COUNT).toString());
-            BMap<BString, Object> advancedConfigs = (BMap<BString, Object>) serverDataConfig.get(
+                    serverDataConfig.getStringValue(SAPConstants.JCO_CONNECTION_COUNT).toString());
+            BMap<BString, Object> advancedConfigs = (BMap<BString, Object>) serverDataConfig.getMapValue(
                     SAPConstants.ADVANCED_CONFIGS);
             if (advancedConfigs != null) {
                 if (!advancedConfigs.isEmpty()) {

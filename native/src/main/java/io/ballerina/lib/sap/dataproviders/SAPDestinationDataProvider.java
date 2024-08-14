@@ -55,20 +55,20 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
         Properties properties = new Properties();
         try {
             properties.setProperty(DestinationDataProvider.JCO_CLIENT,
-                    jcoDestinationConfig.get(SAPConstants.JCO_CLIENT).toString());
+                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_CLIENT).toString());
             properties.setProperty(DestinationDataProvider.JCO_USER,
-                    jcoDestinationConfig.get(SAPConstants.JCO_USER).toString());
+                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_USER).toString());
             properties.setProperty(DestinationDataProvider.JCO_PASSWD,
-                    jcoDestinationConfig.get(SAPConstants.JCO_PASSWD).toString());
+                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_PASSWD).toString());
             properties.setProperty(DestinationDataProvider.JCO_LANG,
-                    jcoDestinationConfig.get(SAPConstants.JCO_LANG).toString());
+                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_LANG).toString());
             properties.setProperty(DestinationDataProvider.JCO_ASHOST,
-                    jcoDestinationConfig.get(SAPConstants.JCO_ASHOST).toString());
+                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_ASHOST).toString());
             properties.setProperty(DestinationDataProvider.JCO_SYSNR,
-                    jcoDestinationConfig.get(SAPConstants.JCO_SYSNR).toString());
+                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_SYSNR).toString());
             properties.setProperty(DestinationDataProvider.JCO_GROUP,
-                    jcoDestinationConfig.get(SAPConstants.JCO_GROUP).toString());
-            BMap<BString, Object> advancedConfigs = (BMap<BString, Object>) jcoDestinationConfig.get(
+                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_GROUP).toString());
+            BMap<BString, Object> advancedConfigs = (BMap<BString, Object>) jcoDestinationConfig.getMapValue(
                     SAPConstants.ADVANCED_CONFIGS);
             if (advancedConfigs != null) {
                 if (!advancedConfigs.isEmpty()) {

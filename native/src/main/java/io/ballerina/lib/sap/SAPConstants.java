@@ -18,6 +18,9 @@
 
 package io.ballerina.lib.sap;
 
+import io.ballerina.runtime.api.utils.StringUtils;
+import io.ballerina.runtime.api.values.BString;
+
 public class SAPConstants {
 
     // Constants for SAP Client
@@ -26,22 +29,22 @@ public class SAPConstants {
     public static final String TIME_OF_DAY = "TimeOfDay";
 
     // Server Configs
-    public static final String JCO_GWHOST = "gwhost";
-    public static final String JCO_GWSERV = "gwserv";
-    public static final String JCO_PROGID = "progid";
-    public static final String JCO_REP_DEST = "repositoryDestination";
-    public static final String JCO_CONNECTION_COUNT = "connectionCount";
-    public static final String ADVANCED_CONFIGS = "advancedConfigs";
+    public static final BString JCO_GWHOST = StringUtils.fromString("gwhost");
+    public static final BString JCO_GWSERV = StringUtils.fromString("gwserv");
+    public static final BString JCO_PROGID = StringUtils.fromString("progid");
+    public static final BString JCO_REP_DEST = StringUtils.fromString("repositoryDestination");
+    public static final BString JCO_CONNECTION_COUNT = StringUtils.fromString("connectionCount");
+    public static final BString ADVANCED_CONFIGS = StringUtils.fromString("advancedConfigs");
 
 
     // Destination Configs
-    public static final String JCO_CLIENT = "jcoClient";
-    public static final String JCO_USER = "user";
-    public static final String JCO_PASSWD = "passwd";
-    public static final String JCO_LANG = "lang";
-    public static final String JCO_ASHOST = "ashost";
-    public static final String JCO_SYSNR = "sysnr";
-    public static final String JCO_GROUP = "group";
+    public static final BString JCO_CLIENT = StringUtils.fromString("jcoClient");
+    public static final BString JCO_USER = StringUtils.fromString("user");
+    public static final BString JCO_PASSWD = StringUtils.fromString("passwd");
+    public static final BString JCO_LANG = StringUtils.fromString("lang");
+    public static final BString JCO_ASHOST = StringUtils.fromString("ashost");
+    public static final BString JCO_SYSNR = StringUtils.fromString("sysnr");
+    public static final BString JCO_GROUP = StringUtils.fromString("group");
 
 
     // Constants for SAP Listener
