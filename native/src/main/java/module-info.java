@@ -24,4 +24,5 @@ module io.ballerina.lib.sap {
     requires io.ballerina.stdlib.time;
     exports io.ballerina.lib.sap;
     exports io.ballerina.lib.sap.parameterprocessor;
+    exports io.ballerina.lib.sap.dataproviders;
 }

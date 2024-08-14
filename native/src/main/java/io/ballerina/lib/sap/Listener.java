@@ -20,9 +20,8 @@ package io.ballerina.lib.sap;
 
 import com.sap.conn.idoc.jco.JCoIDoc;
 import com.sap.conn.idoc.jco.JCoIDocServer;
-import com.sap.conn.jco.JCoDestination;
-import com.sap.conn.jco.JCoDestinationManager;
 import com.sap.conn.jco.JCoException;
+import io.ballerina.lib.sap.dataproviders.SAPServerDataProvider;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.Runtime;
 import io.ballerina.runtime.api.values.BMap;
@@ -42,14 +41,13 @@ public class Listener {
     private static ArrayList<BObject> services = new ArrayList<>();
     private static Runtime runtime;
 
-    public static Object init(BObject listenerBObject, BMap<BString, Object> jcoDestinationConfig,
-                              BString destinationId) {
+    public static Object init(BObject listenerBObject, BMap<BString, Object> serverDataConfig,
+                              BString serverName) {
         try {
-            BallerinaDestinationDataProvider dp = new BallerinaDestinationDataProvider();
-            com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
-            dp.addDestination(jcoDestinationConfig, destinationId);
-            JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
-            JCoIDocServer server = JCoIDoc.getServer(destination.getDestinationName());
+            SAPServerDataProvider dp = new SAPServerDataProvider();
+            dp.addServerData(serverDataConfig, serverName);
+            com.sap.conn.jco.ext.Environment.registerServerDataProvider(dp);
+            JCoIDocServer server = JCoIDoc.getServer(serverName.getValue());
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(SAPConstants.JCO_SERVICES, services);
             listenerBObject.addNativeData(SAPConstants.JCO_STARTED_SERVICES, startedServices);

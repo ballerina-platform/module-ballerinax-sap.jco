@@ -31,6 +31,7 @@ import com.sap.conn.jco.JCoFunction;
 import com.sap.conn.jco.JCoParameterList;
 import com.sap.conn.jco.JCoRepository;
 import com.sap.conn.jco.ext.Environment;
+import io.ballerina.lib.sap.dataproviders.SAPDestinationDataProvider;
 import io.ballerina.lib.sap.parameterprocessor.ExportParameterProcessor;
 import io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor;
 import io.ballerina.runtime.api.TypeTags;
@@ -51,7 +52,7 @@ public class Client {
     public static Object initializeClient(BObject client, BMap<BString, Object> jcoDestinationConfig,
                                           BString destinationId) {
         try {
-            BallerinaDestinationDataProvider dp = new BallerinaDestinationDataProvider();
+            SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
             Environment.registerDestinationDataProvider(dp);
             dp.addDestination(jcoDestinationConfig, destinationId);
             JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
