@@ -16,7 +16,6 @@ artifactId = "sap.jco-native"
 version = "0.3.2-SNAPSHOT"
 path = "../native/build/libs/sap.jco-native-0.3.2-SNAPSHOT.jar"
 
-
 [[platform.java17.dependency]]
 path = "../native/libs/sapidoc3.jar"
 scope = "provided"
