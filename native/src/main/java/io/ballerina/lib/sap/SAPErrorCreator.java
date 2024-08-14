@@ -22,10 +22,13 @@ import com.sap.conn.idoc.IDocException;
 import io.ballerina.runtime.api.creators.ErrorCreator;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BError;
+
+import java.util.Arrays;
+
 public class SAPErrorCreator {
     public static BError fromJCoException(Throwable e) {
         return fromJavaException("JCo Error: " + e.getMessage() + " Cause: " + e.getCause().getMessage()
-                + " Cause: " + e.getStackTrace().toString(), e);
+                + " Cause: " + Arrays.toString(e.getStackTrace()), e);
     }
     public static BError fromIDocException(IDocException e) {
         return fromJavaException("IDoc Error: " + e.getMessage(), e);
