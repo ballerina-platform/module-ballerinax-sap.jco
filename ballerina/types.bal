@@ -49,8 +49,6 @@ public type DestinationConfig record {
 # + gwhost - The gateway host (jco.server.gwhost).
 # + gwserv - The gateway service (jco.server.gwserv).
 # + progid - The program ID (jco.server.progid).
-# + connectionCount - The repository destination (jco.server.repository_destination).
-# + repositoryDestination - The connection count (jco.server.connection_count).
 # + advancedConfigs - The advanced configurations eg: {"jco.server.auth_type" : "basic"}
 public type ServerDataConfig record {
     @display {label: "Gateway Host (jco.server.gwhost)"}
@@ -59,10 +57,6 @@ public type ServerDataConfig record {
     string gwserv;
     @display {label: "Program ID (jco.server.progid)"}
     string progid;
-    @display {label: "Repository Destination (jco.server.repository_destination)"}
-    string connectionCount;
-    @display {label: "Connection Count (jco.server.connection_count)"}
-    string repositoryDestination;
     @display {label: "Advanced configurations"}
     map<string>  advancedConfigs ?;
 };
