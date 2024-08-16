@@ -84,10 +84,11 @@ public class ExportParameterProcessor {
                         recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
                                 outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
                     } else {
-                        recordType = (RecordType) setTableFields(exportList.getTable(i)).getElementType();
+                        recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
+                                setTableFields(exportList.getTable(i)).getElementType()).getElementType());
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
-                            populateRecordArray(exportList.getTable(i), recordType));
+                        populateRecordArray(exportList.getTable(i), recordType));
                     break;
                 default:
                     throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
@@ -295,7 +296,7 @@ public class ExportParameterProcessor {
 
     private static ArrayType setTableFields(JCoTable table) {
         Map<String, Field> tableElementType = new HashMap<>();
-        for (int j = 0; j < table.getNumRows(); j++) {
+        for (int j = 0; j < table.getNumColumns(); j++) {
             String tableFieldName = table.getMetaData().getName(j);
             String tableFieldType = table.getMetaData().getClassNameOfField(j);
             switch (tableFieldType) {

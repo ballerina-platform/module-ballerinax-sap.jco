@@ -19,7 +19,7 @@ import ballerina/xmldata;
 import ballerinax/sap.jco;
 
 // Configurable variables to hold the configuration values from Config.toml
-configurable jco:DestinationConfig sapConfig = ?;
+configurable jco:ServerDataConfig sapConfig = ?;
 
 // Initialize iDoc listener
 listener jco:Listener idocListener = new (sapConfig);

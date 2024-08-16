@@ -35,7 +35,7 @@ public isolated client class Client {
     # + importParams - The input parameters for the function.
     # + exportParams - The output parameters for the function.
     # + return - An error if the execution fails.
-    isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json?> exportParams = <>) returns exportParams|Error = @java:Method {
+    isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json|anydata?> exportParams = <>) returns exportParams|Error = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
