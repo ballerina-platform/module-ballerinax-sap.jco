@@ -28,7 +28,7 @@ import java.util.Arrays;
 public class SAPErrorCreator {
     public static BError fromJCoException(Throwable e) {
         return fromJavaException("JCo Error: " + e.getMessage() + " Cause: " + e.getCause().getMessage()
-                + " Cause: " + Arrays.toString(e.getStackTrace()), e);
+                + " Stack Trrace: " + Arrays.toString(e.getStackTrace()), e);
     }
     public static BError fromIDocException(IDocException e) {
         return fromJavaException("IDoc Error: " + e.getMessage(), e);
@@ -41,9 +41,11 @@ public class SAPErrorCreator {
                 ModuleUtils.getModule(), "Error", StringUtils.fromString(message), cause, null);
     }
 
-    public static BError createError(String message, Throwable throwable) {
-        BError cause = ErrorCreator.createError(throwable);
+    public static BError createError(String message, Throwable e) {
+        BError cause = ErrorCreator.createError(e);
         return ErrorCreator.createError(
-                ModuleUtils.getModule(), "Error", StringUtils.fromString(message), cause, null);
+                ModuleUtils.getModule(), "Error", StringUtils.fromString(message + " Cause: "
+                        + e.getCause().getMessage() + " Stack Trrace: " + Arrays.toString(e.getStackTrace())),
+                cause, null);
     }
 }
