@@ -44,12 +44,15 @@ import java.util.Map;
 
 public class ExportParameterProcessor {
 
-    public static BMap<BString, Object> getExportParams(JCoParameterList exportList,
-                                                        RecordType outputParamType) {
+    public static BMap<BString, Object> getExportParams(JCoParameterList exportList, RecordType outputParamType,
+                                                        boolean isRestFieldsAllowed) {
         BMap<BString, Object> outputMap = ValueCreator.createRecordValue(outputParamType);
         for (int i = 0; i < exportList.getMetaData().getFieldCount(); i++) {
             String fieldName = exportList.getMetaData().getName(i);
             String type = exportList.getMetaData().getClassNameOfField(i);
+            if (!isRestFieldsAllowed && !outputParamType.getFields().containsKey(fieldName)) {
+                continue;
+            }
             switch (type) {
                 case SAPConstants.JCO_STRING:
                     String value = exportList.getString(i);
@@ -106,7 +109,7 @@ public class ExportParameterProcessor {
                         }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
-                            populateRecord(exportList.getStructure(i), nestedRecordType));
+                            populateRecord(exportList.getStructure(i), nestedRecordType, isRestFieldsAllowed));
                     break;
                 case SAPConstants.JCO_TABLE:
                     RecordType recordType;
@@ -136,7 +139,7 @@ public class ExportParameterProcessor {
                         }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
-                            populateRecordArray(exportList.getTable(i), recordType));
+                            populateRecordArray(exportList.getTable(i), recordType, isRestFieldsAllowed));
                     break;
                 default:
                     throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
@@ -146,12 +149,15 @@ public class ExportParameterProcessor {
         return outputMap;
     }
 
-    private static BMap<BString, Object> populateRecord(JCoStructure exportStructure,
-                                                        RecordType outputParamType) {
+    private static BMap<BString, Object> populateRecord(JCoStructure exportStructure, RecordType outputParamType,
+                                                        boolean isRestFieldsAllowed) {
         BMap<BString, Object> outputMap = ValueCreator.createRecordValue(outputParamType);
         for (int i = 0; i < exportStructure.getMetaData().getFieldCount(); i++) {
             String fieldName = exportStructure.getMetaData().getName(i);
             String type = exportStructure.getMetaData().getClassNameOfField(i);
+            if (!isRestFieldsAllowed && !outputParamType.getFields().containsKey(fieldName)) {
+                continue;
+            }
             switch (type) {
                 case SAPConstants.JCO_STRING:
                     String value = exportStructure.getString(i);
@@ -194,7 +200,7 @@ public class ExportParameterProcessor {
                         nestedRecordType = setFields(exportStructure.getStructure(i));
                     }
                     BMap<BString, Object> nestedRecord = populateRecord(
-                            exportStructure.getStructure(i), nestedRecordType);
+                            exportStructure.getStructure(i), nestedRecordType, isRestFieldsAllowed);
                     outputMap.put(StringUtils.fromString(fieldName), nestedRecord);
                     break;
                 case SAPConstants.JCO_TABLE:
@@ -209,7 +215,7 @@ public class ExportParameterProcessor {
                                         .getElementType());
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
-                            populateRecordArray(exportStructure.getTable(i), recordType));
+                            populateRecordArray(exportStructure.getTable(i), recordType, isRestFieldsAllowed));
                     break;
                 default:
                     throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
@@ -219,7 +225,8 @@ public class ExportParameterProcessor {
         return outputMap;
     }
 
-    private static BArray populateRecordArray(JCoTable table, RecordType outputRecordType) {
+    private static BArray populateRecordArray(JCoTable table, RecordType outputRecordType,
+                                              boolean isRestFieldsAllowed) {
         BArray recordArray = ValueCreator.createArrayValue(TypeCreator.createArrayType(outputRecordType));
         for (int i = 0; i < table.getNumRows(); i++) {
             table.setRow(i);
@@ -227,6 +234,9 @@ public class ExportParameterProcessor {
             for (int j = 0; j < table.getMetaData().getFieldCount(); j++) {
                 String fieldName = table.getMetaData().getName(j);
                 String type = table.getMetaData().getClassNameOfField(j);
+                if (!isRestFieldsAllowed && !outputRecordType.getFields().containsKey(fieldName)) {
+                    continue;
+                }
                 RecordType nestedRecordType;
                 switch (type) {
                     case SAPConstants.JCO_STRING:
@@ -269,7 +279,7 @@ public class ExportParameterProcessor {
                             nestedRecordType = setFields(table.getStructure(j));
                         }
                         record.put(StringUtils.fromString(fieldName), populateRecord(table.getStructure(j),
-                                nestedRecordType));
+                                nestedRecordType, isRestFieldsAllowed));
                         break;
                     case SAPConstants.JCO_TABLE:
                         if (outputRecordType.getFields().containsKey(fieldName)) {
@@ -280,7 +290,8 @@ public class ExportParameterProcessor {
                             nestedRecordType = (RecordType) TypeUtils.getReferredType(
                                     ((ArrayType) setTableFields(table.getTable(i)).getElementType()).getElementType());
                         }
-                        BArray nestedRecordArray = populateRecordArray(table.getTable(j), nestedRecordType);
+                        BArray nestedRecordArray = populateRecordArray(table.getTable(j), nestedRecordType,
+                                isRestFieldsAllowed);
                         record.put(StringUtils.fromString(fieldName), nestedRecordArray);
                         break;
                     default:
