@@ -122,7 +122,8 @@ public class ExportParameterProcessor {
                         }
                     } else {
                         try {
-                            recordType = (RecordType) setTableFields(exportList.getTable(i)).getElementType();
+                            recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
+                                    setTableFields(exportList.getTable(i)).getElementType()).getElementType());
                         } catch (ClassCastException e) {
                             throw SAPErrorCreator.fromBError("Error while retrieving output anonymous " +
                                     "table parameter for field: " +
@@ -198,7 +199,8 @@ public class ExportParameterProcessor {
                         recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
                                 outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
                     } else {
-                        recordType = (RecordType) setTableFields(exportStructure.getTable(i)).getElementType();
+                        recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
+                                setTableFields(exportStructure.getTable(i)).getElementType()).getElementType());
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
                             populateRecordArray(exportStructure.getTable(i), recordType));
@@ -268,7 +270,8 @@ public class ExportParameterProcessor {
                             nestedRecordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
                                     outputRecordType.getFields().get(fieldName).getFieldType()).getElementType());
                         } else {
-                            nestedRecordType = (RecordType) setTableFields(table.getTable(j)).getElementType();
+                            nestedRecordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
+                                    setTableFields(table.getTable(i)).getElementType()).getElementType());
                         }
                         BArray nestedRecordArray = populateRecordArray(table.getTable(j), nestedRecordType);
                         record.put(StringUtils.fromString(fieldName), nestedRecordArray);
@@ -343,7 +346,7 @@ public class ExportParameterProcessor {
 
     private static ArrayType setTableFields(JCoTable table) {
         Map<String, Field> tableElementType = new HashMap<>();
-        for (int j = 0; j < table.getNumRows(); j++) {
+        for (int j = 0; j < table.getNumColumns(); j++) {
             String tableFieldName = table.getMetaData().getName(j);
             String tableFieldType = table.getMetaData().getClassNameOfField(j);
             switch (tableFieldType) {
