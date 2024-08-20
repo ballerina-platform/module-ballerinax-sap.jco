@@ -93,7 +93,8 @@ public class ExportParameterProcessor {
                             throw SAPErrorCreator.fromBError("Error while retrieving output structure " +
                                     "parameter for field: " +
                                     fieldName + ". Unsupported type " + TypeUtils.getReferredType(
-                                    outputParamType.getFields().get(fieldName).getFieldType()).toString(), null);
+                                            outputParamType.getFields().get(fieldName).getFieldType()).toString(),
+                                    null);
                         }
                     } else {
                         try {
@@ -111,24 +112,27 @@ public class ExportParameterProcessor {
                     RecordType recordType;
                     if (outputParamType.getFields().containsKey(fieldName)) {
                         try {
-                            recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                    outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
+                            recordType = (RecordType) TypeUtils.getReferredType(
+                                    ((ArrayType) outputParamType.getFields().get(fieldName).getFieldType())
+                                            .getElementType());
                         } catch (ClassCastException e) {
                             throw SAPErrorCreator.fromBError("Error while retrieving output table " +
                                     "parameter for field: " +
-                                    fieldName + ". Unsupported type " + TypeUtils.getReferredType(((ArrayType)
-                                            outputParamType.getFields().get(fieldName).getFieldType()).getElementType())
-                                    .toString(), null);
+                                            fieldName + ". Unsupported type "
+                                            + TypeUtils.getReferredType(((ArrayType) outputParamType.getFields()
+                                            .get(fieldName).getFieldType()).getElementType()).toString(),
+                                    null);
                         }
                     } else {
                         try {
-                            recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                    setTableFields(exportList.getTable(i)).getElementType()).getElementType());
+                            recordType = (RecordType) TypeUtils.getReferredType(
+                                    ((ArrayType) setTableFields(exportList.getTable(i)).getElementType())
+                                            .getElementType());
                         } catch (ClassCastException e) {
                             throw SAPErrorCreator.fromBError("Error while retrieving output anonymous " +
                                     "table parameter for field: " +
-                                    fieldName + ". Unsupported type " + setTableFields(exportList.getTable(i)).
-                                    getElementType().toString(), null);
+                                    fieldName + ". Unsupported type "
+                                    + setTableFields(exportList.getTable(i)).getElementType().toString(), null);
                         }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
@@ -196,11 +200,13 @@ public class ExportParameterProcessor {
                 case SAPConstants.JCO_TABLE:
                     RecordType recordType;
                     if (outputParamType.getFields().containsKey(fieldName)) {
-                        recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
+                        recordType = (RecordType) TypeUtils
+                                .getReferredType(((ArrayType) outputParamType.getFields().get(fieldName).getFieldType())
+                                        .getElementType());
                     } else {
-                        recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                setTableFields(exportStructure.getTable(i)).getElementType()).getElementType());
+                        recordType = (RecordType) TypeUtils.getReferredType(
+                                ((ArrayType) setTableFields(exportStructure.getTable(i)).getElementType())
+                                        .getElementType());
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
                             populateRecordArray(exportStructure.getTable(i), recordType));
@@ -267,11 +273,12 @@ public class ExportParameterProcessor {
                         break;
                     case SAPConstants.JCO_TABLE:
                         if (outputRecordType.getFields().containsKey(fieldName)) {
-                            nestedRecordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                    outputRecordType.getFields().get(fieldName).getFieldType()).getElementType());
+                            nestedRecordType = (RecordType) TypeUtils.getReferredType(
+                                    ((ArrayType) outputRecordType.getFields().get(fieldName).getFieldType())
+                                            .getElementType());
                         } else {
-                            nestedRecordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                    setTableFields(table.getTable(i)).getElementType()).getElementType());
+                            nestedRecordType = (RecordType) TypeUtils.getReferredType(
+                                    ((ArrayType) setTableFields(table.getTable(i)).getElementType()).getElementType());
                         }
                         BArray nestedRecordArray = populateRecordArray(table.getTable(j), nestedRecordType);
                         record.put(StringUtils.fromString(fieldName), nestedRecordArray);
@@ -418,23 +425,17 @@ public class ExportParameterProcessor {
             BMap<BString, Object> dateMap = ValueCreator.createRecordValue(
                     io.ballerina.stdlib.time.util.ModuleUtils.getModule(),
                     Constants.DATE_RECORD);
-            dateMap.put(StringUtils.fromString(Constants
-                    .DATE_RECORD_YEAR), calendar.get(Calendar.YEAR));
-            dateMap.put(StringUtils.fromString(Constants
-                    .DATE_RECORD_MONTH), calendar.get(Calendar.MONTH) + 1);
-            dateMap.put(StringUtils.fromString(Constants
-                    .DATE_RECORD_DAY), calendar.get(Calendar.DATE));
+            dateMap.put(StringUtils.fromString(Constants.DATE_RECORD_YEAR), calendar.get(Calendar.YEAR));
+            dateMap.put(StringUtils.fromString(Constants.DATE_RECORD_MONTH), calendar.get(Calendar.MONTH) + 1);
+            dateMap.put(StringUtils.fromString(Constants.DATE_RECORD_DAY), calendar.get(Calendar.DATE));
             return dateMap;
         } else if (SAPConstants.JCO_DATE_TYPE_TIME.equals(type)) {
             BMap<BString, Object> timeMap = ValueCreator.createRecordValue(
                     io.ballerina.stdlib.time.util.ModuleUtils.getModule(),
                     Constants.TIME_OF_DAY_RECORD);
-            timeMap.put(StringUtils.fromString(Constants
-                    .TIME_OF_DAY_RECORD_HOUR), calendar.get(Calendar.HOUR_OF_DAY));
-            timeMap.put(StringUtils.fromString(Constants
-                    .TIME_OF_DAY_RECORD_MINUTE), calendar.get(Calendar.MINUTE));
-            timeMap.put(StringUtils.fromString(Constants
-                    .TIME_OF_DAY_RECORD_SECOND), calendar.get(Calendar.SECOND));
+            timeMap.put(StringUtils.fromString(Constants.TIME_OF_DAY_RECORD_HOUR), calendar.get(Calendar.HOUR_OF_DAY));
+            timeMap.put(StringUtils.fromString(Constants.TIME_OF_DAY_RECORD_MINUTE), calendar.get(Calendar.MINUTE));
+            timeMap.put(StringUtils.fromString(Constants.TIME_OF_DAY_RECORD_SECOND), calendar.get(Calendar.SECOND));
             return timeMap;
         } else {
             throw SAPErrorCreator.fromBError("Unsupported date type " + type, null);

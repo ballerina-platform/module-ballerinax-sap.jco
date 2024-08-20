@@ -133,8 +133,7 @@ public class Listener {
     }
 
     private static void startReceivingIDocs(BObject service, JCoIDocServer server, BObject listener) {
-        IDocDispatcher iDocDispatcher =
-                new IDocDispatcher(service, server, runtime);
+        IDocDispatcher iDocDispatcher = new IDocDispatcher(service, server, runtime);
         iDocDispatcher.receiveIDoc(listener);
     }
 

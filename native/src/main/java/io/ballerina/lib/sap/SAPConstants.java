@@ -36,7 +36,6 @@ public class SAPConstants {
     public static final BString JCO_CONNECTION_COUNT = StringUtils.fromString("connectionCount");
     public static final BString ADVANCED_CONFIGS = StringUtils.fromString("advancedConfigs");
 
-
     // Destination Configs
     public static final BString JCO_CLIENT = StringUtils.fromString("jcoClient");
     public static final BString JCO_USER = StringUtils.fromString("user");
@@ -46,14 +45,12 @@ public class SAPConstants {
     public static final BString JCO_SYSNR = StringUtils.fromString("sysnr");
     public static final BString JCO_GROUP = StringUtils.fromString("group");
 
-
     // Constants for SAP Listener
     public static final String JCO_SERVER = "JCO_SERVER";
     public static final String JCO_SERVICES = "JCO_SERVICES";
     public static final String JCO_STARTED_SERVICES = "JCO_STARTED_SERVICES";
     public static final String ON_RECEIVE = "onReceive";
     public static final String ON_ERROR = "onError";
-
 
     // Class names
     public static final String JCO_STRING = "java.lang.String";

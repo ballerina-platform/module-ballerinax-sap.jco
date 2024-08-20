@@ -47,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Client {
+
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
     public static Object initializeClient(BObject client, BMap<BString, Object> jcoDestinationConfig,
@@ -71,42 +72,41 @@ public class Client {
 
     public static Object execute(BObject client, BString functionName,
                                  BMap<BString, Object> inputParams, BTypedesc outputParamType) {
-            try {
-                
-                JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
-                JCoRepository repository = destination.getRepository();
-                if (functionName.toString().isEmpty()) {
-                    return SAPErrorCreator.fromBError("Function name is empty", null);
-                }
-                JCoFunction function = repository.getFunction(functionName.toString());
-                if (function == null) {
-                    return SAPErrorCreator.fromBError("RFC function '" + functionName + "' not found in SAP."
-                            , null);
-                }
+        try {
 
-                JCoParameterList importParams = function.getImportParameterList();
-                ImportParameterProcessor.setImportParams(importParams, inputParams);
-
-                function.execute(destination);
-
-                JCoParameterList exportParams = function.getExportParameterList();
-
-                int exportType = outputParamType.getDescribingType().getTag();
-                if (exportType == TypeTags.XML_TAG) {
-                    return ValueCreator.createXmlValue(exportParams.toXML());
-                } else if (exportType == TypeTags.JSON_TAG) {
-                    return JsonUtils.parse(exportParams.toJSON());
-                } else if (exportType == TypeTags.RECORD_TYPE_TAG) {
-                    return ExportParameterProcessor.getExportParams(exportParams, (RecordType)
-                            outputParamType.getDescribingType());
-                } else {
-                    throw SAPErrorCreator.fromBError("Unsupported output parameter type: " +
-                            outputParamType.getType().getName(), null);
-                }
-            } catch (Throwable e) {
-                logger.error("JCoException occurred. Error: " + e.getMessage());
-                return SAPErrorCreator.fromJCoException(e);
+            JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
+            JCoRepository repository = destination.getRepository();
+            if (functionName.toString().isEmpty()) {
+                return SAPErrorCreator.fromBError("Function name is empty", null);
             }
+            JCoFunction function = repository.getFunction(functionName.toString());
+            if (function == null) {
+                return SAPErrorCreator.fromBError("RFC function '" + functionName + "' not found in SAP.", null);
+            }
+
+            JCoParameterList importParams = function.getImportParameterList();
+            ImportParameterProcessor.setImportParams(importParams, inputParams);
+
+            function.execute(destination);
+
+            JCoParameterList exportParams = function.getExportParameterList();
+
+            int exportType = outputParamType.getDescribingType().getTag();
+            if (exportType == TypeTags.XML_TAG) {
+                return ValueCreator.createXmlValue(exportParams.toXML());
+            } else if (exportType == TypeTags.JSON_TAG) {
+                return JsonUtils.parse(exportParams.toJSON());
+            } else if (exportType == TypeTags.RECORD_TYPE_TAG) {
+                return ExportParameterProcessor.getExportParams(exportParams,
+                        (RecordType) outputParamType.getDescribingType());
+            } else {
+                throw SAPErrorCreator.fromBError("Unsupported output parameter type: " +
+                        outputParamType.getType().getName(), null);
+            }
+        } catch (Throwable e) {
+            logger.error("JCoException occurred. Error: " + e.getMessage());
+            return SAPErrorCreator.fromJCoException(e);
+        }
     }
 
     public static Object sendIDoc(BObject client, BXml iDoc, BString iDocType) {

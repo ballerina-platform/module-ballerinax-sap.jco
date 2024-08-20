@@ -76,8 +76,8 @@ public class IDocDispatcher {
             server.addServerErrorListener(listener);
             server.addServerExceptionListener(listener);
             @SuppressWarnings("unchecked")
-            ArrayList<BObject> startedServices =
-                    (ArrayList<BObject>) listenerObject.getNativeData(SAPConstants.JCO_STARTED_SERVICES);
+            ArrayList<BObject> startedServices = (ArrayList<BObject>) listenerObject
+                    .getNativeData(SAPConstants.JCO_STARTED_SERVICES);
             startedServices.add(service);
         } catch (Throwable e) {
             logger.error("Error while processing IDoc", e);
@@ -169,8 +169,7 @@ public class IDocDispatcher {
 
             StringWriter stringWriter = new StringWriter();
             try {
-                IDocXMLProcessor xmlProcessor =
-                        JCoIDoc.getIDocFactory().getIDocXMLProcessor();
+                IDocXMLProcessor xmlProcessor = JCoIDoc.getIDocFactory().getIDocXMLProcessor();
                 xmlProcessor.render(idocList, stringWriter,
                         IDocXMLProcessor.RENDER_WITH_TABS_AND_CRLF);
                 String xmlContent = stringWriter.toString();
@@ -183,8 +182,10 @@ public class IDocDispatcher {
                     countDownLatch.await();
                 } catch (InterruptedException | BError exception) {
                     Object[] args = new Object[]{
-                            (exception instanceof BError) ? exception : SAPErrorCreator.createError(
-                                    exception.getMessage(), exception), true
+                            (exception instanceof BError) ? exception
+                                    : SAPErrorCreator.createError(
+                                    exception.getMessage(), exception),
+                            true
                     };
                     invokeOnError(args);
                 }
