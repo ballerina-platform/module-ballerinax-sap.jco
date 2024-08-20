@@ -27,25 +27,41 @@ import java.util.Arrays;
 
 public class SAPErrorCreator {
     public static BError fromJCoException(Throwable e) {
-        return fromJavaException("JCo Error: " + e.getMessage() + " Cause: " + e.getCause().getMessage()
-                + " Stack Trrace: " + Arrays.toString(e.getStackTrace()), e);
+        return fromJavaException("JCo Error", e);
     }
+
     public static BError fromIDocException(IDocException e) {
-        return fromJavaException("IDoc Error: " + e.getMessage(), e);
+        return fromJavaException("IDoc Error", e);
     }
-    private static BError fromJavaException(String message, Throwable cause) {
-        return fromBError(message, ErrorCreator.createError(cause));
+
+    private static BError fromJavaException(String errorType, Throwable e) {
+        String causeString = (e.getCause() != null && e.getCause().getMessage() != null)
+                ? e.getCause().getMessage()
+                : "No cause";
+
+        String message = (e.getMessage() != null) ? e.getMessage() : "Unknown error";
+
+        String fullMessage = errorType + ": " + message
+                + " | Cause: " + causeString
+                + " | Stack Trace: " + Arrays.toString(e.getStackTrace());
+
+        return fromBError(fullMessage, ErrorCreator.createError(e));
     }
+
     public static BError fromBError(String message, BError cause) {
         return ErrorCreator.createError(
                 ModuleUtils.getModule(), "Error", StringUtils.fromString(message), cause, null);
     }
 
     public static BError createError(String message, Throwable e) {
-        BError cause = ErrorCreator.createError(e);
-        return ErrorCreator.createError(
-                ModuleUtils.getModule(), "Error", StringUtils.fromString(message + " Cause: "
-                        + e.getCause().getMessage() + " Stack Trrace: " + Arrays.toString(e.getStackTrace())),
-                cause, null);
+        Throwable cause = e.getCause();
+        String causeString = "No cause";
+        if (cause != null && cause.getMessage() != null) {
+            causeString = cause.getMessage();
+        }
+        BError bCause = ErrorCreator.createError(e);
+        return ErrorCreator.createError(ModuleUtils.getModule(), "Error", StringUtils.fromString(message
+                + "| Cause: " + causeString
+                + "| Stack Trace: " + Arrays.toString(e.getStackTrace())), bCause, null);
     }
 }
