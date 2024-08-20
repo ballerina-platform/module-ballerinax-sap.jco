@@ -13,8 +13,8 @@ license = ["Apache-2.0"]
 [[platform.java17.dependency]]
 groupId = "io.ballerina.lib.sap"
 artifactId = "sap.jco-native"
-version = "0.3.6-SNAPSHOT"
-path = "../native/build/libs/sap.jco-native-0.3.6-SNAPSHOT.jar"
+version = "0.3.6"
+path = "../native/build/libs/sap.jco-native-0.3.6.jar"
 
 [[platform.java17.dependency]]
 path = "../native/libs/sapidoc3.jar"
