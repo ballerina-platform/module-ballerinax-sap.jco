@@ -31,7 +31,7 @@
         <Bug pattern="DM_EXIT"/>
     </Match>
     <Match>
-        <Class name="io.ballerina.lib.sap.IDocDispatcher"/>
+        <Class name="io.ballerina.lib.sap.idochandlers.BallerinaIDocHandler"/>
         <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
 </FindBugsFilter>

@@ -22,6 +22,9 @@ import com.sap.conn.idoc.jco.JCoIDoc;
 import com.sap.conn.idoc.jco.JCoIDocServer;
 import com.sap.conn.jco.JCoException;
 import io.ballerina.lib.sap.dataproviders.SAPServerDataProvider;
+import io.ballerina.lib.sap.idochandlers.BallerinaIDocHandlerFactory;
+import io.ballerina.lib.sap.idochandlers.BallerinaThrowableListener;
+import io.ballerina.lib.sap.idochandlers.BallerinaTidHandler;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.Runtime;
 import io.ballerina.runtime.api.values.BMap;
@@ -34,12 +37,9 @@ import java.util.ArrayList;
 
 public class Listener {
 
-    private static final Logger logger = LoggerFactory.getLogger(Client.class);
-
-    private static final ArrayList<BObject> startedServices = new ArrayList<>();
-    private static final boolean started = false;
+    private static final Logger logger = LoggerFactory.getLogger(Listener.class);
+    private static boolean started = false;
     private static ArrayList<BObject> services = new ArrayList<>();
-    private static Runtime runtime;
 
     public static Object init(BObject listenerBObject, BMap<BString, Object> serverDataConfig,
                               BString serverName) {
@@ -50,7 +50,6 @@ public class Listener {
             JCoIDocServer server = JCoIDoc.getServer(serverName.getValue());
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(SAPConstants.JCO_SERVICES, services);
-            listenerBObject.addNativeData(SAPConstants.JCO_STARTED_SERVICES, startedServices);
             return null;
         } catch (JCoException e) {
             logger.error("Destination lookup failed.");
@@ -63,20 +62,22 @@ public class Listener {
 
     @SuppressWarnings("unchecked")
     public static Object attach(Environment environment, BObject listenerBObject, BObject service, Object name) {
-        runtime = environment.getRuntime();
+        Runtime runtime = environment.getRuntime();
+        JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
+        services = (ArrayList<BObject>) listenerBObject.getNativeData(SAPConstants.JCO_SERVICES);
         try {
-            JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
             if (service == null) {
                 return null;
             }
-            if (isStarted()) {
-                services = (ArrayList<BObject>) listenerBObject.getNativeData(SAPConstants.JCO_SERVICES);
-                startReceivingIDocs(service, server, listenerBObject);
-                // todo: compiler plugin validation for multiple service attachments
+            if (!isStarted()) {
+                server.setIDocHandlerFactory(new BallerinaIDocHandlerFactory(service, runtime));
+                server.setTIDHandler(new BallerinaTidHandler());
+                BallerinaThrowableListener listener = new BallerinaThrowableListener();
+                server.addServerErrorListener(listener);
+                server.addServerExceptionListener(listener);
+                services.add(service);
             }
-            services.add(service);
             return null;
-
         } catch (Exception e) {
             logger.error("Server attach failed.");
             return SAPErrorCreator.createError("Server attach failed.", e);
@@ -87,6 +88,7 @@ public class Listener {
         try {
             JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
             server.start();
+            started = true;
         } catch (Exception e) {
             logger.error("Server start failed.");
             return SAPErrorCreator.createError("Server start failed.", e);
@@ -104,11 +106,8 @@ public class Listener {
 
     @SuppressWarnings("unchecked")
     public static Object detach(BObject listener, BObject service) {
-        ArrayList<BObject> startedServices = (ArrayList<BObject>) listener.getNativeData(
-                SAPConstants.JCO_STARTED_SERVICES);
         ArrayList<BObject> services = (ArrayList<BObject>) listener.getNativeData(SAPConstants.JCO_SERVICES);
         try {
-            startedServices.remove(service);
             services.remove(service);
             return null;
         } catch (Exception e) {
@@ -122,7 +121,7 @@ public class Listener {
             JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
             server.stop();
         } catch (Exception e) {
-            logger.error("Server start failed.");
+            logger.error("Server stop failed.");
             return SAPErrorCreator.createError("Server start failed.", e);
         }
         return null;
@@ -131,11 +130,4 @@ public class Listener {
     private static boolean isStarted() {
         return started;
     }
-
-    private static void startReceivingIDocs(BObject service, JCoIDocServer server, BObject listener) {
-        IDocDispatcher iDocDispatcher =
-                new IDocDispatcher(service, server, runtime);
-        iDocDispatcher.receiveIDoc(listener);
-    }
-
 }

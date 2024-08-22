@@ -30,7 +30,7 @@ public class SAPResourceCallback implements Callback {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
     private final CountDownLatch countDownLatch;
 
-    SAPResourceCallback(CountDownLatch countDownLatch) {
+    public SAPResourceCallback(CountDownLatch countDownLatch) {
         this.countDownLatch = countDownLatch;
     }
 
