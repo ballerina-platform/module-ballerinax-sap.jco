@@ -81,6 +81,7 @@ public class IDocDispatcher {
             startedServices.add(service);
         } catch (Throwable e) {
             logger.error("Error while processing IDoc", e);
+            throw e;
         }
     }
 
