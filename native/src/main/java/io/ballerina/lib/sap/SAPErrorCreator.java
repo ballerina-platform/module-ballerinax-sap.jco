@@ -61,6 +61,7 @@ public class SAPErrorCreator {
         }
         BError bCause = ErrorCreator.createError(e);
         return ErrorCreator.createError(ModuleUtils.getModule(), "Error", StringUtils.fromString(message
+                + "| Message: " + e.getMessage()
                 + "| Cause: " + causeString
                 + "| Stack Trace: " + Arrays.toString(e.getStackTrace())), bCause, null);
     }
