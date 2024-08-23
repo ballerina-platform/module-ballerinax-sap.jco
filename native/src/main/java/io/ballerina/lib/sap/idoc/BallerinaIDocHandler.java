@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package io.ballerina.lib.sap.idochandlers;
+package io.ballerina.lib.sap.idoc;
 
 import com.sap.conn.idoc.IDocDocumentList;
 import com.sap.conn.idoc.IDocXMLProcessor;
@@ -54,7 +54,6 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
     private final BObject service;
     private final Runtime runtime;
 
-    @SuppressWarnings("EI_EXPOSE_REP2")
     public BallerinaIDocHandler(BObject service, Runtime runtime) {
         this.service = service;
         this.runtime = runtime;

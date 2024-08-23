@@ -53,16 +53,22 @@ public class SAPErrorCreator {
                 ModuleUtils.getModule(), "Error", StringUtils.fromString(message), cause, null);
     }
 
-    public static BError createError(String message, Throwable e) {
+    public static BError createError(String bMessage, Throwable e) {
         Throwable cause = e.getCause();
         String causeString = "No cause";
         if (cause != null && cause.getMessage() != null) {
             causeString = cause.getMessage();
         }
+        String message = (e.getMessage() != null) ? e.getMessage() : "Unknown error";
+        String fullMessage = bMessage + "| Message: " + message + "| Cause: " + causeString + "| Stack Trace: "
+                + Arrays.toString(e.getStackTrace());
         BError bCause = ErrorCreator.createError(e);
-        return ErrorCreator.createError(ModuleUtils.getModule(), "Error", StringUtils.fromString(message
-                + "| Message: " + e.getMessage()
-                + "| Cause: " + causeString
-                + "| Stack Trace: " + Arrays.toString(e.getStackTrace())), bCause, null);
+        return ErrorCreator.createError(ModuleUtils.getModule(), "Error",
+                StringUtils.fromString(fullMessage), bCause, null);
+    }
+
+    public static BError createError(String message) {
+        return ErrorCreator.createError(ModuleUtils.getModule(), "Error",
+                StringUtils.fromString(message), null, null);
     }
 }

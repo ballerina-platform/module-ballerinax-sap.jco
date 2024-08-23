@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package io.ballerina.lib.sap.idochandlers;
+package io.ballerina.lib.sap.idoc;
 
 import com.sap.conn.idoc.jco.JCoIDocHandler;
 import com.sap.conn.idoc.jco.JCoIDocHandlerFactory;

@@ -32,8 +32,6 @@ public class SAPConstants {
     public static final BString JCO_GWHOST = StringUtils.fromString("gwhost");
     public static final BString JCO_GWSERV = StringUtils.fromString("gwserv");
     public static final BString JCO_PROGID = StringUtils.fromString("progid");
-    public static final BString JCO_REP_DEST = StringUtils.fromString("repositoryDestination");
-    public static final BString JCO_CONNECTION_COUNT = StringUtils.fromString("connectionCount");
     public static final BString ADVANCED_CONFIGS = StringUtils.fromString("advancedConfigs");
 
 
@@ -49,8 +47,6 @@ public class SAPConstants {
 
     // Constants for SAP Listener
     public static final String JCO_SERVER = "JCO_SERVER";
-    public static final String JCO_SERVICES = "JCO_SERVICES";
-    public static final String JCO_STARTED_SERVICES = "JCO_STARTED_SERVICES";
     public static final String ON_RECEIVE = "onReceive";
     public static final String ON_ERROR = "onError";
 
