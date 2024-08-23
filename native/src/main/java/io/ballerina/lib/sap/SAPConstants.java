@@ -49,6 +49,7 @@ public class SAPConstants {
     public static final String JCO_SERVER = "JCO_SERVER";
     public static final String ON_RECEIVE = "onReceive";
     public static final String ON_ERROR = "onError";
+    public static final String IS_SERVICE_ATTACHED = "isServiceAttached";
 
 
     // Class names

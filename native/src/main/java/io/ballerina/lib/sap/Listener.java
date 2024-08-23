@@ -33,11 +33,9 @@ import io.ballerina.runtime.api.values.BString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Listener {
+public final class Listener {
 
     private static final Logger logger = LoggerFactory.getLogger(Listener.class);
-    private static boolean isServiceAttached = false;
-    private static String jcoServerName;
 
     public static Object init(BObject listenerBObject, BMap<BString, Object> serverDataConfig,
                               BString serverName) {
@@ -47,7 +45,7 @@ public class Listener {
             com.sap.conn.jco.ext.Environment.registerServerDataProvider(dp);
             JCoIDocServer server = JCoIDoc.getServer(serverName.getValue());
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
-            jcoServerName = serverName.getValue();
+            listenerBObject.addNativeData(SAPConstants.IS_SERVICE_ATTACHED, false);
             return null;
         } catch (JCoException e) {
             logger.error("Destination lookup failed.");
@@ -62,6 +60,7 @@ public class Listener {
     public static Object attach(Environment environment, BObject listenerBObject, BObject service, Object name) {
         Runtime runtime = environment.getRuntime();
         JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
+        boolean isServiceAttached = (boolean) listenerBObject.getNativeData(SAPConstants.IS_SERVICE_ATTACHED);
         if (isServiceAttached) {
             return SAPErrorCreator.createError("Service is already attached to the server.");
         }
@@ -71,7 +70,7 @@ public class Listener {
             BallerinaThrowableListener listener = new BallerinaThrowableListener();
             server.addServerErrorListener(listener);
             server.addServerExceptionListener(listener);
-            isServiceAttached = true;
+            listenerBObject.addNativeData(SAPConstants.IS_SERVICE_ATTACHED, true);
             return null;
         } catch (Throwable e) {
             // We are catching Throwable here because, underlying JCo library throws throwable in certain cases.
@@ -101,9 +100,8 @@ public class Listener {
 
     public static Object detach(BObject listener, BObject service) {
         try {
-            JCoIDocServer server = JCoIDoc.getServer(jcoServerName);
-            listener.addNativeData(SAPConstants.JCO_SERVER, server);
-            isServiceAttached = false;
+            listener.addNativeData(SAPConstants.JCO_SERVER, null);
+            listener.addNativeData(SAPConstants.IS_SERVICE_ATTACHED, false);
         } catch (Throwable e) {
             logger.error("Server detach failed.");
             return SAPErrorCreator.createError("Server detach failed.", e);
