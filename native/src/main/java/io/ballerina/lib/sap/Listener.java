@@ -62,7 +62,7 @@ public final class Listener {
         JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
         boolean isServiceAttached = (boolean) listenerBObject.getNativeData(SAPConstants.IS_SERVICE_ATTACHED);
         if (isServiceAttached) {
-            return SAPErrorCreator.createError("Service is already attached to the server.");
+            return SAPErrorCreator.createError("One service is already attached to the listener. Only one service can be attached to a listener.");
         }
         try {
             server.setIDocHandlerFactory(new BallerinaIDocHandlerFactory(service, runtime));
