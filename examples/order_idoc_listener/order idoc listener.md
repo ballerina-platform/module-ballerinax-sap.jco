@@ -42,12 +42,9 @@ Configure the necessary SAP connection parameters in `Config.toml` in the exampl
 
 ```toml
 [sapConfig]
-host = "localhost"
-systemNumber = "00"
-jcoClient = "000"
-user = "JCOTESTER"
-password = "SECRET"
-group = "INBOUND"
+gwhost = "sapgw.example.com"
+gwserv = "3300"
+progid = "JCO_PROGRAM_ID"
 ```
 
 ## Run the Example

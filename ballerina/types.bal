@@ -24,7 +24,6 @@ import ballerina/time;
 # + passwd - The SAP password (jco.client.passwd).
 # + lang - The SAP language (jco.client.lang).
 # + group - The SAP group (jco.client.group).
-# + advancedConfigs - The advanced configurations eg: {"jco.client.auth_type" : "basic"}
 public type DestinationConfig record {
     @display {label: "Host Name (jco.client.ashost)"}
     string ashost;
@@ -40,25 +39,23 @@ public type DestinationConfig record {
     string lang = "EN";
     @display {label: "Group (jco.client.group)"}
     string group = "PUBLIC";
-    @display {label: "Advanced configurations"}
-    map<string>  advancedConfigs ?;
 };
+
+# Holds the any custom configurations needed to create a SAP connection.
+public type AdvancedConfig map<string>;
 
 # Holds the configuration details needed to create an iDoc connection.
 # 
 # + gwhost - The gateway host (jco.server.gwhost).
 # + gwserv - The gateway service (jco.server.gwserv).
 # + progid - The program ID (jco.server.progid).
-# + advancedConfigs - The advanced configurations eg: {"jco.server.auth_type" : "basic"}
-public type ServerDataConfig record {
+public type ServerConfig record {
     @display {label: "Gateway Host (jco.server.gwhost)"}
     string gwhost;
     @display {label: "Gateway Service (jco.server.gwserv)"}
     string gwserv;
     @display {label: "Program ID (jco.server.progid)"}
     string progid;
-    @display {label: "Advanced configurations"}
-    map<string>  advancedConfigs ?;
 };
 
 public enum IDocType {

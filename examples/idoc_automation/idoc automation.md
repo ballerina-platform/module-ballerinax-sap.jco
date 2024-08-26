@@ -41,11 +41,11 @@ directory:
 apiEndpoint = "https://api.example.com/inventory"
 
 [sapConfig]
-host = "localhost"
-systemNumber = "00"
+ashost = "localhost"
+sysnr = "00"
 jcoClient = "000"
 user = "JCOTESTER"
-password = "SECRET"
+passwd = "SECRET"
 group = "DEV2"
 ```
 

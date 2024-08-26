@@ -49,12 +49,12 @@ import org.slf4j.LoggerFactory;
 public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
-    public static Object initializeClient(BObject client, BMap<BString, Object> jcoDestinationConfig,
+    public static Object initializeClient(BObject client, BMap<BString, Object> destinationConfig,
                                           BString destinationId) {
         try {
             SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
             Environment.registerDestinationDataProvider(dp);
-            dp.addDestination(jcoDestinationConfig, destinationId);
+            dp.addDestination(destinationConfig, destinationId);
             JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
             destination.ping();
             logger.debug("JCo Client initialized");

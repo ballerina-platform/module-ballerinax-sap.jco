@@ -28,11 +28,14 @@ public class SAPConstants {
     public static final String DATE = "Date";
     public static final String TIME_OF_DAY = "TimeOfDay";
 
+    // Config Types
+    public static final String JCO_SERVER_CONFIG_NAME = "ServerConfig & readonly";
+    public static final String JCO_DESTINATION_CONFIG_NAME = "DestinationConfig & readonly";
+
     // Server Configs
     public static final BString JCO_GWHOST = StringUtils.fromString("gwhost");
     public static final BString JCO_GWSERV = StringUtils.fromString("gwserv");
     public static final BString JCO_PROGID = StringUtils.fromString("progid");
-    public static final BString ADVANCED_CONFIGS = StringUtils.fromString("advancedConfigs");
 
 
     // Destination Configs
