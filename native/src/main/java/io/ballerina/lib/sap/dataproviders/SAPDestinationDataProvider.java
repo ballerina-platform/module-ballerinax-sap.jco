@@ -54,25 +54,24 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     public void addDestination(BMap<BString, Object> jcoDestinationConfig, BString destinationName) {
         Properties properties = new Properties();
         try {
-            properties.setProperty(DestinationDataProvider.JCO_CLIENT,
-                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_CLIENT).toString());
-            properties.setProperty(DestinationDataProvider.JCO_USER,
-                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_USER).toString());
-            properties.setProperty(DestinationDataProvider.JCO_PASSWD,
-                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_PASSWD).toString());
-            properties.setProperty(DestinationDataProvider.JCO_LANG,
-                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_LANG).toString());
-            properties.setProperty(DestinationDataProvider.JCO_ASHOST,
-                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_ASHOST).toString());
-            properties.setProperty(DestinationDataProvider.JCO_SYSNR,
-                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_SYSNR).toString());
-            properties.setProperty(DestinationDataProvider.JCO_GROUP,
-                    jcoDestinationConfig.getStringValue(SAPConstants.JCO_GROUP).toString());
-            BMap<BString, Object> advancedConfigs = (BMap<BString, Object>) jcoDestinationConfig.getMapValue(
-                    SAPConstants.ADVANCED_CONFIGS);
-            if (advancedConfigs != null) {
-                if (!advancedConfigs.isEmpty()) {
-                    advancedConfigs.entrySet().forEach(entry -> {
+            if (jcoDestinationConfig.getType().getName().equals(SAPConstants.JCO_DESTINATION_CONFIG_NAME)) {
+                properties.setProperty(DestinationDataProvider.JCO_CLIENT,
+                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_CLIENT).toString());
+                properties.setProperty(DestinationDataProvider.JCO_USER,
+                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_USER).toString());
+                properties.setProperty(DestinationDataProvider.JCO_PASSWD,
+                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_PASSWD).toString());
+                properties.setProperty(DestinationDataProvider.JCO_LANG,
+                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_LANG).toString());
+                properties.setProperty(DestinationDataProvider.JCO_ASHOST,
+                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_ASHOST).toString());
+                properties.setProperty(DestinationDataProvider.JCO_SYSNR,
+                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_SYSNR).toString());
+                properties.setProperty(DestinationDataProvider.JCO_GROUP,
+                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_GROUP).toString());
+            } else {
+                if (!jcoDestinationConfig.isEmpty()) {
+                    jcoDestinationConfig.entrySet().forEach(entry -> {
                         BString key = entry.getKey();
                         BString value = (BString) entry.getValue();
                         try {
@@ -82,6 +81,8 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
                                     + " : " + e.getMessage());
                         }
                     });
+                } else {
+                    throw new RuntimeException("Provided a empty advanced configuration for destination");
                 }
             }
             destinationProperties.put(destinationName.toString(), properties);

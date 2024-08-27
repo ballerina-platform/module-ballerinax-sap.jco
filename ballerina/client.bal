@@ -25,7 +25,7 @@ public isolated client class Client {
     #
     # + configurations - The configurations required to initialize the BAPI client.
     # + return - An error if the initialization fails.
-    public isolated function init(DestinationConfig configurations) returns Error? {
+    public isolated function init(DestinationConfig|AdvancedConfig configurations) returns Error? {
         check initializeClient(self, configurations, uuid:createType4AsString());
     }
 
@@ -50,6 +50,6 @@ public isolated client class Client {
 
 }
 
-isolated function initializeClient(Client jcoClient, DestinationConfig configurations, string destinationId) returns Error? = @java:Method {
+isolated function initializeClient(Client jcoClient, DestinationConfig|AdvancedConfig configurations, string destinationId) returns Error? = @java:Method {
     'class: "io.ballerina.lib.sap.Client"
 } external;

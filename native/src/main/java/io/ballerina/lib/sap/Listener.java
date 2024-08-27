@@ -21,6 +21,7 @@ package io.ballerina.lib.sap;
 import com.sap.conn.idoc.jco.JCoIDoc;
 import com.sap.conn.idoc.jco.JCoIDocServer;
 import com.sap.conn.jco.JCoException;
+import io.ballerina.lib.sap.dataproviders.SAPDestinationDataProvider;
 import io.ballerina.lib.sap.dataproviders.SAPServerDataProvider;
 import io.ballerina.lib.sap.idoc.BallerinaIDocHandlerFactory;
 import io.ballerina.lib.sap.idoc.BallerinaThrowableListener;
@@ -37,12 +38,18 @@ public final class Listener {
 
     private static final Logger logger = LoggerFactory.getLogger(Listener.class);
 
-    public static Object init(BObject listenerBObject, BMap<BString, Object> serverDataConfig,
-                              BString serverName) {
+    @SuppressWarnings("unchecked")
+    public static Object init(BObject listenerBObject, BMap<BString, Object> serverConfig,
+                              Object destinationConfig, BString serverName) {
         try {
-            SAPServerDataProvider dp = new SAPServerDataProvider();
-            dp.addServerData(serverDataConfig, serverName);
-            com.sap.conn.jco.ext.Environment.registerServerDataProvider(dp);
+            if (destinationConfig != null) {
+                SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
+                dp.addDestination((BMap<BString, Object>) destinationConfig, serverName);
+                com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
+            }
+            SAPServerDataProvider sp = new SAPServerDataProvider();
+            sp.addServer(serverConfig, serverName);
+            com.sap.conn.jco.ext.Environment.registerServerDataProvider(sp);
             JCoIDocServer server = JCoIDoc.getServer(serverName.getValue());
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(SAPConstants.IS_SERVICE_ATTACHED, false);

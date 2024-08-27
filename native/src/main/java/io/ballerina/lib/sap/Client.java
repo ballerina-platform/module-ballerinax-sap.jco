@@ -49,12 +49,12 @@ import org.slf4j.LoggerFactory;
 public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
-    public static Object initializeClient(BObject client, BMap<BString, Object> jcoDestinationConfig,
+    public static Object initializeClient(BObject client, BMap<BString, Object> destinationConfig,
                                           BString destinationId) {
         try {
             SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
             Environment.registerDestinationDataProvider(dp);
-            dp.addDestination(jcoDestinationConfig, destinationId);
+            dp.addDestination(destinationConfig, destinationId);
             JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
             destination.ping();
             logger.debug("JCo Client initialized");
@@ -90,6 +90,9 @@ public class Client {
                 function.execute(destination);
 
                 JCoParameterList exportParams = function.getExportParameterList();
+                RecordType outputParamRecordType = (RecordType) outputParamType.getDescribingType();
+                boolean isRestFieldsAllowed = outputParamRecordType.getRestFieldType() != null;
+
 
                 int exportType = outputParamType.getDescribingType().getTag();
                 if (exportType == TypeTags.XML_TAG) {
@@ -97,8 +100,8 @@ public class Client {
                 } else if (exportType == TypeTags.JSON_TAG) {
                     return JsonUtils.parse(exportParams.toJSON());
                 } else if (exportType == TypeTags.RECORD_TYPE_TAG) {
-                    return ExportParameterProcessor.getExportParams(exportParams, (RecordType)
-                            outputParamType.getDescribingType());
+                    return ExportParameterProcessor.getExportParams(exportParams, outputParamRecordType,
+                            isRestFieldsAllowed);
                 } else {
                     throw SAPErrorCreator.fromBError("Unsupported output parameter type: " +
                             outputParamType.getType().getName(), null);
