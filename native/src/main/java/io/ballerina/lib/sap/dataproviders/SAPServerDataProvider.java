@@ -66,8 +66,9 @@ public class SAPServerDataProvider implements ServerDataProvider {
                     jcoServerConfig.entrySet().forEach(entry -> {
                         BString key = entry.getKey();
                         BString value = (BString) entry.getValue();
+                        String stripedKey = key.toString().substring(1, key.toString().length() - 1);
                         try {
-                            properties.setProperty(key.toString(), value.toString());
+                            properties.setProperty(stripedKey, value.toString());
                         } catch (Exception e) {
                             throw new RuntimeException("Error while adding destination property " + key.toString()
                                     + " : " + e.getMessage());
