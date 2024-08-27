@@ -42,14 +42,14 @@ public final class Listener {
     public static Object init(BObject listenerBObject, BMap<BString, Object> serverConfig,
                               Object destinationConfig, BString serverName) {
         try {
-            SAPServerDataProvider sp = new SAPServerDataProvider();
-            sp.addServer(serverConfig, serverName);
-            com.sap.conn.jco.ext.Environment.registerServerDataProvider(sp);
-            SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
             if (destinationConfig != null) {
+                SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
                 dp.addDestination((BMap<BString, Object>) destinationConfig, serverName);
                 com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
             }
+            SAPServerDataProvider sp = new SAPServerDataProvider();
+            sp.addServer(serverConfig, serverName);
+            com.sap.conn.jco.ext.Environment.registerServerDataProvider(sp);
             JCoIDocServer server = JCoIDoc.getServer(serverName.getValue());
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(SAPConstants.IS_SERVICE_ATTACHED, false);
