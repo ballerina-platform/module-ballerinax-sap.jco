@@ -50,38 +50,30 @@ public class SAPServerDataProvider implements ServerDataProvider {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
-    public void addServer(BMap<BString, Object> jcoServerConfig, BString serverName) {
+    public void addServerConfig(BMap<BString, Object> jcoServerConfig, String serverName) {
         Properties properties = new Properties();
         try {
-            if (jcoServerConfig.getType().getName().equals(SAPConstants.JCO_SERVER_CONFIG_NAME)) {
-                properties.setProperty(ServerDataProvider.JCO_GWHOST,
-                        jcoServerConfig.getStringValue(SAPConstants.JCO_GWHOST).toString());
-                properties.setProperty(ServerDataProvider.JCO_GWSERV,
-                        jcoServerConfig.getStringValue(SAPConstants.JCO_GWSERV).toString());
-                properties.setProperty(ServerDataProvider.JCO_PROGID,
-                        jcoServerConfig.getStringValue(SAPConstants.JCO_PROGID).toString());
-            } else {
-                if (!jcoServerConfig.isEmpty()) {
-                    jcoServerConfig.entrySet().forEach(entry -> {
-                        BString key = entry.getKey();
-                        BString value = (BString) entry.getValue();
-                        String stripedKey = key.toString().substring(1, key.toString().length() - 1);
-                        try {
-                            properties.setProperty(stripedKey, value.toString());
-                        } catch (Exception e) {
-                            throw new RuntimeException("Error while adding destination property " + key.toString()
-                                    + " : " + e.getMessage());
-                        }
-                        properties.setProperty(key.toString(), value.toString());
-                    });
-                } else {
-                    throw new RuntimeException("Provided a empty advanced configuration for server");
-                }
-            }
-            serverProperties.put(serverName.toString(), properties);
+            properties.setProperty(ServerDataProvider.JCO_GWHOST,
+                    jcoServerConfig.getStringValue(SAPConstants.JCO_GWHOST).toString());
+            properties.setProperty(ServerDataProvider.JCO_GWSERV,
+                    jcoServerConfig.getStringValue(SAPConstants.JCO_GWSERV).toString());
+            properties.setProperty(ServerDataProvider.JCO_PROGID,
+                    jcoServerConfig.getStringValue(SAPConstants.JCO_PROGID).toString());
+            serverProperties.put(serverName, properties);
         } catch (Exception e) {
-            throw new RuntimeException("Error while adding destination: " + e.getMessage());
+            throw new RuntimeException("Error while adding server config: " + e.getMessage());
         }
+    }
+
+    public void addAdvancedServerConfig(Map<String, String> jcoAdvancedServerConfig, String serverName) {
+        Properties properties = new Properties();
+        jcoAdvancedServerConfig.forEach((key, value) -> {
+            try {
+                properties.setProperty(key, value);
+            } catch (Exception e) {
+                throw new RuntimeException("Error while adding server property " + key + " : " + e.getMessage());
+            }
+        });
+        serverProperties.put(serverName, properties);
     }
 }

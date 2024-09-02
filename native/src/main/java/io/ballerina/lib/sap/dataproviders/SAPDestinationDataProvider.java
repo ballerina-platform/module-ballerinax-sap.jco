@@ -50,8 +50,7 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
         return true;
     }
 
-    @SuppressWarnings("unchecked")
-    public void addDestination(BMap<BString, Object> jcoDestinationConfig, BString destinationName) {
+    public void addDestinationConfig(BMap<BString, Object> jcoDestinationConfig, BString destinationName) {
         Properties properties = new Properties();
         try {
             if (jcoDestinationConfig.getType().getName().equals(SAPConstants.JCO_DESTINATION_CONFIG_NAME)) {
@@ -87,6 +86,28 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
                 }
             }
             destinationProperties.put(destinationName.toString(), properties);
+        } catch (Exception e) {
+            throw new RuntimeException("Error while adding destination: " + e.getMessage());
+        }
+    }
+
+    public void addAdvancedDestinationConfig(Map<String, String> jcoAdvancedDestinationConfig,
+                                             String destinationName) {
+        Properties properties = new Properties();
+        try {
+            if (!jcoAdvancedDestinationConfig.isEmpty()) {
+                jcoAdvancedDestinationConfig.forEach((key, value) -> {
+                    try {
+                        properties.setProperty(key, value);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error while adding destination property " + key + " : "
+                                + e.getMessage());
+                    }
+                });
+            } else {
+                throw new RuntimeException("Provided a empty advanced configuration for destination");
+            }
+            destinationProperties.put(destinationName, properties);
         } catch (Exception e) {
             throw new RuntimeException("Error while adding destination: " + e.getMessage());
         }
