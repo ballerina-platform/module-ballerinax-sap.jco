@@ -1,7 +1,7 @@
 # Specification: Ballerina SAP JCo Connector
 
-_Authors_: RDPerera\
-_Reviewers_: Niveathika\
+_Authors_: @RDPerera\
+_Reviewers_: @aashikam @shafreenAnfar\
 _Created_: 2024/08/28\
 _Updated_: 2024/09/02\
 _Edition_: Swan Lake
