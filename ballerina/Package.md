@@ -85,22 +85,61 @@ import ballerinax/sap.jco;
 
 ### Step 2: Create a new connector instance
 
+#### Initialize a new JCo client instance
+
 Configure the necessary SAP connection parameters in `Config.toml` in the project directory:
 
 ```toml
 [configurations]
-host = "XXXXXXXX"
-systemNumber = "XXXXXXXX"
-jcoClient = "XXXXXXXX"
-user = "XXXXXXXX"
-password = "XXXXXXXX"
+ashost = "localhost"
+sysnr = "00"
+jcoClient = "000"
+user = "JCOTESTER"
+passwd = "SECRET"
+group = "DEV2"
+lang = "EN"
 ```
 
-Then, create a new JCo client instance using the configurations.
+Then, create a new JCo client instance for RFC and IDoc operations.
 
 ```ballerina
 configurable jco:DestinationConfig configurations = ?;
 jco:Client jcoClient = check new (configurations);
+```
+
+#### Initialize a new JCo listener instance
+
+Configure the necessary SAP connection parameters in `Config.toml` in the project directory:
+
+```toml
+[configurations]
+gwhost = "sapgw.example.com"
+gwserv = "3300"
+progid = "JCO_PROGRAM_ID"
+```
+
+Then, create a new JCo listener instance for IDoc listener operations.
+
+```ballerina
+configurable jco:ServerConfig configurations = ?;
+jco:Listener jcoListener = check new (configurations);
+```
+
+In addition to the `DestinationConfig` and `ServerConfig`, you can also use `AdvancedConfig` to configure a client and/or listener. For example, the `AdvancedConfig` can be used to configure the listener with client as follows:
+
+```toml
+[configurations]
+"jco.server.gwhost" = "sample.gwhost.com"
+"jco.server.gwserv" = "sapgw00"
+"jco.server.progid" = "SAMPLE_PROG_ID"
+"jco.server.connection_count" = "1"
+"jco.server.repository_destination" = "REPOSITORY_DESTINATION"
+"jco.client.ashost" = "10.128.0.1"
+"jco.client.sysnr" = "00"
+"jco.client.client" = "100"
+"jco.client.user" = "JCOTESTER"
+"jco.client.passwd" = "SECRET"
+"jco.client.r3name" = "DEV"
 ```
 
 ### Step 3: Invoke connector operations
@@ -140,8 +179,6 @@ public function main() returns error? {
 #### Initialize a listener for incoming IDocs
 
 ```ballerina
-listener jco:Listener iDocListener = new (configurations);
-
 service jco:Service on iDocListener {
     remote function onReceive(xml iDoc) returns error? {
         check io:fileWriteXml("resources/received_idoc.xml", iDoc);
