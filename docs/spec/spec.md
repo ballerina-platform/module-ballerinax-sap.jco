@@ -63,22 +63,20 @@ The RFC Client supports two types of configurations, `DestinationConfig` and `Ad
 The `DestinationConfig` type represents the configuration details needed to create a RFC connection.
 
 ```ballerina
-# Holds the configuration details needed to create a RFC connection.
-#
-# + ashost - The SAP host name (jco.client.ashost).
-# + sysnr - The SAP system number (jco.client.sysnr).
-# + jcoClient - The SAP client (jco.client.client).
-# + user - The SAP user name (jco.client.user).
-# + passwd - The SAP password (jco.client.passwd).
-# + lang - The SAP language (jco.client.lang).
-# + group - The SAP group (jco.client.group).
 public type DestinationConfig record {]
+    # The SAP hostname (jco.client.ashost).
     string ashost;
+    # The SAP system number (jco.client.sysnr).
     string sysnr;
+    # The SAP client (jco.client.client).
     string jcoClient;
+    The SAP user name (jco.client.user).
     string user;
+    The SAP password (jco.client.passwd).
     string passwd;
+    # The SAP language (jco.client.lang).
     string lang = "EN";
+    # The SAP group (jco.client.group).
     string group = "PUBLIC";
 };
 ```
@@ -226,14 +224,12 @@ The Listener supports two types of configurations, `ServerConfig` and `AdvancedC
 The `ServerConfig` type represents the configuration details needed to create an IDoc connection.
 
 ```ballerina
-# Holds the configuration details needed to create an iDoc connection.
-# 
-# + gwhost - The gateway host (jco.server.gwhost).
-# + gwserv - The gateway service (jco.server.gwserv).
-# + progid - The program ID (jco.server.progid).
 public type ServerConfig record {
+    # The gateway host (jco.server.gwhost).
     string gwhost;
+    # The gateway service (jco.server.gwserv).
     string gwserv;
+    # The program ID (jco.server.progid).
     string progid;
 };
 ```
