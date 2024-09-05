@@ -105,6 +105,10 @@ group = "group"
 
 If the user wants to specify more detailed configurations beyond `DestinationConfig`, they can use `AdvancedConfig`. The `AdvancedConfig` type is a map that holds any SAP JCo configurations accepted by the SAP destination provider. 
 
+```ballerina
+public type AdvancedConfig map<string>;
+```
+
 **Example Configuration:**
 
 ```ballerina
@@ -225,11 +229,11 @@ The `ServerConfig` type represents the configuration details needed to create an
 
 ```ballerina
 public type ServerConfig record {
-    # The gateway host (jco.server.gwhost).
+    # The gateway host (jco.server.gwhost)
     string gwhost;
-    # The gateway service (jco.server.gwserv).
+    # The gateway service (jco.server.gwserv)
     string gwserv;
-    # The program ID (jco.server.progid).
+    # The program ID (jco.server.progid)
     string progid;
 };
 ```
@@ -253,6 +257,10 @@ progid = "progid"
 ##### 2.2.1.2 AdvancedConfig
 
 If the user needs to specify more detailed configurations beyond `ServerConfig`—for example, to register a destination with the listener—they can use `AdvancedConfig`. The `AdvancedConfig` type is a map that holds any SAP JCo configurations accepted by the SAP server provider.
+
+```ballerina
+public type AdvancedConfig map<string>;
+```
 
 **Example Configuration:**
 
