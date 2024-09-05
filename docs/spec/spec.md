@@ -282,10 +282,104 @@ Config.toml file:
 "jco.client.user" = "user"
 "jco.client.passwd" = "password"
 ```
+Here's how the updated section could look, incorporating the provided code:
 
-#### 2.2.2 Available Operations
+#### 2.2.2 Functions
 
-##### 2.2.2.1 Receive IDocs
+This section describes how to attach, detach, start, and stop the listener, along with initializing it for listening to iDoc messages.
+
+- To attach a service to the iDoc listener, the `attach` function can be used.
+
+```ballerina
+# Attaches a `Service` to the iDoc listener.
+# ```
+# check idocListener.attach(service);
+# ```
+#
+# + `s` - The service instance to be attached.
+# + `name` - The name of the service (optional).
+# + `return` - An error if the attachment fails or else `()`.
+public isolated function attach(Service s, string[]|string? name = ()) returns error? = @java:Method {
+    'class: "io.ballerina.lib.sap.Listener"
+} external;
+```
+
+- To detach a service from the iDoc listener, the `detach` function can be used.
+
+```ballerina
+# Detaches a `Service` from the iDoc listener.
+# ```
+# check idocListener.detach(service);
+# ```
+#
+# + `s` - The service to be detached.
+# + `return` - An error if the detachment fails or else `()`.
+public isolated function detach(Service s) returns error? = @java:Method {
+    'class: "io.ballerina.lib.sap.Listener"
+} external;
+```
+
+- To start the iDoc listener, the `'start` function can be used.
+
+```ballerina
+# Starts the `iDocListener`.
+# ```
+# check idocListener.'start();
+# ```
+#
+# + `return` - An error if the start fails or else `()`.
+public isolated function 'start() returns error? = @java:Method {
+    'class: "io.ballerina.lib.sap.Listener"
+} external;
+```
+
+- To stop the iDoc listener gracefully, the `gracefulStop` function can be used.
+
+```ballerina
+# Stops the `iDocListener` gracefully.
+# ```
+# check idocListener.gracefulStop();
+# ```
+#
+# + `return` - An error if the graceful stop fails or else `()`.
+public isolated function gracefulStop() returns error? = @java:Method {
+    'class: "io.ballerina.lib.sap.Listener"
+} external;
+```
+
+- To stop the iDoc listener immediately, the `immediateStop` function can be used.
+
+```ballerina
+# Stops the `iDocListener` immediately.
+# ```
+# check idocListener.immediateStop();
+# ```
+#
+# + `return` - An error if the immediate stop fails or else `()`.
+public isolated function immediateStop() returns error? = @java:Method {
+    'class: "io.ballerina.lib.sap.Listener"
+} external;
+```
+
+- To initialize the listener with a given configuration, the `init` function can be used.
+
+```ballerina
+# Initializes a `Listener` object with the given configuration, which is used to listen to iDoc messages.
+# ```
+# check idocListener.init(config);
+# ```
+#
+# + `configurations` - The required configuration for initializing the listener.
+# + `serverName` - Name of the server (optional, default is a UUID).
+# + `return` - An error if initialization fails or else `()`.
+public isolated function init(ServerConfig|AdvancedConfig serverConfig, string serverName = uuid:createType4AsString()) returns Error? {
+    return externInit(self, serverConfig, serverName);
+}
+```
+
+#### 2.2.3 Available Operations
+
+##### 2.2.3.1 Receive IDocs
 
 The Listener can be used to receive IDocs from the SAP system, which can then be processed within your Ballerina application.
 
@@ -302,7 +396,7 @@ service jco:Service on iDocListener {
 
 When an IDoc is received, it will be in XML format, and the user can easily map it to a record using Ballerina's XML-to-Record conversion features.
 
-##### 2.2.2.2 Error Handling
+##### 2.2.3.2 Error Handling
 
  Listener
 
