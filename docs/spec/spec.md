@@ -133,10 +133,10 @@ An RFC function call is made using the following function;
 ```ballerina
 # Executes the RFC function.
 #
-# + functionName - The name of the function to be executed.
-# + importParams - The input parameters for the function.
-# + exportParams - The output parameters for the function.
-# + return - An error if the execution fails.
+# + functionName - The name of the function to be executed
+# + importParams - The input parameters for the function
+# + exportParams - The output parameters for the function
+# + return - An error if the execution fails
 remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json?> exportParams = <>) returns exportParams|Error
 ```
 
