@@ -180,7 +180,7 @@ An IDoc can be sent using the following function:
 # + iDoc - The XML string of the iDoc.
 # + iDocType - The type of the iDoc.
 # + return - An error if the execution fails.
-remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error
+remote function sendIDoc(xml iDoc, IDocType iDocType = jco:DEFAULT) returns Error
 ```
 
 The input parameters require `iDoc`, with an optional `iDocType`. The `iDoc` represents the content of the IDoc in XML format. The `iDocType` specifies the version of the IDoc being sent and can be set to `DEFAULT`, `VERSION_2`, `VERSION_3`, `VERSION_3_IN_QUEUE`, or `VERSION_3_IN_QUEUE_VIA_QRFC`. If no `iDocType` is provided, the `DEFAULT` type will be applied.
