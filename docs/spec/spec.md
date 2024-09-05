@@ -63,6 +63,15 @@ The RFC Client supports two types of configurations, `DestinationConfig` and `Ad
 The `DestinationConfig` type represents the configuration details needed to create a RFC connection.
 
 ```ballerina
+# Holds the configuration details needed to create a RFC connection.
+#
+# + ashost - The SAP host name (jco.client.ashost).
+# + sysnr - The SAP system number (jco.client.sysnr).
+# + jcoClient - The SAP client (jco.client.client).
+# + user - The SAP user name (jco.client.user).
+# + passwd - The SAP password (jco.client.passwd).
+# + lang - The SAP language (jco.client.lang).
+# + group - The SAP group (jco.client.group).
 public type DestinationConfig record {]
     string ashost;
     string sysnr;
@@ -120,6 +129,12 @@ Config.toml file:
 An RFC function call is made using the following function;
 
 ```ballerina
+# Executes the RFC function.
+#
+# + functionName - The name of the function to be executed.
+# + importParams - The input parameters for the function.
+# + exportParams - The output parameters for the function.
+# + return - An error if the execution fails.
 remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json?> exportParams = <>) returns exportParams|Error
 ```
 
@@ -158,6 +173,11 @@ The RFC Client also supports sending IDocs to an SAP system, allowing you to aut
 An IDoc can be sent using the following function:
 
 ```ballerina
+# Send the iDoc.
+#
+# + iDoc - The XML string of the iDoc.
+# + iDocType - The type of the iDoc.
+# + return - An error if the execution fails.
 remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error
 ```
 
@@ -206,6 +226,11 @@ The Listener supports two types of configurations, `ServerConfig` and `AdvancedC
 The `ServerConfig` type represents the configuration details needed to create an IDoc connection.
 
 ```ballerina
+# Holds the configuration details needed to create an iDoc connection.
+# 
+# + gwhost - The gateway host (jco.server.gwhost).
+# + gwserv - The gateway service (jco.server.gwserv).
+# + progid - The program ID (jco.server.progid).
 public type ServerConfig record {
     string gwhost;
     string gwserv;
