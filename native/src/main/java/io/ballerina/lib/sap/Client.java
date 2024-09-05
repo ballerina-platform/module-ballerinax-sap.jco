@@ -54,7 +54,7 @@ public class Client {
         try {
             SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
             Environment.registerDestinationDataProvider(dp);
-            dp.addDestination(destinationConfig, destinationId);
+            dp.addDestinationConfig(destinationConfig, destinationId);
             JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
             destination.ping();
             logger.debug("JCo Client initialized");

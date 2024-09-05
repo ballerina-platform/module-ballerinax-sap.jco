@@ -31,6 +31,7 @@ public class SAPConstants {
     // Config Types
     public static final String JCO_SERVER_CONFIG_NAME = "ServerConfig & readonly";
     public static final String JCO_DESTINATION_CONFIG_NAME = "DestinationConfig & readonly";
+    public static final String JCO_SERVER_PREFIX = "jco.server.";
 
     // Server Configs
     public static final BString JCO_GWHOST = StringUtils.fromString("gwhost");

@@ -34,22 +34,48 @@ import io.ballerina.runtime.api.values.BString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public final class Listener {
 
     private static final Logger logger = LoggerFactory.getLogger(Listener.class);
 
-    @SuppressWarnings("unchecked")
-    public static Object init(BObject listenerBObject, BMap<BString, Object> serverConfig,
-                              Object destinationConfig, BString serverName) {
+    public static Object init(BObject listenerBObject, BMap<BString, Object> serverConfig, BString serverName) {
         try {
-            if (destinationConfig != null) {
-                SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
-                dp.addDestination((BMap<BString, Object>) destinationConfig, serverName);
-                com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
-            }
             SAPServerDataProvider sp = new SAPServerDataProvider();
-            sp.addServer(serverConfig, serverName);
-            com.sap.conn.jco.ext.Environment.registerServerDataProvider(sp);
+            if (serverConfig.getType().getName().equals(SAPConstants.JCO_SERVER_CONFIG_NAME)) {
+                sp.addServerConfig(serverConfig, serverName.getValue());
+                com.sap.conn.jco.ext.Environment.registerServerDataProvider(sp);
+            } else {
+                if (!serverConfig.isEmpty()) {
+                    Map<String, String> advancedServerConfig = new HashMap<>();
+                    Map<String, String> advancedDestinationConfig = new HashMap<>();
+                    serverConfig.entrySet().forEach(entry -> {
+                        String rawKey = entry.getKey().toString();
+                        String key = rawKey.substring(1, rawKey.length() - 1);
+                        String value = entry.getValue().toString();
+                        if (key.startsWith(SAPConstants.JCO_SERVER_PREFIX)) {
+                            advancedServerConfig.put(key, value);
+                        } else {
+                            advancedDestinationConfig.put(key, value);
+                        }
+                    });
+                    if (!advancedDestinationConfig.isEmpty()) {
+                        SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
+                        String destinationName = advancedServerConfig.
+                                containsKey(SAPServerDataProvider.JCO_REP_DEST) ?
+                                advancedServerConfig.get(SAPServerDataProvider.JCO_REP_DEST) :
+                                serverName.getValue();
+                        dp.addAdvancedDestinationConfig(advancedDestinationConfig, destinationName);
+                        com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
+                    }
+                    sp.addAdvancedServerConfig(advancedServerConfig, serverName.getValue());
+                    com.sap.conn.jco.ext.Environment.registerServerDataProvider(sp);
+                } else {
+                    throw new RuntimeException("Provided a empty advanced configuration for server");
+                }
+            }
             JCoIDocServer server = JCoIDoc.getServer(serverName.getValue());
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(SAPConstants.IS_SERVICE_ATTACHED, false);
@@ -63,7 +89,6 @@ public final class Listener {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static Object attach(Environment environment, BObject listenerBObject, BObject service, Object name) {
         Runtime runtime = environment.getRuntime();
         JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
