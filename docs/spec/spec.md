@@ -199,7 +199,7 @@ The following table maps Ballerina data types to their corresponding SAP JCo typ
 
 #### 2.2.1 Configurations
 
-The Listener supports two types of configurations, ServerConfig and AdvancedConfig, to facilitate communication with the SAP system by receiving IDocs and handling events.
+The Listener supports two types of configurations, `ServerConfig` and `AdvancedConfig`, to facilitate communication with the SAP system by receiving IDocs and handling events.
 
 ##### 2.2.1.1 ServerConfig
 
