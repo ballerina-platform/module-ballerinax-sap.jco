@@ -70,9 +70,9 @@ public type DestinationConfig record {]
     string sysnr;
     # The SAP client (jco.client.client).
     string jcoClient;
-    The SAP user name (jco.client.user).
+    # The SAP user name (jco.client.user).
     string user;
-    The SAP password (jco.client.passwd).
+    # The SAP password (jco.client.passwd).
     string passwd;
     # The SAP language (jco.client.lang).
     string lang = "EN";
