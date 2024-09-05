@@ -64,19 +64,19 @@ The `DestinationConfig` type represents the configuration details needed to crea
 
 ```ballerina
 public type DestinationConfig record {]
-    # The SAP hostname (jco.client.ashost).
+    # The SAP hostname (jco.client.ashost)
     string ashost;
-    # The SAP system number (jco.client.sysnr).
+    # The SAP system number (jco.client.sysnr)
     string sysnr;
-    # The SAP client (jco.client.client).
+    # The SAP client (jco.client.client)
     string jcoClient;
-    # The SAP user name (jco.client.user).
+    # The SAP user name (jco.client.user)
     string user;
-    # The SAP password (jco.client.passwd).
+    # The SAP password (jco.client.passwd)
     string passwd;
-    # The SAP language (jco.client.lang).
+    # The SAP language (jco.client.lang)
     string lang = "EN";
-    # The SAP group (jco.client.group).
+    # The SAP group (jco.client.group)
     string group = "PUBLIC";
 };
 ```
