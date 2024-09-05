@@ -131,7 +131,7 @@ Config.toml file:
 An RFC function call is made using the following function;
 
 ```ballerina
-# Executes the RFC function.
+# Executes the RFC function
 #
 # + functionName - The name of the function to be executed
 # + importParams - The input parameters for the function
@@ -175,11 +175,11 @@ The RFC Client also supports sending IDocs to an SAP system, allowing you to aut
 An IDoc can be sent using the following function:
 
 ```ballerina
-# Send the iDoc.
+# Send the iDoc
 #
-# + iDoc - The XML string of the iDoc.
-# + iDocType - The type of the iDoc.
-# + return - An error if the execution fails.
+# + iDoc - The XML string of the iDoc
+# + iDocType - The type of the iDoc
+# + return - An error if the execution fails
 remote function sendIDoc(xml iDoc, IDocType iDocType = jco:DEFAULT) returns Error
 ```
 
