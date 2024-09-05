@@ -48,9 +48,15 @@ The SAP JCo Connector architecture comprises key components facilitating communi
 
 ## 2. Components
 
+This section outlines the core components of the Ballerina SAP JCo Connector and their configurations, focusing on how they interact with the SAP system.
+
 ### 2.1 RFC Client
 
+The RFC Client component allows the Ballerina application to communicate with an SAP system by invoking remote function modules and sending IDocs.
+
 #### 2.1.1 Configurations
+
+The RFC Client supports two types of configurations, `DestinationConfig` and `AdvancedConfig`, to establish a connection with the SAP system.
 
 ##### 2.1.1.1 DestinationConfig
 
@@ -192,6 +198,8 @@ The following table maps Ballerina data types to their corresponding SAP JCo typ
 ### 2.2 Listener
 
 #### 2.2.1 Configurations
+
+The Listener supports two types of configurations, ServerConfig and AdvancedConfig, to facilitate communication with the SAP system by receiving IDocs and handling events.
 
 ##### 2.2.1.1 ServerConfig
 
