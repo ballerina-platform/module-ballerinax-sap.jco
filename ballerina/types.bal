@@ -24,7 +24,7 @@ import ballerina/time;
 # + passwd - The SAP password (jco.client.passwd).
 # + lang - The SAP language (jco.client.lang).
 # + group - The SAP group (jco.client.group).
-public type DestinationConfig record {
+public type DestinationConfig record {|
     @display {label: "Host Name (jco.client.ashost)"}
     string ashost;
     @display {label: "System Number (jco.client.sysnr)"}
@@ -39,7 +39,7 @@ public type DestinationConfig record {
     string lang = "EN";
     @display {label: "Group (jco.client.group)"}
     string group = "PUBLIC";
-};
+|};
 
 # Holds the any custom configurations needed to create a SAP connection.
 public type AdvancedConfig map<string>;
@@ -49,14 +49,14 @@ public type AdvancedConfig map<string>;
 # + gwhost - The gateway host (jco.server.gwhost).
 # + gwserv - The gateway service (jco.server.gwserv).
 # + progid - The program ID (jco.server.progid).
-public type ServerConfig record {
+public type ServerConfig record {|
     @display {label: "Gateway Host (jco.server.gwhost)"}
     string gwhost;
     @display {label: "Gateway Service (jco.server.gwserv)"}
     string gwserv;
     @display {label: "Program ID (jco.server.progid)"}
     string progid;
-};
+|};
 
 public enum IDocType {
     DEFAULT = "0",
