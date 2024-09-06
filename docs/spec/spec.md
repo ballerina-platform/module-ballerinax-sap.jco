@@ -35,6 +35,7 @@ The conforming implementation of the specification is released and included in t
      - 2.2.2 [Available operations](#222-available-operations)
        - 2.2.2.1 [Receive iDocs](#2221-receive-idocs)
        - 2.2.2.2 [Error handling in listener](#2222-error-handling-in-listener)
+         
 ## 1. Overview
 
 The Ballerina SAP JCo Connector provides seamless integration with SAP systems through Java Connector (JCo) capabilities. This connector allows Ballerina applications to interact with SAP systems, enabling operations like Remote Function Call (RFC) execution, IDoc processing, and more. By leveraging this connector, developers can easily integrate SAP functionalities into their Ballerina applications, making it an essential tool for enterprises working with SAP.
