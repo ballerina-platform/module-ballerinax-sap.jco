@@ -164,7 +164,7 @@ public function main() returns error? {
     };
 
     ExportParams? result = check jcoClient->execute("TEST_FUNCTION", importParams);
-    if (result is ExportParams) {
+    if result is ExportParams {
         io:println("Result: ", result);
     } else {
         io:println("Error: Function execution failed");
