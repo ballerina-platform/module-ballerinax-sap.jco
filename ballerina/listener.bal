@@ -34,7 +34,7 @@ public isolated class Listener {
     # + s - The service to be attached.
     # + name - The name of the service.
     # + return - An error if the attachment fails.
-    public isolated function attach(Service s, string[]|string? name = ()) returns error? =
+    public isolated function attach(Service s, string[]|string? name = ()) returns Error? =
     @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
@@ -42,7 +42,7 @@ public isolated class Listener {
     # Start the iDoc listener.
     #
     # + return - An error if the start fails.
-    public isolated function 'start() returns error? = @java:Method {
+    public isolated function 'start() returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
@@ -50,21 +50,21 @@ public isolated class Listener {
     #
     # + s - The service to be detached.
     # + return - An error if the detachment fails.
-    public isolated function detach(Service s) returns error? = @java:Method {
+    public isolated function detach(Service s) returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
     # Gracefully stop the iDoc listener.
     #
     # + return - An error if the graceful stop fails.
-    public isolated function gracefulStop() returns error? = @java:Method {
+    public isolated function gracefulStop() returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
     # Immediately stop the iDoc listener.
     #
     # + return - An error if the immediate stop fails.
-    public isolated function immediateStop() returns error? = @java:Method {
+    public isolated function immediateStop() returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 }
