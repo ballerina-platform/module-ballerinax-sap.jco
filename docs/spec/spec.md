@@ -1,9 +1,9 @@
 # Specification: Ballerina SAP JCo Connector
 
-_Authors_: @RDPerera\
-_Reviewers_: @daneshk @aashikam @shafreenAnfar\
-_Created_: 2024/08/28\
-_Updated_: 2024/09/06\
+_Authors_: @RDPerera  
+_Reviewers_: @niveathika, @NipunaRanasinghe, @shafreenAnfar  
+_Created_: 2024/08/28  
+_Updated_: 2024/09/06  
 _Edition_: Swan Lake
 
 ## Introduction
@@ -12,7 +12,7 @@ This is the specification for the SAP JCo connector library of [Ballerina langua
 
 The SAP JCo connector specification has evolved and may continue to evolve in the future. The released versions of the specification can be found under the relevant GitHub tag.
 
-If you have any feedback or suggestions about the connector, start a discussion via a GitHub issue or in the Discord server. Based on the outcome of the discussion, the specification and implementation can be updated. Community feedback is always welcome. Any accepted proposal, which affects the specification is stored under /docs/proposals. Proposals under discussion can be found with the label type/proposal in GitHub.
+If you have any feedback or suggestions about the connector, start a discussion via a GitHub issue or in the Discord server. Based on the outcome of the discussion, the specification and implementation can be updated. Community feedback is always welcome. Any accepted proposal, which affects the specification is stored under `/docs/proposals`. Proposals under discussion can be found with the label `type/proposal` in GitHub.
 
 The conforming implementation of the specification is released and included in the distribution. Any deviation from the specification is considered a bug.
 
@@ -22,27 +22,26 @@ The conforming implementation of the specification is released and included in t
 2. [Components](#2-components)
    - 2.1 [RFC Client](#21-rfc-client)
      - 2.1.1 [Configurations](#211-configurations)
-       - 2.1.1.1 [DestinationConfig](#2111-destinationconfig)
-       - 2.1.1.2 [AdvancedConfig](#2112-advancedconfig)
+       - 2.1.1.1 [Destination configurations](#2111-destination-configurations)
+       - 2.1.1.2 [Advanced configurations](#2112-advanced-configurations)
      - 2.1.2 [Available Operations](#212-available-operations)
        - 2.1.2.1 [Execute a Function Module via RFC](#2121-execute-a-function-module-via-rfc)
        - 2.1.2.2 [Send IDocs to an SAP System](#2122-send-idocs-to-an-sap-system)
      - 2.1.3 [Data Types](#213-data-type-mapping-between-ballerina-and-sap-jco)
    - 2.2 [Listener](#22-listener)
      - 2.2.1 [Configurations](#221-configurations)
-       - 2.2.1.1 [ServerConfig](#2211-serverconfig)
-       - 2.2.1.2 [AdvancedConfig](#2212-advancedconfig)
+       - 2.2.1.1 [Server configurations](#2211-server-configurations)
+       - 2.2.1.2 [Advanced configurations](#2212-advanced-configurations)
      - 2.2.2 [Available Operations](#222-available-operations)
        - 2.2.2.1 [Receive IDocs](#2221-receive-idocs)
-       - 2.2.2.2 [Error Handling in Listener](#2222-error-handling)
-
+       - 2.2.2.2 [Error Handling in Listener](#2222-error-handling-in-listener)
 ## 1. Overview
 
 The Ballerina SAP JCo Connector provides seamless integration with SAP systems through Java Connector (JCo) capabilities. This connector allows Ballerina applications to interact with SAP systems, enabling operations like Remote Function Call (RFC) execution, IDoc processing, and more. By leveraging this connector, developers can easily integrate SAP functionalities into their Ballerina applications, making it an essential tool for enterprises working with SAP.
 
 The `ballerinax/sap.jco` package exposes the SAP JCo library as Ballerina functions, enabling easy access to SAP's enterprise resource planning (ERP) software and other SAP solutions, such as human capital management (HCM), customer relationship management (CRM), and supply chain management (SCM).
 
-### Architecture Overview
+### Architecture overview
 
 The SAP JCo Connector architecture comprises key components facilitating communication between Ballerina applications and SAP systems. These components include the SAP function modules, the SAP system itself, the Ballerina code that handles the RFC calls, and the IDoc servers responsible for sending and receiving IDocs. This architecture enables robust integration, supporting various enterprise operations.
 
@@ -50,7 +49,7 @@ The SAP JCo Connector architecture comprises key components facilitating communi
 
 This section outlines the core components of the Ballerina SAP JCo Connector and their configurations, focusing on how they interact with the SAP system.
 
-### 2.1 RFC Client
+### 2.1 RFC client
 
 The RFC Client component allows the Ballerina application to communicate with an SAP system by invoking remote function modules and sending IDocs.
 
@@ -58,7 +57,7 @@ The RFC Client component allows the Ballerina application to communicate with an
 
 The RFC Client supports two types of configurations, `DestinationConfig` and `AdvancedConfig`, to establish a connection with the SAP system.
 
-##### 2.1.1.1 DestinationConfig
+##### 2.1.1.1 Destination configurations
 
 The `DestinationConfig` type represents the configuration details needed to create a RFC connection.
 
@@ -81,7 +80,7 @@ public type DestinationConfig record {]
 };
 ```
 
-**Example Configuration:**
+**Example configuration:**
 
 ```ballerina
 configurable jco:DestinationConfig config = ?;
@@ -101,7 +100,7 @@ lang = "en"
 group = "group"
 ```
 
-##### 2.1.1.2 AdvancedConfig
+##### 2.1.1.2 Advanced configurations
 
 If the user wants to specify more detailed configurations beyond `DestinationConfig`, they can use `AdvancedConfig`. The `AdvancedConfig` type is a map that holds any SAP JCo configurations accepted by the SAP destination provider. 
 
@@ -109,7 +108,7 @@ If the user wants to specify more detailed configurations beyond `DestinationCon
 public type AdvancedConfig map<string>;
 ```
 
-**Example Configuration:**
+**Example configuration:**
 
 ```ballerina
 configurable jco:AdvancedConfig config = ?;
@@ -124,9 +123,9 @@ Config.toml file:
 "jco.destination.peak_limit" = "10"
 ```
 
-#### 2.1.2 Available Operations
+#### 2.1.2 Available operations
 
-##### 2.1.2.1 Execute a Function Module via RFC
+##### 2.1.2.1 Execute a function module via RFC
 
 An RFC function call is made using the following function;
 
@@ -168,7 +167,7 @@ public function main() returns error? {
 }
 ```
 
-##### 2.1.2.2 Send IDocs to an SAP System
+##### 2.1.2.2 Send iDocs to an SAP system
 
 The RFC Client also supports sending IDocs to an SAP system, allowing you to automate the exchange of structured data.
 
@@ -195,7 +194,7 @@ public function main() returns error? {
 }
 ```
 
-#### 2.1.3 Data Type Mapping Between Ballerina and SAP JCo
+#### 2.1.3 Data type mapping between Ballerina and SAP JCo
 
 The following table maps Ballerina data types to their corresponding SAP JCo types:
 
@@ -223,7 +222,7 @@ The following table maps Ballerina data types to their corresponding SAP JCo typ
 
 The Listener supports two types of configurations, `ServerConfig` and `AdvancedConfig`, to facilitate communication with the SAP system by receiving IDocs and handling events.
 
-##### 2.2.1.1 ServerConfig
+##### 2.2.1.1 Server configurations
 
 The `ServerConfig` type represents the configuration details needed to create an IDoc connection.
 
@@ -238,7 +237,7 @@ public type ServerConfig record {
 };
 ```
 
-**Example Configuration:**
+**Example configuration:**
 
 ```ballerina
 configurable jco:ServerConfig configs = ?;
@@ -254,7 +253,7 @@ gwserv = "sapgw00"
 progid = "progid"
 ```
 
-##### 2.2.1.2 AdvancedConfig
+##### 2.2.1.2 Advanced configurations
 
 If the user needs to specify more detailed configurations beyond `ServerConfig`—for example, to register a destination with the listener—they can use `AdvancedConfig`. The `AdvancedConfig` type is a map that holds any SAP JCo configurations accepted by the SAP server provider.
 
@@ -262,7 +261,7 @@ If the user needs to specify more detailed configurations beyond `ServerConfig`�
 public type AdvancedConfig map<string>;
 ```
 
-**Example Configuration:**
+**Example configuration:**
 
 ```ballerina
 configurable jco:AdvancedConfig configs = ?;
@@ -377,9 +376,9 @@ public isolated function init(ServerConfig|AdvancedConfig serverConfig, string s
 }
 ```
 
-#### 2.2.3 Available Operations
+#### 2.2.3 Available operations
 
-##### 2.2.3.1 Receive IDocs
+##### 2.2.3.1 Receive iDocs
 
 The Listener can be used to receive IDocs from the SAP system, which can then be processed within your Ballerina application.
 
@@ -396,9 +395,7 @@ service jco:Service on iDocListener {
 
 When an IDoc is received, it will be in XML format, and the user can easily map it to a record using Ballerina's XML-to-Record conversion features.
 
-##### 2.2.3.2 Error Handling
-
- Listener
+##### 2.2.3.2 Error handling
 
 The Listener also supports error handling, allowing you to capture and manage any issues that occur during IDoc reception.
 
