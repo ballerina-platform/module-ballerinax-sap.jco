@@ -45,7 +45,7 @@ jobs:
         env:
           packageUser: ${{ github.actor }}
           packagePAT: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew build -x test
+        run: ./gradlew build -x test -x :sap.jco-examples
         working-directory: jco
 
       - name: Generate Codecov Report
