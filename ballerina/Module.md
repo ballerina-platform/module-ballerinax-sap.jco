@@ -8,6 +8,14 @@ environment for businesses.
 
 The `ballerinax/sap.jco` package exposes the SAP JCo library as ballerina functions.
 
+
+### Key Features
+
+- Connect to SAP systems via SAP JCo (Java Connector)
+- Execute BAPIs and Remote Function Calls (RFC)
+- Support for IDoc processing and exchange
+- Compatible with SAP ERP and S/4HANA systems
+
 ## Setup Guide
 
 ### Obtain SAP Connection Parameters
