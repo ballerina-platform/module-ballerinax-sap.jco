@@ -1,12 +1,15 @@
 ## Overview
 
-[SAP](https://www.sap.com/india/index.html) is a global leader in enterprise resource planning (ERP) software. Beyond
-ERP, SAP offers a diverse range of solutions including human capital management (HCM), customer relationship
-management (CRM), enterprise performance management (EPM), product lifecycle management (PLM), supplier relationship
-management (SRM), supply chain management (SCM), business technology platform (BTP), and the SAP AppGyver programming
-environment for businesses.
+[SAP](https://www.sap.com/index.html) is a global leader in enterprise resource planning (ERP) software. Beyond ERP, SAP offers a diverse range of solutions including human capital management (HCM), customer relationship management (CRM), enterprise performance management (EPM), product lifecycle management (PLM), supplier relationship management (SRM), supply chain management (SCM), and business technology platform (BTP).
 
-The `ballerinax/sap.jco` package exposes the SAP JCo library as ballerina functions.
+The SAP JCo connector exposes the SAP Java Connector (JCo) library, enabling integration with SAP systems for various business operations.
+
+### Key Features
+
+- Integration with SAP Java Connector (JCo) library
+- Support for IDoc listener operations
+- Efficient communication with SAP systems
+- Advanced configuration options for clients and listeners
 
 ## Setup Guide
 
