@@ -54,6 +54,10 @@ public class SAPConstants {
     public static final String ON_RECEIVE = "onReceive";
     public static final String ON_ERROR = "onError";
     public static final String IS_SERVICE_ATTACHED = "isServiceAttached";
+    public static final String IS_STARTED = "isStarted";
+
+    // Server Config field names
+    public static final BString JCO_REPOSITORY_DESTINATION = StringUtils.fromString("repositoryDestination");
 
 
     // Class names

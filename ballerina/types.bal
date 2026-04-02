@@ -45,10 +45,14 @@ public type DestinationConfig record {|
 public type AdvancedConfig map<string>;
 
 # Holds the configuration details needed to create an iDoc connection.
-# 
+#
 # + gwhost - The gateway host (jco.server.gwhost).
 # + gwserv - The gateway service (jco.server.gwserv).
 # + progid - The program ID (jco.server.progid).
+# + repositoryDestination - The name of the destination used to resolve IDoc metadata
+#                           (jco.server.repository_destination). Defaults to the server name
+#                           if not provided. A client destination with this name must be
+#                           registered (e.g., via an active `jco:Client`) before the listener starts.
 public type ServerConfig record {|
     @display {label: "Gateway Host (jco.server.gwhost)"}
     string gwhost;
@@ -56,6 +60,8 @@ public type ServerConfig record {|
     string gwserv;
     @display {label: "Program ID (jco.server.progid)"}
     string progid;
+    @display {label: "Repository Destination (jco.server.repository_destination)"}
+    string repositoryDestination?;
 |};
 
 public enum IDocType {

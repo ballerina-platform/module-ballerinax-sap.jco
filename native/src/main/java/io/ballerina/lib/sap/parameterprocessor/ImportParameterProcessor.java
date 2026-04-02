@@ -37,6 +37,9 @@ public class ImportParameterProcessor {
 
     @SuppressWarnings("unchecked")
     public static void setImportParams(JCoParameterList jcoParamList, BMap<BString, Object> inputParams) {
+        if (jcoParamList == null) {
+            return;
+        }
         inputParams.entrySet().forEach(entry -> {
             Object value = entry.getValue();
             String key = entry.getKey().toString();
@@ -177,7 +180,7 @@ public class ImportParameterProcessor {
                     } else {
                         JCoStructure nestedStructure = structure.getStructure(key);
                         BMap<BString, Object> record = (BMap<BString, Object>) value;
-                        createStructure(structure, record);
+                        createStructure(nestedStructure, record);
                         structure.setValue(key, nestedStructure);
                     }
                     break;

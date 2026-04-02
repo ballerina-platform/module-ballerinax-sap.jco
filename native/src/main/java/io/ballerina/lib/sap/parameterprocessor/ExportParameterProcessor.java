@@ -66,25 +66,35 @@ public class ExportParameterProcessor {
                     double doubleValue = exportList.getDouble(i);
                     outputMap.put(StringUtils.fromString(fieldName), doubleValue);
                     break;
-                case SAPConstants.JCO_BIG_DECIMAL:
-                    BigDecimal decimalValue = exportList.getBigDecimal(i);
-                    outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
-                    break;
                 case SAPConstants.JCO_LONG:
                     long longValue = exportList.getLong(i);
                     outputMap.put(StringUtils.fromString(fieldName), longValue);
                     break;
                 case SAPConstants.JCO_OBJECT:
                     Object objectValue = exportList.getValue(i);
+                    if (objectValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), objectValue.toString());
+                    break;
+                case SAPConstants.JCO_BIG_DECIMAL:
+                    BigDecimal decimalValue = exportList.getBigDecimal(i);
+                    if (decimalValue == null) {
+                        break;
+                    }
+                    outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
                     break;
                 case SAPConstants.JCO_BYTE_ARRAY:
                     byte[] byteArray = exportList.getByteArray(i);
                     outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createArrayValue(byteArray));
                     break;
                 case SAPConstants.JCO_DATE:
+                    Date dateValue = exportList.getDate(i);
+                    if (dateValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), createDateRecord(
-                            exportList.getMetaData().getTypeAsString(i), exportList.getDate(i)));
+                            exportList.getMetaData().getTypeAsString(i), dateValue));
                     break;
                 case SAPConstants.JCO_STRUCTURE:
                     RecordType nestedRecordType;
@@ -166,6 +176,9 @@ public class ExportParameterProcessor {
                     break;
                 case SAPConstants.JCO_BIG_DECIMAL:
                     BigDecimal decimalValue = exportStructure.getBigDecimal(i);
+                    if (decimalValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
                     break;
                 case SAPConstants.JCO_LONG:
@@ -174,6 +187,9 @@ public class ExportParameterProcessor {
                     break;
                 case SAPConstants.JCO_OBJECT:
                     Object objectValue = exportStructure.getValue(i);
+                    if (objectValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), objectValue.toString());
                     break;
                 case SAPConstants.JCO_BYTE_ARRAY:
@@ -181,8 +197,12 @@ public class ExportParameterProcessor {
                     outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createArrayValue(byteArray));
                     break;
                 case SAPConstants.JCO_DATE:
+                    Date structDateValue = exportStructure.getDate(i);
+                    if (structDateValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), createDateRecord(
-                            exportStructure.getMetaData().getTypeAsString(i), exportStructure.getDate(i)));
+                            exportStructure.getMetaData().getTypeAsString(i), structDateValue));
                     break;
                 case SAPConstants.JCO_STRUCTURE:
                     RecordType nestedRecordType;
@@ -244,6 +264,9 @@ public class ExportParameterProcessor {
                         break;
                     case SAPConstants.JCO_BIG_DECIMAL:
                         BigDecimal decimalValue = table.getBigDecimal(j);
+                        if (decimalValue == null) {
+                            break;
+                        }
                         record.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
                         break;
                     case SAPConstants.JCO_LONG:
@@ -252,6 +275,9 @@ public class ExportParameterProcessor {
                         break;
                     case SAPConstants.JCO_OBJECT:
                         Object objectValue = table.getValue(j);
+                        if (objectValue == null) {
+                            break;
+                        }
                         record.put(StringUtils.fromString(fieldName), objectValue.toString());
                         break;
                     case SAPConstants.JCO_BYTE_ARRAY:
@@ -259,8 +285,12 @@ public class ExportParameterProcessor {
                         record.put(StringUtils.fromString(fieldName), ValueCreator.createArrayValue(byteArray));
                         break;
                     case SAPConstants.JCO_DATE:
+                        Date tableDateValue = table.getDate(j);
+                        if (tableDateValue == null) {
+                            break;
+                        }
                         record.put(StringUtils.fromString(fieldName), createDateRecord(
-                                table.getMetaData().getTypeAsString(j), table.getDate(j)));
+                                table.getMetaData().getTypeAsString(j), tableDateValue));
                         break;
                     case SAPConstants.JCO_STRUCTURE:
                         if (outputRecordType.getFields().containsKey(fieldName)) {
@@ -278,7 +308,7 @@ public class ExportParameterProcessor {
                                     outputRecordType.getFields().get(fieldName).getFieldType()).getElementType());
                         } else {
                             nestedRecordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                    setTableFields(table.getTable(i)).getElementType()).getElementType());
+                                    setTableFields(table.getTable(j)).getElementType()).getElementType());
                         }
                         BArray nestedRecordArray = populateRecordArray(table.getTable(j), nestedRecordType,
                                 isRestFieldsAllowed);

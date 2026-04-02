@@ -20,6 +20,7 @@ package io.ballerina.lib.sap;
 
 import com.sap.conn.idoc.jco.JCoIDoc;
 import com.sap.conn.idoc.jco.JCoIDocServer;
+import com.sap.conn.jco.JCoDestinationManager;
 import com.sap.conn.jco.JCoException;
 import io.ballerina.lib.sap.dataproviders.SAPDestinationDataProvider;
 import io.ballerina.lib.sap.dataproviders.SAPServerDataProvider;
@@ -45,8 +46,20 @@ public final class Listener {
         try {
             SAPServerDataProvider sp = new SAPServerDataProvider();
             if (serverConfig.getType().getName().equals(SAPConstants.JCO_SERVER_CONFIG_NAME)) {
-                sp.addServerConfig(serverConfig, serverName.getValue());
+                Object repDestObj = serverConfig.get(SAPConstants.JCO_REPOSITORY_DESTINATION);
+                String repositoryDestination = (repDestObj != null)
+                        ? repDestObj.toString()
+                        : serverName.getValue();
+                sp.addServerConfig(serverConfig, serverName.getValue(), repositoryDestination);
                 com.sap.conn.jco.ext.Environment.registerServerDataProvider(sp);
+                // Validate that the repository destination is reachable before proceeding.
+                try {
+                    JCoDestinationManager.getDestination(repositoryDestination);
+                } catch (JCoException e) {
+                    return SAPErrorCreator.createError("Repository destination '" + repositoryDestination
+                            + "' not found. Ensure a client destination with this name is registered "
+                            + "(e.g., via an active jco:Client) before starting the listener.", e);
+                }
             } else {
                 if (!serverConfig.isEmpty()) {
                     Map<String, String> advancedServerConfig = new HashMap<>();
@@ -79,6 +92,7 @@ public final class Listener {
             JCoIDocServer server = JCoIDoc.getServer(serverName.getValue());
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(SAPConstants.IS_SERVICE_ATTACHED, false);
+            listenerBObject.addNativeData(SAPConstants.IS_STARTED, false);
             return null;
         } catch (JCoException e) {
             logger.error("Destination lookup failed.");
@@ -113,9 +127,17 @@ public final class Listener {
     }
 
     public static Object start(BObject client) {
+        JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
+        if (server == null) {
+            return SAPErrorCreator.createError("Server start failed: listener is not initialized.");
+        }
+        boolean isStarted = (boolean) client.getNativeData(SAPConstants.IS_STARTED);
+        if (isStarted) {
+            return SAPErrorCreator.createError("Server start failed: listener is already started.");
+        }
         try {
-            JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
             server.start();
+            client.addNativeData(SAPConstants.IS_STARTED, true);
         } catch (Throwable e) {
             logger.error("Server start failed.");
             return SAPErrorCreator.createError("Server start failed.", e);
@@ -143,12 +165,20 @@ public final class Listener {
     }
 
     public static Object stopListener(BObject client) {
+        JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
+        if (server == null) {
+            return null;
+        }
+        boolean isStarted = (boolean) client.getNativeData(SAPConstants.IS_STARTED);
+        if (!isStarted) {
+            return null;
+        }
         try {
-            JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
             server.stop();
+            client.addNativeData(SAPConstants.IS_STARTED, false);
         } catch (Throwable e) {
             logger.error("Server stop failed.");
-            return SAPErrorCreator.createError("Server start failed.", e);
+            return SAPErrorCreator.createError("Server stop failed.", e);
         }
         return null;
     }

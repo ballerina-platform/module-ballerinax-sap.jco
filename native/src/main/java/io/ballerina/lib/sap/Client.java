@@ -71,45 +71,56 @@ public class Client {
 
     public static Object execute(BObject client, BString functionName,
                                  BMap<BString, Object> inputParams, BTypedesc outputParamType) {
-            try {
-                
-                JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
-                JCoRepository repository = destination.getRepository();
-                if (functionName.toString().isEmpty()) {
-                    return SAPErrorCreator.fromBError("Function name is empty", null);
-                }
-                JCoFunction function = repository.getFunction(functionName.toString());
-                if (function == null) {
-                    return SAPErrorCreator.fromBError("RFC function '" + functionName + "' not found in SAP."
-                            , null);
-                }
+        try {
+            JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
+            JCoRepository repository = destination.getRepository();
+            if (functionName.toString().isEmpty()) {
+                return SAPErrorCreator.fromBError("Function name is empty", null);
+            }
+            JCoFunction function = repository.getFunction(functionName.toString());
+            if (function == null) {
+                return SAPErrorCreator.fromBError("RFC function '" + functionName + "' not found in SAP.", null);
+            }
 
-                JCoParameterList importParams = function.getImportParameterList();
+            JCoParameterList importParams = function.getImportParameterList();
+            if (importParams == null && !inputParams.isEmpty()) {
+                return SAPErrorCreator.fromBError("RFC function '" + functionName
+                        + "' has no import parameters but input params were provided.", null);
+            }
+            if (importParams != null) {
                 ImportParameterProcessor.setImportParams(importParams, inputParams);
+            }
 
-                function.execute(destination);
+            function.execute(destination);
 
-                JCoParameterList exportParams = function.getExportParameterList();
+            JCoParameterList exportParams = function.getExportParameterList();
+            int exportType = outputParamType.getDescribingType().getTag();
+            if (exportType == TypeTags.XML_TAG) {
+                if (exportParams == null) {
+                    return ValueCreator.createXmlValue("<result/>");
+                }
+                return ValueCreator.createXmlValue(exportParams.toXML());
+            } else if (exportType == TypeTags.JSON_TAG) {
+                if (exportParams == null) {
+                    return JsonUtils.parse("{}");
+                }
+                return JsonUtils.parse(exportParams.toJSON());
+            } else if (exportType == TypeTags.RECORD_TYPE_TAG) {
                 RecordType outputParamRecordType = (RecordType) outputParamType.getDescribingType();
                 boolean isRestFieldsAllowed = outputParamRecordType.getRestFieldType() != null;
-
-
-                int exportType = outputParamType.getDescribingType().getTag();
-                if (exportType == TypeTags.XML_TAG) {
-                    return ValueCreator.createXmlValue(exportParams.toXML());
-                } else if (exportType == TypeTags.JSON_TAG) {
-                    return JsonUtils.parse(exportParams.toJSON());
-                } else if (exportType == TypeTags.RECORD_TYPE_TAG) {
-                    return ExportParameterProcessor.getExportParams(exportParams, outputParamRecordType,
-                            isRestFieldsAllowed);
-                } else {
-                    throw SAPErrorCreator.fromBError("Unsupported output parameter type: " +
-                            outputParamType.getType().getName(), null);
+                if (exportParams == null) {
+                    return ValueCreator.createRecordValue(outputParamRecordType);
                 }
-            } catch (Throwable e) {
-                logger.error("JCoException occurred. Error: " + e.getMessage());
-                return SAPErrorCreator.fromJCoException(e);
+                return ExportParameterProcessor.getExportParams(exportParams, outputParamRecordType,
+                        isRestFieldsAllowed);
+            } else {
+                throw SAPErrorCreator.fromBError("Unsupported output parameter type: " +
+                        outputParamType.getType().getName(), null);
             }
+        } catch (Throwable e) {
+            logger.error("JCoException occurred. Error: " + e.getMessage());
+            return SAPErrorCreator.fromJCoException(e);
+        }
     }
 
     public static Object sendIDoc(BObject client, BXml iDoc, BString iDocType) {

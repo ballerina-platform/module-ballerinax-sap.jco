@@ -30,6 +30,8 @@ import java.util.Properties;
 
 public class SAPServerDataProvider implements ServerDataProvider {
 
+    public static final String JCO_REP_DEST = ServerDataProvider.JCO_REP_DEST;
+
     private final Map<String, Properties> serverProperties = new HashMap<>();
 
     @Override
@@ -50,7 +52,8 @@ public class SAPServerDataProvider implements ServerDataProvider {
         return true;
     }
 
-    public void addServerConfig(BMap<BString, Object> jcoServerConfig, String serverName) {
+    public void addServerConfig(BMap<BString, Object> jcoServerConfig, String serverName,
+                                String repositoryDestination) {
         Properties properties = new Properties();
         try {
             properties.setProperty(ServerDataProvider.JCO_GWHOST,
@@ -59,6 +62,7 @@ public class SAPServerDataProvider implements ServerDataProvider {
                     jcoServerConfig.getStringValue(SAPConstants.JCO_GWSERV).toString());
             properties.setProperty(ServerDataProvider.JCO_PROGID,
                     jcoServerConfig.getStringValue(SAPConstants.JCO_PROGID).toString());
+            properties.setProperty(ServerDataProvider.JCO_REP_DEST, repositoryDestination);
             serverProperties.put(serverName, properties);
         } catch (Exception e) {
             throw new RuntimeException("Error while adding server config: " + e.getMessage());
