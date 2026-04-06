@@ -49,6 +49,7 @@ public type AdvancedConfig map<string>;
 # + gwhost - The gateway host (jco.server.gwhost).
 # + gwserv - The gateway service (jco.server.gwserv).
 # + progid - The program ID (jco.server.progid).
+# + connectionCount - The maximum number of concurrent connections (jco.server.connection_count). Defaults to 2.
 # + repositoryDestination - The name of the destination used to resolve IDoc metadata
 #                           (jco.server.repository_destination). Defaults to the server name
 #                           if not provided. A client destination with this name must be
@@ -60,6 +61,8 @@ public type ServerConfig record {|
     string gwserv;
     @display {label: "Program ID (jco.server.progid)"}
     string progid;
+    @display {label: "Connection Count (jco.server.connection_count)"}
+    int connectionCount = 2;
     @display {label: "Repository Destination (jco.server.repository_destination)"}
     string repositoryDestination?;
 |};
