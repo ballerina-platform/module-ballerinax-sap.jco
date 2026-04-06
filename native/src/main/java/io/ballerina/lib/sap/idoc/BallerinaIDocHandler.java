@@ -49,6 +49,13 @@ import java.util.concurrent.CountDownLatch;
 
 import static io.ballerina.runtime.api.utils.TypeUtils.getReferredType;
 
+/**
+ * JCo IDoc handler that bridges incoming SAP IDoc documents to the Ballerina service layer.
+ * When JCo delivers an {@link IDocDocumentList}, this handler serialises it to XML, invokes
+ * the Ballerina {@code onReceive} resource function, and waits synchronously for the strand
+ * to finish before returning control to the JCo worker thread.
+ * If processing fails, the Ballerina {@code onError} remote method is invoked asynchronously.
+ */
 public class BallerinaIDocHandler implements JCoIDocHandler {
     private static final Logger logger = LoggerFactory.getLogger(BallerinaIDocHandler.class);
     private final BObject service;
@@ -59,6 +66,18 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
         this.runtime = runtime;
     }
 
+    /**
+     * Receives an IDoc document list from JCo, converts it to an XML string, and dispatches it
+     * to the Ballerina {@code onReceive} resource function.
+     * <p>
+     * The calling thread blocks on a {@link java.util.concurrent.CountDownLatch} until the
+     * Ballerina strand completes. Any exception that escapes (parse error, interrupted await,
+     * or a Ballerina panic surfaced as a {@link BError}) is forwarded to the service's
+     * {@code onError} remote method.
+     *
+     * @param serverCtx JCo server context for the current request (not used directly)
+     * @param idocList  the list of IDoc documents delivered by SAP
+     */
     public void handleRequest(JCoServerContext serverCtx, IDocDocumentList idocList) {
 
         StringWriter stringWriter = new StringWriter();
@@ -76,6 +95,10 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
                 invokeOnReceive(callback, args);
                 countDownLatch.await();
             } catch (InterruptedException | BError exception) {
+                if (exception instanceof InterruptedException) {
+                    // Restore the interrupt status so that callers up the stack can observe it.
+                    Thread.currentThread().interrupt();
+                }
                 Object[] args = new Object[] {
                         (exception instanceof BError) ? exception : SAPErrorCreator.createError(
                                 exception.getMessage(), exception), true
@@ -97,6 +120,14 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
         }
     }
 
+    /**
+     * Invokes the Ballerina {@code onReceive} resource function on the attached service.
+     * Chooses concurrent or sequential dispatch based on whether the service and the method
+     * are both declared {@code isolated}.
+     *
+     * @param callback the callback that will be notified when the strand completes
+     * @param args     the arguments to pass to the resource function (IDoc XML value + a {@code true} sentinel)
+     */
     public void invokeOnReceive(Callback callback, Object... args) {
         Module module = ModuleUtils.getModule();
         StrandMetadata metadata = new StrandMetadata(
@@ -111,6 +142,16 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
         }
     }
 
+    /**
+     * Invokes the Ballerina {@code onError} remote method on the attached service if it exists.
+     * The invocation is fire-and-forget (no callback): errors that occur during error handling
+     * are not propagated further.
+     * <p>
+     * If the service does not declare an {@code onError} method the runtime call will fail
+     * silently; the return type defaults to {@code nil} so no type mismatch is raised.
+     *
+     * @param args the arguments to pass (Ballerina {@code Error} value + a {@code true} sentinel)
+     */
     public void invokeOnError(Object... args) {
         MethodType onErrorFunction = null;
         MethodType[] resourceFunctions = ((ObjectType) TypeUtils.getType(service)).getMethods();

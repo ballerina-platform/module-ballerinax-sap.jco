@@ -25,15 +25,27 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CountDownLatch;
 
+/**
+ * Callback implementation used to synchronize asynchronous Ballerina service method invocations
+ * with the JCo IDoc handler thread. A {@link CountDownLatch} is decremented on every completion
+ * (success or failure) so that the calling thread can block until the Ballerina strand finishes.
+ */
 public class SAPResourceCallback implements Callback {
 
-    private static final Logger logger = LoggerFactory.getLogger(Client.class);
+    private static final Logger logger = LoggerFactory.getLogger(SAPResourceCallback.class);
     private final CountDownLatch countDownLatch;
 
     public SAPResourceCallback(CountDownLatch countDownLatch) {
         this.countDownLatch = countDownLatch;
     }
 
+    /**
+     * Called when the Ballerina method completes without an unhandled panic.
+     * If the return value is itself a {@link BError} (i.e., the method returned an error),
+     * it is logged but processing is otherwise considered complete.
+     *
+     * @param o the return value of the invoked Ballerina method (may be a {@link BError})
+     */
     @Override
     public void notifySuccess(Object o) {
         if (o instanceof BError) {
@@ -42,6 +54,14 @@ public class SAPResourceCallback implements Callback {
         countDownLatch.countDown();
     }
 
+    /**
+     * Called when the Ballerina strand panics with an unrecoverable error.
+     * The latch is decremented first to unblock the waiting handler thread,
+     * and then the JVM process is terminated because continuing after a panic
+     * would leave the server in an undefined state.
+     *
+     * @param bError the panic error from the Ballerina runtime
+     */
     @Override
     public void notifyFailure(BError bError) {
         countDownLatch.countDown();

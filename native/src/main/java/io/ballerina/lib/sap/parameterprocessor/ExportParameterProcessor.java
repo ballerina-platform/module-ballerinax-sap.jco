@@ -23,7 +23,6 @@ import io.ballerina.lib.sap.ModuleUtils;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.lib.sap.SAPErrorCreator;
 import io.ballerina.runtime.api.PredefinedTypes;
-import io.ballerina.runtime.api.TypeTags;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.ArrayType;
@@ -42,8 +41,41 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Converts the JCo export parameter list returned by a Remote Function Call into a Ballerina
+ * record value. Nested JCo structures map to nested Ballerina records; JCo tables map to
+ * Ballerina arrays of records. When the caller supplies a concrete {@link RecordType}, its
+ * declared fields drive the conversion; when no type information is available (i.e. the record
+ * allows rest fields), the JCo metadata is used to infer the field types at runtime.
+ * <p>
+ * Supported JCo-to-Ballerina type mappings:
+ * <ul>
+ *   <li>{@code java.lang.String} → {@code string}</li>
+ *   <li>{@code java.lang.Integer} → {@code int}</li>
+ *   <li>{@code java.lang.Double} → {@code float}</li>
+ *   <li>{@code java.lang.Long} → {@code int}</li>
+ *   <li>{@code java.lang.Object} → {@code string} (via {@link Object#toString()})</li>
+ *   <li>{@code java.math.BigDecimal} → {@code decimal}</li>
+ *   <li>{@code byte[]} → {@code byte[]}</li>
+ *   <li>{@code java.util.Date} (DATE) → {@code time:Date}</li>
+ *   <li>{@code java.util.Date} (TIME) → {@code time:TimeOfDay}</li>
+ *   <li>{@code com.sap.conn.jco.JCoStructure} → nested record</li>
+ *   <li>{@code com.sap.conn.jco.JCoTable} → array of records</li>
+ * </ul>
+ */
 public class ExportParameterProcessor {
 
+    /**
+     * Converts the top-level JCo export parameter list into a Ballerina record.
+     *
+     * @param exportList          the JCo export parameter list to read from
+     * @param outputParamType     the target Ballerina {@link RecordType}; fields not present in this
+     *                            type are skipped unless {@code isRestFieldsAllowed} is {@code true}
+     * @param isRestFieldsAllowed when {@code true}, fields not explicitly declared in
+     *                            {@code outputParamType} are included using runtime-inferred types
+     * @return a Ballerina record value populated with the export parameter values
+     * @throws BError if a JCo field type is not supported or a type cast fails
+     */
     public static BMap<BString, Object> getExportParams(JCoParameterList exportList, RecordType outputParamType,
                                                         boolean isRestFieldsAllowed) {
         BMap<BString, Object> outputMap = ValueCreator.createRecordValue(outputParamType);
@@ -479,81 +511,4 @@ public class ExportParameterProcessor {
         }
     }
 
-    private static void populateStructure(JCoStructure structure, BMap<BString, Object> record) {
-        record.entrySet().forEach(entry -> {
-            int type = TypeUtils.getType(entry.getValue()).getTag();
-            String key = entry.getKey().toString();
-
-            switch (type) {
-                case TypeTags.STRING_TAG:
-                    structure.setValue(key, entry.getValue().toString());
-                    break;
-                case TypeTags.INT_TAG:
-                    structure.setValue(key, Integer.parseInt(entry.getValue().toString()));
-                    break;
-                case TypeTags.FLOAT_TAG:
-                    structure.setValue(key, Double.parseDouble(entry.getValue().toString()));
-                    break;
-                case TypeTags.DECIMAL_TAG:
-                    structure.setValue(key, new BigDecimal(entry.getValue().toString()));
-                    break;
-                case TypeTags.BYTE_ARRAY_TAG:
-                    structure.setValue(key, ((byte[]) entry.getValue()));
-                    break;
-                case TypeTags.RECORD_TYPE_TAG:
-                    handleNestedRecordType(structure, key, entry.getValue());
-                    break;
-                default:
-                    throwUnsupportedUnionTypeError(entry.getKey(), TypeUtils.getType(entry).getName());
-            }
-        });
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void handleNestedRecordType(JCoStructure structure, String key, Object value) {
-        if (SAPConstants.DATE.equals(TypeUtils.getType(value).getName())) {
-            BMap<BString, Object> dateMap = (BMap<BString, Object>) value;
-            Date dateValue = extractDate(dateMap);
-            if (dateValue != null) {
-                structure.setValue(key, dateValue);
-            } else {
-                throw SAPErrorCreator.fromBError("Invalid date record: year, month, " +
-                        "and day must be provided.", null);
-            }
-        } else {
-            JCoStructure nestedStructure = structure.getStructure(key);
-            BMap<BString, Object> nestedRecord = (BMap<BString, Object>) value;
-            populateStructure(nestedStructure, nestedRecord);
-        }
-    }
-
-    private static Date extractDate(BMap<BString, Object> dateMap) {
-        Object yearObj = dateMap.get(StringUtils.fromString("year"));
-        Object monthObj = dateMap.get(StringUtils.fromString("month"));
-        Object dayObj = dateMap.get(StringUtils.fromString("day"));
-        Object hourObj = dateMap.get(StringUtils.fromString("hour"));
-        Object minuteObj = dateMap.get(StringUtils.fromString("minute"));
-        Object secondObj = dateMap.get(StringUtils.fromString("second"));
-
-        if (yearObj != null && monthObj != null && dayObj != null) {
-            int year = Integer.parseInt(yearObj.toString());
-            int month = Integer.parseInt(monthObj.toString());
-            int day = Integer.parseInt(dayObj.toString());
-
-            int hour = (hourObj != null) ? Integer.parseInt(hourObj.toString()) : 0;
-            int minute = (minuteObj != null) ? Integer.parseInt(minuteObj.toString()) : 0;
-            int second = (secondObj != null) ? Integer.parseInt(secondObj.toString()) : 0;
-
-            Calendar calendar = Calendar.getInstance();
-            calendar.set(year, month - 1, day, hour, minute, second);
-            return calendar.getTime();
-        }
-        return null;
-    }
-
-    private static void throwUnsupportedUnionTypeError(Object key, String type) {
-        throw SAPErrorCreator.fromBError("Error while processing destination properties: " +
-                key.toString() + ". Unsupported union type '" + type + "'. Supported types " +
-                "are: string, int, float, decimal and nullable supported types.", null);
-    }
 }

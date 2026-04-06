@@ -22,7 +22,6 @@ import com.sap.conn.jco.JCoTable;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.lib.sap.SAPErrorCreator;
 import io.ballerina.runtime.api.TypeTags;
-import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.utils.TypeUtils;
 import io.ballerina.runtime.api.values.BArray;
@@ -33,8 +32,31 @@ import java.math.BigDecimal;
 import java.util.Calendar;
 import java.util.Date;
 
+/**
+ * Converts Ballerina values from an input parameter map into the corresponding JCo parameter list,
+ * structure, or table values before an RFC is executed.
+ * <p>
+ * Supported Ballerina-to-JCo type mappings:
+ * <ul>
+ *   <li>{@code string} → {@link String}</li>
+ *   <li>{@code int} → {@code int} (parsed via {@link Integer#parseInt})</li>
+ *   <li>{@code float} → {@code double}</li>
+ *   <li>{@code decimal} → {@link java.math.BigDecimal}</li>
+ *   <li>{@code byte[]} → {@code byte[]}</li>
+ *   <li>Date/TimeOfDay record → {@link java.util.Date}</li>
+ *   <li>other record types → nested {@link com.sap.conn.jco.JCoStructure}</li>
+ *   <li>array types → {@link com.sap.conn.jco.JCoTable}</li>
+ * </ul>
+ */
 public class ImportParameterProcessor {
 
+    /**
+     * Populates the given JCo import parameter list from a Ballerina map of input values.
+     *
+     * @param jcoParamList the JCo parameter list to populate
+     * @param inputParams  a Ballerina record/map whose keys match JCo parameter names
+     * @throws BError if a parameter type is not supported or a date record is malformed
+     */
     @SuppressWarnings("unchecked")
     public static void setImportParams(JCoParameterList jcoParamList, BMap<BString, Object> inputParams) {
         inputParams.entrySet().forEach(entry -> {
@@ -55,7 +77,7 @@ public class ImportParameterProcessor {
                     jcoParamList.setValue(key, new BigDecimal(value.toString()));
                     break;
                 case TypeTags.BYTE_ARRAY_TAG:
-                    jcoParamList.setValue(key, ValueCreator.createArrayValue((byte[]) value));
+                    jcoParamList.setValue(key, (byte[]) value);
                     break;
                 case TypeTags.RECORD_TYPE_TAG:
                     if (SAPConstants.DATE.equals(TypeUtils.getType(value).getName()) ||
@@ -108,7 +130,7 @@ public class ImportParameterProcessor {
                         table.setValue(fieldName, new BigDecimal(fieldValue.toString()));
                         break;
                     case TypeTags.BYTE_ARRAY_TAG:
-                        table.setValue(fieldName, ValueCreator.createArrayValue((byte[]) fieldValue));
+                        table.setValue(fieldName, (byte[]) fieldValue);
                         break;
                     case TypeTags.RECORD_TYPE_TAG:
                         if (SAPConstants.DATE.equals(TypeUtils.getType(fieldValue).getName()) ||
@@ -160,7 +182,7 @@ public class ImportParameterProcessor {
                     structure.setValue(key, new BigDecimal(value.toString()));
                     break;
                 case TypeTags.BYTE_ARRAY_TAG:
-                    structure.setValue(key, ValueCreator.createArrayValue((byte[]) value));
+                    structure.setValue(key, (byte[]) value);
                     break;
                 case TypeTags.RECORD_TYPE_TAG:
                     if (SAPConstants.DATE.equals(TypeUtils.getType(value).getName()) ||

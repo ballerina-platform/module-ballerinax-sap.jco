@@ -39,6 +39,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Native function implementations for the Ballerina SAP JCo {@code Listener} object.
+ * Each public static method in this class corresponds to a Ballerina extern function and is
+ * invoked by the Ballerina runtime at specific points in the listener lifecycle
+ * ({@code init → attach → start → gracefulStop/immediateStop → detach}).
+ */
 public final class Listener {
 
     private static final Logger logger = LoggerFactory.getLogger(Listener.class);
@@ -49,6 +55,25 @@ public final class Listener {
     // with a new UUID name do not fail with "already used for a running server".
     private static final Map<String, JCoIDocServer> serverRegistry = new ConcurrentHashMap<>();
 
+    /**
+     * Initializes the JCo IDoc server from either a structured {@code ServerConfig} record or
+     * an advanced key-value configuration map.
+     * <p>
+     * JCo restricts each JVM to a single server per {@code (gwhost, gwserv, progid)} triplet.
+     * To honour that constraint this method checks an in-process {@link #serverRegistry} and
+     * reuses an existing {@link JCoIDocServer} when one for the same triplet was already created,
+     * rather than attempting a second registration that JCo would reject.
+     * <p>
+     * For an advanced configuration map, keys starting with {@code "jco.server."} are treated as
+     * server properties; all other keys are forwarded to a companion destination (used as the
+     * repository destination for RFC metadata look-ups).
+     *
+     * @param listenerBObject the Ballerina {@code Listener} object being initialized
+     * @param serverConfig    a Ballerina record ({@code ServerConfig}) or a flat string map of
+     *                        JCo properties describing the server and, optionally, a repository destination
+     * @param serverName      a unique name registered with the {@link SAPServerDataProvider}
+     * @return {@code null} on success, or a Ballerina {@code Error} on failure
+     */
     public static Object init(BObject listenerBObject, BMap<BString, Object> serverConfig, BString serverName) {
         try {
             JCoIDocServer server;
@@ -120,6 +145,20 @@ public final class Listener {
         }
     }
 
+    /**
+     * Attaches a Ballerina service to the listener so that incoming IDocs are dispatched to it.
+     * <p>
+     * Only one service may be attached at a time. Registering a second service returns an error
+     * without modifying the existing attachment. The method installs a {@link BallerinaIDocHandlerFactory},
+     * a {@link BallerinaTidHandler}, and a {@link BallerinaThrowableListener} on the underlying
+     * {@link JCoIDocServer}.
+     *
+     * @param environment     the Ballerina runtime environment (used to obtain a {@link io.ballerina.runtime.api.Runtime})
+     * @param listenerBObject the Ballerina {@code Listener} object
+     * @param service         the Ballerina service object that will receive IDoc notifications
+     * @param name            optional service path name (not used by the JCo transport)
+     * @return {@code null} on success, or a Ballerina {@code Error} on failure
+     */
     public static Object attach(Environment environment, BObject listenerBObject, BObject service, Object name) {
         Runtime runtime = environment.getRuntime();
         JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
@@ -143,6 +182,13 @@ public final class Listener {
         }
     }
 
+    /**
+     * Starts the JCo IDoc server, making it ready to accept incoming connections from the SAP gateway.
+     * Returns an error if the server has not been initialized or is already running.
+     *
+     * @param client the Ballerina {@code Listener} object
+     * @return {@code null} on success, or a Ballerina {@code Error} on failure
+     */
     public static Object start(BObject client) {
         JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
         if (server == null) {
@@ -162,18 +208,47 @@ public final class Listener {
         return null;
     }
 
+    /**
+     * Requests a graceful stop of the JCo IDoc server.
+     * Delegates to {@link #stopListener(BObject)} which blocks until the server fully leaves
+     * the {@code STOPPING} state (up to 15 seconds).
+     *
+     * @param client the Ballerina {@code Listener} object
+     * @return {@code null} on success, or a Ballerina {@code Error} if the stop fails
+     */
     public static Object gracefulStop(BObject client) {
         return stopListener(client);
     }
 
+    /**
+     * Immediately stops the JCo IDoc server.
+     * Currently delegates to {@link #stopListener(BObject)}, which performs the same
+     * graceful shutdown sequence as {@link #gracefulStop(BObject)}.
+     *
+     * @param client the Ballerina {@code Listener} object
+     * @return {@code null} on success, or a Ballerina {@code Error} if the stop fails
+     */
     public static Object immediateStop(BObject client) {
         return stopListener(client);
     }
 
+    /**
+     * Detaches a service from the listener by clearing the server reference and resetting
+     * the service-attached and started state flags.
+     * <p>
+     * Note: this does not stop the underlying {@link JCoIDocServer} if it is still running.
+     * Call {@link #gracefulStop(BObject)} or {@link #immediateStop(BObject)} first if the
+     * server must be stopped before detaching.
+     *
+     * @param listener the Ballerina {@code Listener} object
+     * @param service  the Ballerina service object to detach (not used directly; kept for API symmetry)
+     * @return {@code null} on success, or a Ballerina {@code Error} on failure
+     */
     public static Object detach(BObject listener, BObject service) {
         try {
             listener.addNativeData(SAPConstants.JCO_SERVER, null);
             listener.addNativeData(SAPConstants.IS_SERVICE_ATTACHED, false);
+            listener.addNativeData(SAPConstants.IS_STARTED, false);
         } catch (Throwable e) {
             logger.error("Server detach failed.");
             return SAPErrorCreator.createError("Server detach failed.", e);
@@ -181,6 +256,17 @@ public final class Listener {
         return null;
     }
 
+    /**
+     * Shared implementation for both graceful and immediate stop.
+     * <p>
+     * Calls {@link JCoIDocServer#stop()} and then polls the server state in 200 ms intervals
+     * (up to 15 seconds) until the server leaves the {@link JCoServerState#STOPPING} state.
+     * This blocking wait is necessary because JCo's stop is asynchronous: attempting to
+     * {@code start()} a server whose state is still {@code STOPPING} raises an exception.
+     *
+     * @param client the Ballerina {@code Listener} object
+     * @return {@code null} on success, or a Ballerina {@code Error} if the stop fails unexpectedly
+     */
     public static Object stopListener(BObject client) {
         JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
         if (server == null) {

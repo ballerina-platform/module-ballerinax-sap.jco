@@ -45,9 +45,25 @@ import io.ballerina.runtime.api.values.BXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Native function implementations for the Ballerina SAP JCo {@code Client} object.
+ * Each public static method in this class corresponds to a Ballerina extern function.
+ */
 public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
+    /**
+     * Initializes a JCo RFC destination and pings the SAP system to verify connectivity.
+     * On success the {@link JCoDestination} is stored as native data on the Ballerina client object
+     * so that subsequent calls ({@link #execute} / {@link #sendIDoc}) can retrieve it without
+     * a destination-manager lookup.
+     *
+     * @param client            the Ballerina {@code Client} object being initialized
+     * @param destinationConfig a Ballerina record ({@code DestinationConfig} or advanced map) holding
+     *                          JCo connection properties
+     * @param destinationId     a unique name used to register the destination with the JCo framework
+     * @return {@code null} on success, or a Ballerina {@code Error} on failure
+     */
     public static Object initializeClient(BObject client, BMap<BString, Object> destinationConfig,
                                           BString destinationId) {
         try {
@@ -68,6 +84,20 @@ public class Client {
         }
     }
 
+    /**
+     * Executes a Remote Function Call (RFC) on the SAP system.
+     * <p>
+     * Import parameters are mapped from {@code inputParams} using
+     * {@link io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor}.
+     * Export parameters are mapped back to the Ballerina type described by {@code outputParamType},
+     * which may be {@code xml}, {@code json}, or a Ballerina record type.
+     *
+     * @param client          the Ballerina {@code Client} object holding the JCo destination
+     * @param functionName    name of the RFC function module to call (must not be empty)
+     * @param inputParams     key-value map of import parameter values
+     * @param outputParamType the expected Ballerina type of the RFC export parameters
+     * @return the converted export parameters, or a Ballerina {@code Error} on failure
+     */
     public static Object execute(BObject client, BString functionName,
                                  BMap<BString, Object> inputParams, BTypedesc outputParamType) {
         try {
@@ -117,11 +147,23 @@ public class Client {
                         outputParamType.getType().getName(), null);
             }
         } catch (Throwable e) {
-            logger.error("JCoException occurred. Error: " + e.getMessage());
+            logger.error("Error occurred during RFC execution. Error: " + e.getMessage());
             return SAPErrorCreator.fromJCoException(e);
         }
     }
 
+    /**
+     * Sends an IDoc to SAP using the Transactional RFC (tRFC) protocol.
+     * <p>
+     * A TID (Transaction ID) is created on the destination, the IDoc XML is parsed and sent
+     * via {@link com.sap.conn.idoc.jco.JCoIDoc#send}, and the TID is then confirmed so that
+     * SAP does not re-deliver the document on a subsequent connection.
+     *
+     * @param client   the Ballerina {@code Client} object holding the JCo destination
+     * @param iDoc     the IDoc payload as an XML value
+     * @param iDocType a single-character IDoc version identifier (e.g. {@code '3'} for IDoc type 3)
+     * @return {@code null} on success, or a Ballerina {@code Error} on failure
+     */
     public static Object sendIDoc(BObject client, BXml iDoc, BString iDocType) {
         try {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
