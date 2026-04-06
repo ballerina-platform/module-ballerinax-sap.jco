@@ -14,17 +14,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
-# The SAP JCo service type.
+# Contract for a service that receives IDoc documents and error notifications from a `Listener`.
 public type Service distinct service object {
-    # The remote function to be invoked when a iDoc is received.
-    # 
-    # + iDoc - The iDoc XML.
-    # + return - An error if an error occurs.
+    # Called when an IDoc is received from the SAP system, delivered as XML by the JCo IDoc XML processor.
+    #
+    # + iDoc - The received IDoc document serialised as XML.
+    # + return - An error if processing fails.
     remote function onReceive(xml iDoc) returns error?;
 
-    # The remote function to be invoked when an error occurs.
-    # 
-    # + 'error - The error.
-    # + return - An error if an error occurs.
+    # Called when an error occurs during IDoc delivery or processing.
+    #
+    # + 'error - The error that occurred.
+    # + return - An error if the error handler itself fails.
     remote function onError(Error 'error) returns error?;
 };
