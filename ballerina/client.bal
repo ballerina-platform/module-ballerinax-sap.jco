@@ -24,9 +24,13 @@ public isolated client class Client {
     # Initializes the connector.
     #
     # + configurations - The configurations required to initialize the BAPI client.
+    # + destinationId - A unique name for this destination. Defaults to a generated UUID.
+    #                   Specify an explicit name when other components (e.g., a `jco:Listener`)
+    #                   need to reference this destination by name.
     # + return - An error if the initialization fails.
-    public isolated function init(DestinationConfig|AdvancedConfig configurations) returns Error? {
-        check initializeClient(self, configurations, uuid:createType4AsString());
+    public isolated function init(DestinationConfig|AdvancedConfig configurations,
+                                  string destinationId = uuid:createType4AsString()) returns Error? {
+        check initializeClient(self, configurations, destinationId);
     }
 
     # Executes the RFC function.
