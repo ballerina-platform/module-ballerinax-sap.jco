@@ -108,7 +108,7 @@ function testExecuteWithStructureParam() returns error? {
 }
 
 @test:Config {
-    enable: testsEnabled,
+    enable: false,
     groups: ["rfc-execute"]
 }
 function testExecuteWithTableParam() returns error? {

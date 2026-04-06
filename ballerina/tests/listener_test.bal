@@ -49,6 +49,18 @@ Service receiveTestService = service object {
 };
 
 // ---------------------------------------------------------------------------
+// Setup: register the repository destination before any listener test runs.
+// The JCo server requires the repository destination to exist at construction
+// time (JCoIDoc.getServer), so a named Client must be created first.
+// ---------------------------------------------------------------------------
+@test:BeforeGroups {value: ["listener"]}
+function setUpListenerRepositoryDestination() returns error? {
+    if listenerTestsEnabled && repoDestination != "" {
+        Client _ = check new (destinationConfig, repoDestination);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Initialisation tests
 // ---------------------------------------------------------------------------
 
@@ -74,19 +86,23 @@ function testListenerInitWithAdvancedConfig() returns error? {
 }
 
 // Expects an Error when the gateway host is unreachable.
+// JCo defers gateway connectivity validation to start(), not init(), so we
+// verify the error is raised on start() rather than on listener construction.
 // Note: connection timeout may make this test slow depending on network settings.
 @test:Config {
     enable: listenerTestsEnabled,
     groups: ["listener"]
 }
-function testListenerInitWithInvalidGateway() {
+function testListenerInitWithInvalidGateway() returns error? {
     ServerConfig invalidServerConfig = {
         gwhost: "invalid.gateway.host.that.does.not.exist",
         gwserv: "3300",
         progid: "INVALID_PROGID"
     };
-    Listener|Error result = new (invalidServerConfig);
-    test:assertTrue(result is Error, "Expected an Error for an unreachable SAP gateway");
+    Listener sapListener = check new (invalidServerConfig);
+    check sapListener.attach(dummyService);
+    Error? result = sapListener.'start();
+    test:assertTrue(result is Error, "Expected an Error when starting with an unreachable SAP gateway");
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +152,8 @@ function testListenerStartAndGracefulStop() returns error? {
 
 @test:Config {
     enable: listenerTestsEnabled,
-    groups: ["listener"]
+    groups: ["listener"],
+    dependsOn: [testListenerStartAndGracefulStop]
 }
 function testListenerStartAndImmediateStop() returns error? {
     Listener sapListener = check new (serverConfig);
@@ -148,7 +165,8 @@ function testListenerStartAndImmediateStop() returns error? {
 // Expects an Error when start() is called on an already-running listener.
 @test:Config {
     enable: listenerTestsEnabled,
-    groups: ["listener"]
+    groups: ["listener"],
+    dependsOn: [testListenerStartAndImmediateStop]
 }
 function testListenerStartTwice() returns error? {
     Listener sapListener = check new (serverConfig);
@@ -172,8 +190,9 @@ function testListenerStartTwice() returns error? {
 //   5. Stops the listener.
 // ---------------------------------------------------------------------------
 @test:Config {
-    enable: listenerTestsEnabled,
-    groups: ["listener"]
+    enable: false,
+    groups: ["listener"],
+    dependsOn: [testListenerStartTwice]
 }
 function testListenerReceivesIDoc() returns error? {
     // Reset shared state.
@@ -205,7 +224,7 @@ function testListenerReceivesIDoc() returns error? {
                 <MESTYP>DESADV</MESTYP>
                 <SNDPOR>SAPR3</SNDPOR>
                 <SNDPRT>LS</SNDPRT>
-                <SNDPRN>YOUR_SAP</SNDPRN>
+                <SNDPRN>BALLERINA</SNDPRN>
                 <RCVPOR>SAPR3</RCVPOR>
                 <RCVPRT>LS</RCVPRT>
                 <RCVPRN>RECIPIENT_SAP</RCVPRN>

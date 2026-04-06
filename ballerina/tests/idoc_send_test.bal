@@ -41,7 +41,7 @@ final xml validTestIDoc = xml `<DELVRY03>
             <MESTYP>DESADV</MESTYP>
             <SNDPOR>SAPR3</SNDPOR>
             <SNDPRT>LS</SNDPRT>
-            <SNDPRN>YOUR_SAP</SNDPRN>
+            <SNDPRN>BALLERINA</SNDPRN>
             <RCVPOR>SAPR3</RCVPOR>
             <RCVPRT>LS</RCVPRT>
             <RCVPRN>RECIPIENT_SAP</RCVPRN>
