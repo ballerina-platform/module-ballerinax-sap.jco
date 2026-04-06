@@ -20,17 +20,34 @@ package io.ballerina.lib.sap.dataproviders;
 
 import com.sap.conn.jco.ext.DestinationDataEventListener;
 import com.sap.conn.jco.ext.DestinationDataProvider;
+import com.sap.conn.jco.ext.Environment;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SAPDestinationDataProvider implements DestinationDataProvider {
 
-    private final Map<String, Properties> destinationProperties = new HashMap<>();
+    private static final SAPDestinationDataProvider INSTANCE = new SAPDestinationDataProvider();
+    private static final AtomicBoolean registered = new AtomicBoolean(false);
+
+    private final Map<String, Properties> destinationProperties = new ConcurrentHashMap<>();
+
+    private SAPDestinationDataProvider() {}
+
+    public static SAPDestinationDataProvider getInstance() {
+        return INSTANCE;
+    }
+
+    public static void registerIfAbsent() {
+        if (registered.compareAndSet(false, true)) {
+            Environment.registerDestinationDataProvider(INSTANCE);
+        }
+    }
 
     @Override
     public Properties getDestinationProperties(String destinationName) {
@@ -53,7 +70,7 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     public void addDestinationConfig(BMap<BString, Object> jcoDestinationConfig, BString destinationName) {
         Properties properties = new Properties();
         try {
-            if (jcoDestinationConfig.getType().getName().equals(SAPConstants.JCO_DESTINATION_CONFIG_NAME)) {
+            if (jcoDestinationConfig.getType().getName().equals(SAPConstants.JCO_DESTINATION_CONFIG)) {
                 properties.setProperty(DestinationDataProvider.JCO_CLIENT,
                         jcoDestinationConfig.getStringValue(SAPConstants.JCO_CLIENT).toString());
                 properties.setProperty(DestinationDataProvider.JCO_USER,
@@ -73,9 +90,8 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
                     jcoDestinationConfig.entrySet().forEach(entry -> {
                         BString key = entry.getKey();
                         BString value = (BString) entry.getValue();
-                        String stripedKey = key.toString().substring(1, key.toString().length() - 1);
                         try {
-                            properties.setProperty(stripedKey, value.toString());
+                            properties.setProperty(key.toString(), value.toString());
                         } catch (Exception e) {
                             throw new RuntimeException("Error while adding destination property " + key.toString()
                                     + " : " + e.getMessage());

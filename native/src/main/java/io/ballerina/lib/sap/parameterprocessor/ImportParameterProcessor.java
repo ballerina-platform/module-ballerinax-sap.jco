@@ -37,9 +37,6 @@ public class ImportParameterProcessor {
 
     @SuppressWarnings("unchecked")
     public static void setImportParams(JCoParameterList jcoParamList, BMap<BString, Object> inputParams) {
-        if (jcoParamList == null) {
-            return;
-        }
         inputParams.entrySet().forEach(entry -> {
             Object value = entry.getValue();
             String key = entry.getKey().toString();
@@ -81,7 +78,6 @@ public class ImportParameterProcessor {
                 case TypeTags.ARRAY_TAG:
                     JCoTable table = jcoParamList.getTable(key);
                     createTable(table, (BArray) value);
-                    jcoParamList.setValue(key, table);
                     break;
                 default:
                     throwUnsupportedUnionTypeError(entry.getKey(), TypeUtils.getType(value).getName());

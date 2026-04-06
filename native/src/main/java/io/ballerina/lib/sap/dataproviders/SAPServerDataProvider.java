@@ -18,21 +18,38 @@
 
 package io.ballerina.lib.sap.dataproviders;
 
+import com.sap.conn.jco.ext.Environment;
 import com.sap.conn.jco.ext.ServerDataEventListener;
 import com.sap.conn.jco.ext.ServerDataProvider;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SAPServerDataProvider implements ServerDataProvider {
 
     public static final String JCO_REP_DEST = ServerDataProvider.JCO_REP_DEST;
 
-    private final Map<String, Properties> serverProperties = new HashMap<>();
+    private static final SAPServerDataProvider INSTANCE = new SAPServerDataProvider();
+    private static final AtomicBoolean registered = new AtomicBoolean(false);
+
+    private final Map<String, Properties> serverProperties = new ConcurrentHashMap<>();
+
+    private SAPServerDataProvider() {}
+
+    public static SAPServerDataProvider getInstance() {
+        return INSTANCE;
+    }
+
+    public static void registerIfAbsent() {
+        if (registered.compareAndSet(false, true)) {
+            Environment.registerServerDataProvider(INSTANCE);
+        }
+    }
 
     @Override
     public Properties getServerProperties(String serverName) {
@@ -62,7 +79,11 @@ public class SAPServerDataProvider implements ServerDataProvider {
                     jcoServerConfig.getStringValue(SAPConstants.JCO_GWSERV).toString());
             properties.setProperty(ServerDataProvider.JCO_PROGID,
                     jcoServerConfig.getStringValue(SAPConstants.JCO_PROGID).toString());
-            properties.setProperty(ServerDataProvider.JCO_REP_DEST, repositoryDestination);
+            properties.setProperty(ServerDataProvider.JCO_CONNECTION_COUNT,
+                    jcoServerConfig.getIntValue(SAPConstants.JCO_CONNECTION_COUNT).toString());
+            if (repositoryDestination != null) {
+                properties.setProperty(ServerDataProvider.JCO_REP_DEST, repositoryDestination);
+            }
             serverProperties.put(serverName, properties);
         } catch (Exception e) {
             throw new RuntimeException("Error while adding server config: " + e.getMessage());

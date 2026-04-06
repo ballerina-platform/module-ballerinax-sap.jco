@@ -29,8 +29,8 @@ public class SAPConstants {
     public static final String TIME_OF_DAY = "TimeOfDay";
 
     // Config Types
-    public static final String JCO_SERVER_CONFIG_NAME = "ServerConfig & readonly";
-    public static final String JCO_DESTINATION_CONFIG_NAME = "DestinationConfig & readonly";
+    public static final String JCO_SERVER_CONFIG = "ServerConfig";
+    public static final String JCO_DESTINATION_CONFIG = "DestinationConfig";
     public static final String JCO_SERVER_PREFIX = "jco.server.";
 
     // Server Configs
@@ -58,6 +58,7 @@ public class SAPConstants {
 
     // Server Config field names
     public static final BString JCO_REPOSITORY_DESTINATION = StringUtils.fromString("repositoryDestination");
+    public static final BString JCO_CONNECTION_COUNT = StringUtils.fromString("connectionCount");
 
 
     // Class names

@@ -20,8 +20,8 @@ package io.ballerina.lib.sap;
 
 import com.sap.conn.idoc.jco.JCoIDoc;
 import com.sap.conn.idoc.jco.JCoIDocServer;
-import com.sap.conn.jco.JCoDestinationManager;
 import com.sap.conn.jco.JCoException;
+import com.sap.conn.jco.server.JCoServerState;
 import io.ballerina.lib.sap.dataproviders.SAPDestinationDataProvider;
 import io.ballerina.lib.sap.dataproviders.SAPServerDataProvider;
 import io.ballerina.lib.sap.idoc.BallerinaIDocHandlerFactory;
@@ -37,36 +37,43 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class Listener {
 
     private static final Logger logger = LoggerFactory.getLogger(Listener.class);
 
+    // JCo allows only one server per (gwhost|gwserv|progid) combination per JVM.
+    // We reuse the same JCoIDocServer object for repeated Listener creations with
+    // the same connection configuration so that subsequent JCoIDoc.getServer() calls
+    // with a new UUID name do not fail with "already used for a running server".
+    private static final Map<String, JCoIDocServer> serverRegistry = new ConcurrentHashMap<>();
+
     public static Object init(BObject listenerBObject, BMap<BString, Object> serverConfig, BString serverName) {
         try {
-            SAPServerDataProvider sp = new SAPServerDataProvider();
-            if (serverConfig.getType().getName().equals(SAPConstants.JCO_SERVER_CONFIG_NAME)) {
-                Object repDestObj = serverConfig.get(SAPConstants.JCO_REPOSITORY_DESTINATION);
-                String repositoryDestination = (repDestObj != null)
-                        ? repDestObj.toString()
-                        : serverName.getValue();
-                sp.addServerConfig(serverConfig, serverName.getValue(), repositoryDestination);
-                com.sap.conn.jco.ext.Environment.registerServerDataProvider(sp);
-                // Validate that the repository destination is reachable before proceeding.
-                try {
-                    JCoDestinationManager.getDestination(repositoryDestination);
-                } catch (JCoException e) {
-                    return SAPErrorCreator.createError("Repository destination '" + repositoryDestination
-                            + "' not found. Ensure a client destination with this name is registered "
-                            + "(e.g., via an active jco:Client) before starting the listener.", e);
+            JCoIDocServer server;
+            if (serverConfig.getType().getName().equals(SAPConstants.JCO_SERVER_CONFIG)) {
+                String gwhost = serverConfig.getStringValue(SAPConstants.JCO_GWHOST).toString();
+                String gwserv = serverConfig.getStringValue(SAPConstants.JCO_GWSERV).toString();
+                String progid = serverConfig.getStringValue(SAPConstants.JCO_PROGID).toString();
+                String serverKey = gwhost + "|" + gwserv + "|" + progid;
+                if (serverRegistry.containsKey(serverKey)) {
+                    server = serverRegistry.get(serverKey);
+                } else {
+                    Object repDestObj = serverConfig.get(SAPConstants.JCO_REPOSITORY_DESTINATION);
+                    String repositoryDestination = (repDestObj != null) ? repDestObj.toString() : null;
+                    SAPServerDataProvider sp = SAPServerDataProvider.getInstance();
+                    sp.addServerConfig(serverConfig, serverName.getValue(), repositoryDestination);
+                    SAPServerDataProvider.registerIfAbsent();
+                    server = JCoIDoc.getServer(serverName.getValue());
+                    serverRegistry.put(serverKey, server);
                 }
             } else {
                 if (!serverConfig.isEmpty()) {
                     Map<String, String> advancedServerConfig = new HashMap<>();
                     Map<String, String> advancedDestinationConfig = new HashMap<>();
                     serverConfig.entrySet().forEach(entry -> {
-                        String rawKey = entry.getKey().toString();
-                        String key = rawKey.substring(1, rawKey.length() - 1);
+                        String key = entry.getKey().toString();
                         String value = entry.getValue().toString();
                         if (key.startsWith(SAPConstants.JCO_SERVER_PREFIX)) {
                             advancedServerConfig.put(key, value);
@@ -74,22 +81,32 @@ public final class Listener {
                             advancedDestinationConfig.put(key, value);
                         }
                     });
-                    if (!advancedDestinationConfig.isEmpty()) {
-                        SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
-                        String destinationName = advancedServerConfig.
-                                containsKey(SAPServerDataProvider.JCO_REP_DEST) ?
-                                advancedServerConfig.get(SAPServerDataProvider.JCO_REP_DEST) :
-                                serverName.getValue();
-                        dp.addAdvancedDestinationConfig(advancedDestinationConfig, destinationName);
-                        com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
+                    String gwhost = advancedServerConfig.getOrDefault("jco.server.gwhost", "");
+                    String gwserv = advancedServerConfig.getOrDefault("jco.server.gwserv", "");
+                    String progid = advancedServerConfig.getOrDefault("jco.server.progid", "");
+                    String serverKey = gwhost + "|" + gwserv + "|" + progid;
+                    if (serverRegistry.containsKey(serverKey)) {
+                        server = serverRegistry.get(serverKey);
+                    } else {
+                        if (!advancedDestinationConfig.isEmpty()) {
+                            String destinationName = advancedServerConfig.
+                                    containsKey(SAPServerDataProvider.JCO_REP_DEST) ?
+                                    advancedServerConfig.get(SAPServerDataProvider.JCO_REP_DEST) :
+                                    serverName.getValue();
+                            SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
+                            dp.addAdvancedDestinationConfig(advancedDestinationConfig, destinationName);
+                            SAPDestinationDataProvider.registerIfAbsent();
+                        }
+                        SAPServerDataProvider sp = SAPServerDataProvider.getInstance();
+                        sp.addAdvancedServerConfig(advancedServerConfig, serverName.getValue());
+                        SAPServerDataProvider.registerIfAbsent();
+                        server = JCoIDoc.getServer(serverName.getValue());
+                        serverRegistry.put(serverKey, server);
                     }
-                    sp.addAdvancedServerConfig(advancedServerConfig, serverName.getValue());
-                    com.sap.conn.jco.ext.Environment.registerServerDataProvider(sp);
                 } else {
                     throw new RuntimeException("Provided a empty advanced configuration for server");
                 }
             }
-            JCoIDocServer server = JCoIDoc.getServer(serverName.getValue());
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(SAPConstants.IS_SERVICE_ATTACHED, false);
             listenerBObject.addNativeData(SAPConstants.IS_STARTED, false);
@@ -175,11 +192,28 @@ public final class Listener {
         }
         try {
             server.stop();
-            client.addNativeData(SAPConstants.IS_STARTED, false);
         } catch (Throwable e) {
-            logger.error("Server stop failed.");
-            return SAPErrorCreator.createError("Server stop failed.", e);
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("already stopped")) {
+                logger.debug("Server was already stopped.");
+            } else {
+                logger.error("Server stop failed.");
+                return SAPErrorCreator.createError("Server stop failed.", e);
+            }
         }
+        // JCo's graceful stop is asynchronous: block until the server fully leaves
+        // the STOPPING state so that the next start() call on a reused server succeeds.
+        long deadline = System.currentTimeMillis() + 15_000;
+        while (server.getState() == JCoServerState.STOPPING
+                && System.currentTimeMillis() < deadline) {
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        client.addNativeData(SAPConstants.IS_STARTED, false);
         return null;
     }
 }
