@@ -211,8 +211,10 @@ public class SAPErrorCreator {
     }
 
     private static BMap<BString, Object> buildAbapDetail(int errorGroup, String key, JCoException e) {
-        // JCoException does not expose individual ABAP message part accessors in this JCo version.
-        // The exception key (e.g. "TABLE_NOT_AVAILABLE") from getKey() is the primary identifier.
+        // TODO: Extract individual ABAP message parts (message class, message number, message text,
+        //  message variables V1-V4) once JCo exposes dedicated accessors for ABAP_EXCEPTION error groups.
+        //  Currently JCoException does not provide these accessors; getKey() (e.g. "TABLE_NOT_AVAILABLE")
+        //  is the only stable identifier available. Track progress in the connector issue tracker.
         return buildJCoDetail(errorGroup, key);
     }
 

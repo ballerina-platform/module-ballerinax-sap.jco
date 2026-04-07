@@ -62,7 +62,12 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
      */
     public static void registerIfAbsent() {
         if (registered.compareAndSet(false, true)) {
-            Environment.registerDestinationDataProvider(INSTANCE);
+            try {
+                Environment.registerDestinationDataProvider(INSTANCE);
+            } catch (Exception e) {
+                registered.set(false);
+                throw e;
+            }
         }
     }
 

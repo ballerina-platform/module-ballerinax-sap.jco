@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * In-memory TID (Transaction ID) handler that accepts every inbound IDoc transaction exactly once.
+ * Accept-all in-memory TID (Transaction ID) handler with no deduplication or retry protection.
  * <p>
  * JCo calls these methods in the following order for each transactional IDoc delivery:
  * <ol>
@@ -35,9 +35,12 @@ import org.slf4j.LoggerFactory;
  * </ol>
  * If processing fails, JCo calls {@link #rollback} instead of {@code commit}.
  * <p>
- * This implementation does not persist TID state across JVM restarts, which means a restart
- * could in theory lead to duplicate IDoc processing. For at-most-once guarantees a durable
- * TID store (database, file, etc.) would be required.
+ * <strong>Limitations:</strong> {@link #checkTID} always returns {@code true}, accepting every
+ * TID unconditionally. No processed-TID set or map is maintained, so duplicate IDoc delivery
+ * (e.g., after a JVM restart or a network retry from SAP) will result in duplicate processing.
+ * True at-most-once guarantees require adding durable TID storage (database, file, etc.) and
+ * corresponding deduplication logic in {@link #checkTID}, {@link #commit}, {@link #rollback},
+ * and {@link #confirmTID}.
  */
 public class BallerinaTidHandler implements JCoServerTIDHandler {
 

@@ -145,7 +145,7 @@ public class Client {
                 return ExportParameterProcessor.getExportParams(exportParams, outputParamRecordType,
                         isRestFieldsAllowed);
             } else {
-                throw SAPErrorCreator.createParameterError(
+                return SAPErrorCreator.createParameterError(
                         "Unsupported output parameter type: " + outputParamType.getType().getName());
             }
         } catch (BError e) {

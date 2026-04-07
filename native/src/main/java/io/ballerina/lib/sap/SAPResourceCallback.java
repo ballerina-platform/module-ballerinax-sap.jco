@@ -34,6 +34,7 @@ public class SAPResourceCallback implements Callback {
 
     private static final Logger logger = LoggerFactory.getLogger(SAPResourceCallback.class);
     private final CountDownLatch countDownLatch;
+    private volatile BError returnedError;
 
     public SAPResourceCallback(CountDownLatch countDownLatch) {
         this.countDownLatch = countDownLatch;
@@ -42,30 +43,42 @@ public class SAPResourceCallback implements Callback {
     /**
      * Called when the Ballerina method completes without an unhandled panic.
      * If the return value is itself a {@link BError} (i.e., the method returned an error),
-     * it is logged but processing is otherwise considered complete.
+     * it is stored so that the calling handler can retrieve it via {@link #getReturnedError()}
+     * and invoke the service error path.
      *
      * @param o the return value of the invoked Ballerina method (may be a {@link BError})
      */
     @Override
     public void notifySuccess(Object o) {
         if (o instanceof BError) {
-            logger.error("Error occurred: " + o);
+            returnedError = (BError) o;
         }
         countDownLatch.countDown();
     }
 
     /**
      * Called when the Ballerina strand panics with an unrecoverable error.
-     * The latch is decremented first to unblock the waiting handler thread,
-     * and then the JVM process is terminated because continuing after a panic
-     * would leave the server in an undefined state.
+     * The latch is decremented to unblock the waiting handler thread, and a
+     * {@link RuntimeException} is thrown so the JCo worker thread can handle
+     * or log the panic without terminating the JVM.
      *
      * @param bError the panic error from the Ballerina runtime
      */
     @Override
     public void notifyFailure(BError bError) {
         countDownLatch.countDown();
-        logger.error("Error occurred: " + bError.toString());
-        System.exit(1);
+        logger.error("Ballerina strand panicked: " + bError.toString());
+        throw new RuntimeException("Ballerina strand panicked: " + bError.getMessage(), bError);
+    }
+
+    /**
+     * Returns the {@link BError} returned by the Ballerina method, or {@code null} if the
+     * method completed successfully (returned {@code nil} or a non-error value).
+     * Must be called only after the {@link CountDownLatch} has been counted down.
+     *
+     * @return the returned error, or {@code null}
+     */
+    public BError getReturnedError() {
+        return returnedError;
     }
 }

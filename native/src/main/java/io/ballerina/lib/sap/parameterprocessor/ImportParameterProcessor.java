@@ -221,17 +221,27 @@ public class ImportParameterProcessor {
         Object minuteObj = dateMap.get(StringUtils.fromString("minute"));
         Object secondObj = dateMap.get(StringUtils.fromString("second"));
 
-        int year = (yearObj != null) ? Integer.parseInt(yearObj.toString()) : 1970;
-        int month = (monthObj != null) ? Integer.parseInt(monthObj.toString()) : 1;
-        int day = (dayObj != null) ? Integer.parseInt(dayObj.toString()) : 1;
+        if (yearObj == null || monthObj == null || dayObj == null) {
+            return null;
+        }
+
+        int year = Integer.parseInt(yearObj.toString());
+        int month = Integer.parseInt(monthObj.toString());
+        int day = Integer.parseInt(dayObj.toString());
 
         int hour = (hourObj != null) ? Integer.parseInt(hourObj.toString()) : 0;
         int minute = (minuteObj != null) ? Integer.parseInt(minuteObj.toString()) : 0;
         int second = (secondObj != null) ? Integer.parseInt(secondObj.toString()) : 0;
 
         Calendar calendar = Calendar.getInstance();
-        calendar.set(year, month - 1, day, hour, minute, second);
-        return calendar.getTime();
+        calendar.setLenient(false);
+        try {
+            calendar.set(year, month - 1, day, hour, minute, second);
+            calendar.set(Calendar.MILLISECOND, 0);
+            return calendar.getTime();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static void throwUnsupportedUnionTypeError(Object key, String type) {

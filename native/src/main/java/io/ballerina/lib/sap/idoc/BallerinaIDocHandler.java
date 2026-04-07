@@ -88,12 +88,17 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
                     IDocXMLProcessor.RENDER_WITH_TABS_AND_CRLF);
             String xmlContent = stringWriter.toString();
             CountDownLatch countDownLatch = new CountDownLatch(1);
-            Callback callback = new SAPResourceCallback(countDownLatch);
+            SAPResourceCallback callback = new SAPResourceCallback(countDownLatch);
             try {
                 BXml xmlContentValue = XmlUtils.parse(xmlContent);
                 Object[] args = {xmlContentValue, true};
                 invokeOnReceive(callback, args);
                 countDownLatch.await();
+                BError returnedError = callback.getReturnedError();
+                if (returnedError != null) {
+                    BError bError = SAPErrorCreator.createIDocError("IDoc processing failed.", returnedError);
+                    invokeOnError(new Object[]{bError, true});
+                }
             } catch (InterruptedException | BError exception) {
                 BError bError;
                 if (exception instanceof BError) {
@@ -165,7 +170,12 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
             }
         }
 
-        Type returnType = onErrorFunction != null ? onErrorFunction.getReturnType() : null;
+        if (onErrorFunction == null) {
+            logger.debug("No onError method found on service; skipping error dispatch.");
+            return;
+        }
+
+        Type returnType = onErrorFunction.getReturnType();
         if (returnType == null) {
             returnType = PredefinedTypes.TYPE_NULL;
         }
