@@ -12,7 +12,16 @@ management (CRM), enterprise performance management (EPM), product lifecycle man
 management (SRM), supply chain management (SCM), business technology platform (BTP), and the SAP AppGyver programming
 environment for businesses.
 
-The `ballerinax/sap.jco` package exposes the SAP JCo library as ballerina functions.
+The `ballerinax/sap.jco` package exposes the SAP JCo library as Ballerina functions, enabling RFC execution, IDoc dispatch, and IDoc reception from SAP systems.
+
+## Key Features
+
+- Connect to SAP systems via SAP JCo (Java Connector)
+- Execute BAPIs and Remote Function Calls (RFC)
+- Support for IDoc processing and exchange — both sending and receiving
+- Distinct typed error hierarchy (`ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `IDocError`, and more) for precise error handling
+- Singleton destination and server data providers enabling multiple concurrent clients and listeners without JCo provider conflicts
+- Compatible with SAP ERP and S/4HANA systems
 
 ## Setup Guide
 
@@ -113,6 +122,12 @@ configurable jco:DestinationConfig configurations = ?;
 jco:Client jcoClient = check new (configurations);
 ```
 
+Provide an explicit `destinationId` when the client is referenced by a listener as its `repositoryDestination`:
+
+```ballerina
+jco:Client jcoClient = check new (configurations, destinationId = "MY_DESTINATION");
+```
+
 #### Initialize a new JCo listener instance
 
 Configure the necessary SAP connection parameters in `Config.toml` in the project directory:
@@ -120,9 +135,13 @@ Configure the necessary SAP connection parameters in `Config.toml` in the projec
 ```toml
 [configurations]
 gwhost = "sapgw.example.com"
-gwserv = "3300"
+gwserv = "sapgw00"
 progid = "JCO_PROGRAM_ID"
+connectionCount = 2
+repositoryDestination = "MY_DESTINATION"
 ```
+
+`repositoryDestination` must match the `destinationId` of an already-initialised `Client` that provides IDoc metadata lookups. It can be omitted if the listener does not require metadata resolution.
 
 Then, create a new JCo listener instance for IDoc listener operations.
 
@@ -131,15 +150,15 @@ configurable jco:ServerConfig configurations = ?;
 jco:Listener jcoListener = check new (configurations);
 ```
 
-In addition to the `DestinationConfig` and `ServerConfig`, you can also use `AdvancedConfig` to configure a client and/or listener. For example, the `AdvancedConfig` can be used to configure the listener with client as follows:
+Alternatively, use `AdvancedConfig` (a flat `map<string>`) to supply raw JCo property keys when you need settings not covered by `ServerConfig` or `DestinationConfig`:
 
 ```toml
 [configurations]
 "jco.server.gwhost" = "sample.gwhost.com"
 "jco.server.gwserv" = "sapgw00"
 "jco.server.progid" = "SAMPLE_PROG_ID"
-"jco.server.connection_count" = "1"
-"jco.server.repository_destination" = "REPOSITORY_DESTINATION"
+"jco.server.connection_count" = "2"
+"jco.server.repository_destination" = "MY_DESTINATION"
 "jco.client.ashost" = "10.128.0.1"
 "jco.client.sysnr" = "00"
 "jco.client.client" = "100"
@@ -232,9 +251,9 @@ This repository only contains the source code for the package.
 
 1. Download and install Java SE Development Kit (JDK) version 17. You can download it from either of the following
    sources:
-   
-    * [Oracle JDK](https://www.oracle.com/java/technologies/downloads/)
-    * [OpenJDK](https://adoptium.net/)
+
+   - [Oracle JDK](https://www.oracle.com/java/technologies/downloads/)
+   - [OpenJDK](https://adoptium.net/)
 
    > **Note:** After installation, remember to set the `JAVA_HOME` environment variable to the directory where JDK was
    installed.
@@ -322,8 +341,8 @@ All the contributors are encouraged to read the [Ballerina Code of Conduct](http
 
 ## Useful links
 
-* For more information go to the [`sap` package](https://lib.ballerina.io/ballerinax/sap.jco/latest).
-* For example demonstrations of the usage, go to [Ballerina By Examples](https://ballerina.io/learn/by-example/).
-* Chat live with us via our [Discord server](https://discord.gg/ballerinalang).
-* Post all technical questions on Stack Overflow with
+- For more information go to the [`sap` package](https://lib.ballerina.io/ballerinax/sap.jco/latest).
+- For example demonstrations of the usage, go to [Ballerina By Examples](https://ballerina.io/learn/by-example/).
+- Chat live with us via our [Discord server](https://discord.gg/ballerinalang).
+- Post all technical questions on Stack Overflow with
   the [#ballerina](https://stackoverflow.com/questions/tagged/ballerina) tag.
