@@ -135,18 +135,18 @@ public class ExportParameterProcessor {
                             nestedRecordType = (RecordType) TypeUtils.getReferredType(
                                     outputParamType.getFields().get(fieldName).getFieldType());
                         } catch (ClassCastException e) {
-                            throw SAPErrorCreator.fromBError("Error while retrieving output structure " +
+                            throw SAPErrorCreator.createParameterError("Error while retrieving output structure " +
                                     "parameter for field: " +
                                     fieldName + ". Unsupported type " + TypeUtils.getReferredType(
-                                    outputParamType.getFields().get(fieldName).getFieldType()).toString(), null);
+                                    outputParamType.getFields().get(fieldName).getFieldType()).toString());
                         }
                     } else {
                         try {
                             nestedRecordType = setFields(exportList.getStructure(i));
                         } catch (ClassCastException e) {
-                            throw SAPErrorCreator.fromBError("Error while retrieving output anonymous " +
+                            throw SAPErrorCreator.createParameterError("Error while retrieving output anonymous " +
                                     "structure parameter for field: " + fieldName + ". Unsupported type "
-                                    + setFields(exportList.getStructure(i)), null);
+                                    + setFields(exportList.getStructure(i)));
                         }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
@@ -159,29 +159,29 @@ public class ExportParameterProcessor {
                             recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
                                     outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
                         } catch (ClassCastException e) {
-                            throw SAPErrorCreator.fromBError("Error while retrieving output table " +
+                            throw SAPErrorCreator.createParameterError("Error while retrieving output table " +
                                     "parameter for field: " +
                                     fieldName + ". Unsupported type " + TypeUtils.getReferredType(((ArrayType)
                                             outputParamType.getFields().get(fieldName).getFieldType()).getElementType())
-                                    .toString(), null);
+                                    .toString());
                         }
                     } else {
                         try {
                             recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
                                     setTableFields(exportList.getTable(i)).getElementType()).getElementType());
                         } catch (ClassCastException e) {
-                            throw SAPErrorCreator.fromBError("Error while retrieving output anonymous " +
+                            throw SAPErrorCreator.createParameterError("Error while retrieving output anonymous " +
                                     "table parameter for field: " +
                                     fieldName + ". Unsupported type " + setTableFields(exportList.getTable(i)).
-                                    getElementType().toString(), null);
+                                    getElementType().toString());
                         }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
                             populateRecordArray(exportList.getTable(i), recordType, isRestFieldsAllowed));
                     break;
                 default:
-                    throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                            fieldName + ". Unsupported type " + type, null);
+                    throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for field: " +
+                            fieldName + ". Unsupported type " + type);
             }
         }
         return outputMap;
@@ -261,8 +261,8 @@ public class ExportParameterProcessor {
                             populateRecordArray(exportStructure.getTable(i), recordType, isRestFieldsAllowed));
                     break;
                 default:
-                    throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                            fieldName + ". Unsupported type " + type, null);
+                    throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for field: " +
+                            fieldName + ". Unsupported type " + type);
             }
         }
         return outputMap;
@@ -347,8 +347,8 @@ public class ExportParameterProcessor {
                         record.put(StringUtils.fromString(fieldName), nestedRecordArray);
                         break;
                     default:
-                        throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                                fieldName + ". Unsupported type " + type, null);
+                        throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for " + 
+                            "field: " + fieldName + ". Unsupported type " + type);
                 }
             }
             recordArray.append(record);
@@ -395,7 +395,7 @@ public class ExportParameterProcessor {
                                         0, true, 0),
                                 fieldName, 0));
                     } else {
-                        throw SAPErrorCreator.fromBError("Unsupported date type " + type, null);
+                        throw SAPErrorCreator.createParameterError("Unsupported date type: " + type);
                     }
                     break;
                 case SAPConstants.JCO_STRUCTURE:
@@ -405,8 +405,8 @@ public class ExportParameterProcessor {
                     fields.put(fieldName, TypeCreator.createField(setTableFields(structure.getTable(i)), fieldName, 0));
                     break;
                 default:
-                    throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                            fieldName + ". Unsupported type " + type, null);
+                    throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for field: " +
+                            fieldName + ". Unsupported type " + type);
 
             }
         }
@@ -460,7 +460,7 @@ public class ExportParameterProcessor {
                                         0, true, 0),
                                 tableFieldName, 0));
                     } else {
-                        throw SAPErrorCreator.fromBError("Unsupported date type.", null);
+                        throw SAPErrorCreator.createParameterError("Unsupported date type.");
                     }
                     break;
                 case SAPConstants.JCO_STRUCTURE:
@@ -472,8 +472,8 @@ public class ExportParameterProcessor {
                             table.getTable(j)), tableFieldName, 0));
                     break;
                 default:
-                    throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                            tableFieldName + ". Unsupported type " + tableFieldType, null);
+                    throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for field: " +
+                            tableFieldName + ". Unsupported type " + tableFieldType);
             }
         }
         return TypeCreator.createArrayType(TypeCreator.createArrayType(TypeCreator.createRecordType(
@@ -507,7 +507,7 @@ public class ExportParameterProcessor {
                     .TIME_OF_DAY_RECORD_SECOND), calendar.get(Calendar.SECOND));
             return timeMap;
         } else {
-            throw SAPErrorCreator.fromBError("Unsupported date type " + type, null);
+            throw SAPErrorCreator.createParameterError("Unsupported date type: " + type);
         }
     }
 

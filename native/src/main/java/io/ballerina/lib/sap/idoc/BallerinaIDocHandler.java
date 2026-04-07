@@ -95,22 +95,24 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
                 invokeOnReceive(callback, args);
                 countDownLatch.await();
             } catch (InterruptedException | BError exception) {
-                if (exception instanceof InterruptedException) {
+                BError bError;
+                if (exception instanceof BError) {
+                    // Always wrap in IDocError so the type satisfies the `Error` union expected
+                    // by the service onError method. The original BError is preserved as cause.
+                    bError = SAPErrorCreator.createIDocError("IDoc processing failed.", (BError) exception);
+                } else {
                     // Restore the interrupt status so that callers up the stack can observe it.
                     Thread.currentThread().interrupt();
+                    bError = SAPErrorCreator.createIDocError("IDoc processing interrupted.", exception);
                 }
-                Object[] args = new Object[] {
-                        (exception instanceof BError) ? exception : SAPErrorCreator.createError(
-                                exception.getMessage(), exception), true
-                };
-                invokeOnError(args);
+                invokeOnError(new Object[]{bError, true});
             }
         } catch (Throwable thr) {
             logger.error("Error while processing IDoc", thr);
-            Object[] args = new Object[] {
-                    SAPErrorCreator.createError(thr.getMessage(), thr), true
-            };
-            invokeOnError(args);
+            BError error = (thr instanceof BError)
+                    ? SAPErrorCreator.createIDocError("IDoc processing failed.", (BError) thr)
+                    : SAPErrorCreator.createIDocError("IDoc processing failed.", thr);
+            invokeOnError(new Object[]{error, true});
         } finally {
             try {
                 stringWriter.close();

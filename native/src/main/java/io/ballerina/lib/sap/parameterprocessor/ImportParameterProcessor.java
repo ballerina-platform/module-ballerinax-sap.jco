@@ -87,8 +87,8 @@ public class ImportParameterProcessor {
                         if (dateValue != null) {
                             jcoParamList.setValue(key, dateValue);
                         } else {
-                            throw SAPErrorCreator.fromBError("Invalid date record: year, month, " +
-                                    "and day must be provided.", null);
+                            throw SAPErrorCreator.createParameterError(
+                                        "Invalid date record: year, month, and day must be provided.");
                         }
                     } else {
                         JCoStructure structure = jcoParamList.getStructure(key);
@@ -140,8 +140,8 @@ public class ImportParameterProcessor {
                             if (dateValue != null) {
                                 table.setValue(fieldName, dateValue);
                             } else {
-                                throw SAPErrorCreator.fromBError("Invalid date record: year, month, " +
-                                        "and day must be provided.", null);
+                                throw SAPErrorCreator.createParameterError(
+                                        "Invalid date record: year, month, and day must be provided.");
                             }
                         } else {
                             JCoStructure structure = table.getStructure(fieldName);
@@ -192,8 +192,8 @@ public class ImportParameterProcessor {
                         if (dateValue != null) {
                             structure.setValue(key, dateValue);
                         } else {
-                            throw SAPErrorCreator.fromBError("Invalid date record: year, month, " +
-                                    "and day must be provided.", null);
+                            throw SAPErrorCreator.createParameterError(
+                                        "Invalid date record: year, month, and day must be provided.");
                         }
                     } else {
                         JCoStructure nestedStructure = structure.getStructure(key);
@@ -235,9 +235,9 @@ public class ImportParameterProcessor {
     }
 
     private static void throwUnsupportedUnionTypeError(Object key, String type) {
-        throw SAPErrorCreator.fromBError("Error while processing destination properties: " +
-                key.toString() + ". Unsupported union type '" + type + "'. Supported types " +
-                "are: string, int, float, decimal and nullable supported types.", null);
+        throw SAPErrorCreator.createParameterError(
+                "Unsupported parameter type for '" + key + "': '" + type + "'. " +
+                "Supported types are: string, int, float, decimal, byte[], Date, TimeOfDay, record, and array.");
     }
 
 }

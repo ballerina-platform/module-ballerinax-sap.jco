@@ -146,6 +146,7 @@ function testExecuteWithEmptyFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
     json?|error result = sapClient->execute("", {});
     test:assertTrue(result is Error, "Expected an Error for an empty function name");
+    test:assertTrue(result is ParameterError, "Expected a ParameterError for an empty function name");
 }
 
 @test:Config {
@@ -156,4 +157,5 @@ function testExecuteWithInvalidFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
     json?|error result = sapClient->execute("NONEXISTENT_RFC_FUNCTION_XYZ", {});
     test:assertTrue(result is Error, "Expected an Error for a non-existent RFC function name");
+    test:assertTrue(result is ParameterError, "Expected a ParameterError for a non-existent RFC function");
 }

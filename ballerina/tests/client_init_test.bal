@@ -60,6 +60,7 @@ function testClientInitWithInvalidCredentials() {
     };
     Client|Error result = new (invalidConfig);
     test:assertTrue(result is Error, "Expected an Error for invalid credentials");
+    test:assertTrue(result is LogonError, "Expected a LogonError for rejected credentials");
 }
 
 // Expects an Error when the SAP host is unreachable.
@@ -78,4 +79,5 @@ function testClientInitWithInvalidHost() {
     };
     Client|Error result = new (invalidHostConfig);
     test:assertTrue(result is Error, "Expected an Error for an unreachable SAP host");
+    test:assertTrue(result is ConnectionError, "Expected a ConnectionError for an unreachable host");
 }

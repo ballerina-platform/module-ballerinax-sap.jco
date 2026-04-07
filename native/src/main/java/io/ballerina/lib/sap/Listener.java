@@ -141,7 +141,7 @@ public final class Listener {
             return SAPErrorCreator.fromJCoException(e);
         } catch (Throwable e) {
             logger.error("Server initialization failed.");
-            return SAPErrorCreator.createError("Server initialization failed.", e);
+            return SAPErrorCreator.createConfigError("Server initialization failed.", e);
         }
     }
 
@@ -153,7 +153,8 @@ public final class Listener {
      * a {@link BallerinaTidHandler}, and a {@link BallerinaThrowableListener} on the underlying
      * {@link JCoIDocServer}.
      *
-     * @param environment     the Ballerina runtime environment (used to obtain a {@link io.ballerina.runtime.api.Runtime})
+     * @param environment     the Ballerina runtime environment (used to obtain a 
+     * {@link io.ballerina.runtime.api.Runtime})
      * @param listenerBObject the Ballerina {@code Listener} object
      * @param service         the Ballerina service object that will receive IDoc notifications
      * @param name            optional service path name (not used by the JCo transport)
@@ -164,8 +165,8 @@ public final class Listener {
         JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
         boolean isServiceAttached = (boolean) listenerBObject.getNativeData(SAPConstants.IS_SERVICE_ATTACHED);
         if (isServiceAttached) {
-            return SAPErrorCreator.createError("One service is already attached to the listener. Only one service " +
-                    "can be attached to a listener.");
+            return SAPErrorCreator.createConfigError(
+                    "One service is already attached to the listener. Only one service can be attached.");
         }
         try {
             server.setIDocHandlerFactory(new BallerinaIDocHandlerFactory(service, runtime));
@@ -178,7 +179,7 @@ public final class Listener {
         } catch (Throwable e) {
             // We are catching Throwable here because, underlying JCo library throws throwable in certain cases.
             logger.error("Server attach failed.");
-            return SAPErrorCreator.createError("Server attach failed.", e);
+            return SAPErrorCreator.createConfigError("Server attach failed.", e);
         }
     }
 
@@ -192,18 +193,18 @@ public final class Listener {
     public static Object start(BObject client) {
         JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
         if (server == null) {
-            return SAPErrorCreator.createError("Server start failed: listener is not initialized.");
+            return SAPErrorCreator.createConfigError("Server start failed: listener is not initialized.");
         }
         boolean isStarted = (boolean) client.getNativeData(SAPConstants.IS_STARTED);
         if (isStarted) {
-            return SAPErrorCreator.createError("Server start failed: listener is already started.");
+            return SAPErrorCreator.createConfigError("Server start failed: listener is already started.");
         }
         try {
             server.start();
             client.addNativeData(SAPConstants.IS_STARTED, true);
         } catch (Throwable e) {
             logger.error("Server start failed.");
-            return SAPErrorCreator.createError("Server start failed.", e);
+            return SAPErrorCreator.createConfigError("Server start failed.", e);
         }
         return null;
     }
@@ -251,7 +252,7 @@ public final class Listener {
             listener.addNativeData(SAPConstants.IS_STARTED, false);
         } catch (Throwable e) {
             logger.error("Server detach failed.");
-            return SAPErrorCreator.createError("Server detach failed.", e);
+            return SAPErrorCreator.createConfigError("Server detach failed.", e);
         }
         return null;
     }
@@ -284,7 +285,7 @@ public final class Listener {
                 logger.debug("Server was already stopped.");
             } else {
                 logger.error("Server stop failed.");
-                return SAPErrorCreator.createError("Server stop failed.", e);
+                return SAPErrorCreator.createConfigError("Server stop failed.", e);
             }
         }
         // JCo's graceful stop is asynchronous: block until the server fully leaves

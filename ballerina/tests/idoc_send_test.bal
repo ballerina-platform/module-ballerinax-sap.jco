@@ -96,6 +96,7 @@ function testSendIDocWithUnknownIDocType() returns error? {
     Client sapClient = check new (destinationConfig);
     Error? result = sapClient->sendIDoc(unknownTypeIDoc);
     test:assertTrue(result is Error, "Expected an Error for an unknown iDoc type");
+    test:assertTrue(result is IDocError|JCoError, "Expected an IDocError or JCoError for an unknown iDoc type");
 }
 
 // Expects an Error when the iDoc XML is missing the mandatory IDOC element.
@@ -107,4 +108,5 @@ function testSendIDocWithMissingIdocElement() returns error? {
     Client sapClient = check new (destinationConfig);
     Error? result = sapClient->sendIDoc(missingIdocElementXml);
     test:assertTrue(result is Error, "Expected an Error when the IDOC element is absent");
+    test:assertTrue(result is IDocError, "Expected an IDocError when the IDOC element is absent");
 }

@@ -70,5 +70,60 @@ public enum IDocType {
 # Any value that can appear as an RFC import/export parameter or a field inside a JCo structure or table.
 public type FieldType string|int|float|decimal|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
 
-# An error returned by the SAP JCo connector.
-public type Error distinct error;
+# Detail record carried by JCo-origin errors, providing the JCo error group and SAP exception key.
+public type JCoErrorDetail record {|
+    # JCo error group constant (e.g. `JCoException.JCO_ERROR_COMMUNICATION = 101`).
+    int errorGroup;
+    # SAP exception key identifying the specific error (e.g. `"TABLE_NOT_AVAILABLE"`).
+    string key?;
+|};
+
+# Extended detail record for ABAP application exceptions, adding the ABAP message fields.
+public type AbapApplicationErrorDetail record {|
+    *JCoErrorDetail;
+    # ABAP message class (two-character identifier).
+    string abapMsgClass?;
+    # ABAP message type: E (error), W (warning), I (info), S (success), A (abend).
+    string abapMsgType?;
+    # Three-digit ABAP message number.
+    string abapMsgNumber?;
+    # First ABAP message variable (&1 placeholder).
+    string abapMsgV1?;
+    # Second ABAP message variable (&2 placeholder).
+    string abapMsgV2?;
+    # Third ABAP message variable (&3 placeholder).
+    string abapMsgV3?;
+    # Fourth ABAP message variable (&4 placeholder).
+    string abapMsgV4?;
+|};
+
+# Raised when the JCo client cannot reach the SAP gateway (network / communication failure).
+public type ConnectionError distinct error<JCoErrorDetail>;
+
+# Raised when the SAP system rejects the supplied logon credentials.
+public type LogonError distinct error<JCoErrorDetail>;
+
+# Raised when JCo cannot allocate a required resource (e.g. connection pool exhausted).
+public type ResourceError distinct error<JCoErrorDetail>;
+
+# Raised when the SAP system reports an internal system failure.
+public type SystemError distinct error<JCoErrorDetail>;
+
+# Raised when an ABAP function module throws a class-based or classic exception.
+public type AbapApplicationError distinct error<AbapApplicationErrorDetail>;
+
+# Raised for all other JCo-level errors not covered by a more specific type.
+public type JCoError distinct error<JCoErrorDetail>;
+
+# Raised for IDoc-specific failures (XML parsing, send, or server-side processing).
+public type IDocError distinct error;
+
+# Raised when an RFC import or export parameter cannot be converted to or from a Ballerina type.
+public type ParameterError distinct error;
+
+# Raised during client or listener initialization and lifecycle management.
+public type ConfigurationError distinct error;
+
+# Union of all errors that can be returned by the SAP JCo connector.
+public type Error ConnectionError|LogonError|ResourceError|SystemError|AbapApplicationError
+    |JCoError|IDocError|ParameterError|ConfigurationError;

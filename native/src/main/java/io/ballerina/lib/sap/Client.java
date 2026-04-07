@@ -37,6 +37,7 @@ import io.ballerina.runtime.api.TypeTags;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.RecordType;
 import io.ballerina.runtime.api.utils.JsonUtils;
+import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
 import io.ballerina.runtime.api.values.BString;
@@ -80,7 +81,7 @@ public class Client {
             return SAPErrorCreator.fromJCoException(e);
         } catch (Exception e) {
             logger.error("Client initialization failed.");
-            return SAPErrorCreator.createError("Client initialization failed.", e);
+            return SAPErrorCreator.createConfigError("Client initialization failed.", e);
         }
     }
 
@@ -104,17 +105,18 @@ public class Client {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
             JCoRepository repository = destination.getRepository();
             if (functionName.toString().isEmpty()) {
-                return SAPErrorCreator.fromBError("Function name is empty", null);
+                return SAPErrorCreator.createParameterError("Function name is empty.");
             }
             JCoFunction function = repository.getFunction(functionName.toString());
             if (function == null) {
-                return SAPErrorCreator.fromBError("RFC function '" + functionName + "' not found in SAP.", null);
+                return SAPErrorCreator.createParameterError(
+                        "RFC function '" + functionName + "' not found in SAP.");
             }
 
             JCoParameterList importParams = function.getImportParameterList();
             if (importParams == null && !inputParams.isEmpty()) {
-                return SAPErrorCreator.fromBError("RFC function '" + functionName
-                        + "' has no import parameters but input params were provided.", null);
+                return SAPErrorCreator.createParameterError("RFC function '" + functionName
+                        + "' has no import parameters but input params were provided.");
             }
             if (importParams != null) {
                 ImportParameterProcessor.setImportParams(importParams, inputParams);
@@ -143,12 +145,17 @@ public class Client {
                 return ExportParameterProcessor.getExportParams(exportParams, outputParamRecordType,
                         isRestFieldsAllowed);
             } else {
-                throw SAPErrorCreator.fromBError("Unsupported output parameter type: " +
-                        outputParamType.getType().getName(), null);
+                throw SAPErrorCreator.createParameterError(
+                        "Unsupported output parameter type: " + outputParamType.getType().getName());
             }
-        } catch (Throwable e) {
-            logger.error("Error occurred during RFC execution. Error: " + e.getMessage());
+        } catch (BError e) {
+            return e;
+        } catch (JCoException e) {
+            logger.error("RFC execution failed.");
             return SAPErrorCreator.fromJCoException(e);
+        } catch (Throwable e) {
+            logger.error("Unexpected error during RFC execution.");
+            return SAPErrorCreator.fromThrowable("RFC execution failed.", e);
         }
     }
 
@@ -183,10 +190,10 @@ public class Client {
             logger.debug("IDoc sent successfully with TID: {}", tid);
             return null;
         } catch (JCoException e) {
-            logger.error("JCoException occurred");
+            logger.error("IDoc send failed.");
             return SAPErrorCreator.fromJCoException(e);
         } catch (IDocException e) {
-            logger.error("IDocException occurred");
+            logger.error("IDoc send failed.");
             return SAPErrorCreator.fromIDocException(e);
         }
     }
