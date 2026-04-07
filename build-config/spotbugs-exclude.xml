@@ -34,4 +34,14 @@
         <Class name="io.ballerina.lib.sap.idoc.BallerinaIDocHandler"/>
         <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
+    <Match>
+        <Class name="io.ballerina.lib.sap.dataproviders.SAPDestinationDataProvider"/>
+        <Method name="getInstance"/>
+        <Bug pattern="MS_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Class name="io.ballerina.lib.sap.dataproviders.SAPServerDataProvider"/>
+        <Method name="getInstance"/>
+        <Bug pattern="MS_EXPOSE_REP"/>
+    </Match>
 </FindBugsFilter>
