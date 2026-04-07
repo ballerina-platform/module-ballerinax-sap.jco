@@ -103,6 +103,7 @@ function testListenerInitWithInvalidGateway() returns error? {
     check sapListener.attach(dummyService);
     Error? result = sapListener.'start();
     test:assertTrue(result is Error, "Expected an Error when starting with an unreachable SAP gateway");
+    check sapListener.gracefulStop();
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +133,6 @@ function testListenerAttachMultipleServices() returns error? {
     Listener sapListener = check new (serverConfig);
     check sapListener.attach(dummyService);
     Error? result = sapListener.attach(dummyService);
-    test:assertTrue(result is Error, "Expected an Error when attaching a second service");
     test:assertTrue(result is ConfigurationError, "Expected a ConfigurationError when attaching a second service");
 }
 
@@ -174,7 +174,6 @@ function testListenerStartTwice() returns error? {
     check sapListener.attach(dummyService);
     check sapListener.'start();
     Error? result = sapListener.'start();
-    test:assertTrue(result is Error, "Expected an Error when starting an already-running listener");
     test:assertTrue(result is ConfigurationError, "Expected a ConfigurationError when starting an already-running listener");
     check sapListener.gracefulStop();
 }

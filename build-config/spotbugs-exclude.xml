@@ -41,6 +41,16 @@
         <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
     <Match>
+        <Class name="io.ballerina.lib.sap.SAPResourceCallback"/>
+        <Method name="notifyFailure"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="io.ballerina.lib.sap.dataproviders.SAPDestinationDataProvider"/>
+        <Method name="setDestinationDataEventListener"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
         <Class name="io.ballerina.lib.sap.idoc.BallerinaIDocHandler"/>
         <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
