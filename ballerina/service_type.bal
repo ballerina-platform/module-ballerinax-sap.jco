@@ -26,5 +26,5 @@ public type Service distinct service object {
     #
     # + 'error - The error that occurred.
     # + return - An error if the error handler itself fails.
-    remote function onError(Error 'error) returns error?;
+    remote function onError(error 'error) returns error?;
 };
