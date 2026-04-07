@@ -45,7 +45,7 @@ support portal and add the dependencies to your Ballerina project.
 
 #### Step 2: Setting Up Environment
 
-1. **Install JRE**: Ensure you have Java Runtime Environment (JRE) version 17 installed on your system.
+1. **Install JRE**: Ensure you have Java Runtime Environment (JRE) version 21 installed on your system.
 
 2. **Set CLASSPATH**: Configure the CLASSPATH environment variable to include the JAR files and the following native SAP JCo libraries based on your operating system:
 
@@ -61,13 +61,13 @@ After downloading the libraries, add them to your `Ballerina.toml` file in the B
 paths and relevant details.
 
 ```toml
-[[platform.java17.dependency]]
+[[platform.java21.dependency]]
 path = "../sapidoc3.jar"
 groupId = "com.sap"
 artifactId = "com.sap.conn.idoc"
 version = "3.1.*"
 
-[[platform.java17.dependency]]
+[[platform.java21.dependency]]
 path = "../sapjco3.jar"
 groupId = "com.sap"
 artifactId = "com.sap.conn.jco"
