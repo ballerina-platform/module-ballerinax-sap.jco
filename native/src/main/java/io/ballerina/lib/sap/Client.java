@@ -175,7 +175,12 @@ public class Client {
         try {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
             String iDocXML = iDoc.toString();
-            char version = iDocType.toString().charAt(0);
+            String iDocTypeStr = iDocType.toString();
+            if (iDocTypeStr.length() != 1) {
+                return SAPErrorCreator.createParameterError(
+                        "iDocType must be a single character, got: \"" + iDocTypeStr + "\"");
+            }
+            char version = iDocTypeStr.charAt(0);
 
             String tid = destination.createTID();
             logger.debug("TID created: {}", tid);

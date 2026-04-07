@@ -14,7 +14,7 @@ The `ballerinax/sap.jco` package exposes the SAP JCo library as ballerina functi
 - Connect to SAP systems via SAP JCo (Java Connector)
 - Execute BAPIs and Remote Function Calls (RFC)
 - Support for IDoc processing and exchange — both sending and receiving
-- Distinct typed error hierarchy (`ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `IDocError`, and more) for precise error handling
+- Distinct typed error hierarchy (`ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `IDocError`, among others) for precise error handling
 - Singleton destination and server data providers enabling multiple concurrent clients and listeners without JCo provider conflicts
 - Compatible with SAP ERP and S/4HANA systems
 
@@ -136,7 +136,7 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-`repositoryDestination` must match the `destinationId` of an already-initialised `Client` that provides IDoc metadata lookups. It can be omitted if the listener does not require metadata resolution.
+`repositoryDestination` must match the `destinationId` of an already-initialized `Client` that provides IDoc metadata lookups. It can be omitted if the listener does not require metadata resolution.
 
 Then, create a new JCo listener instance for IDoc listener operations.
 

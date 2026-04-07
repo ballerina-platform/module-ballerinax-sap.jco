@@ -227,8 +227,12 @@ public class SAPErrorCreator {
         if (raw == null || raw.isBlank()) {
             return fallback;
         }
-        int newline = raw.indexOf('\n');
-        String first = (newline >= 0 ? raw.substring(0, newline) : raw).trim();
-        return first.isEmpty() ? fallback : first;
+        for (String line : raw.split("\n", -1)) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+                return trimmed;
+            }
+        }
+        return fallback;
     }
 }

@@ -66,8 +66,9 @@ public class SAPResourceCallback implements Callback {
      */
     @Override
     public void notifyFailure(BError bError) {
+        returnedError = bError;
         countDownLatch.countDown();
-        logger.error("Ballerina strand panicked: " + bError.toString());
+        logger.error("Ballerina strand panicked: {}", bError);
         throw new RuntimeException("Ballerina strand panicked: " + bError.getMessage(), bError);
     }
 

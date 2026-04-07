@@ -44,6 +44,7 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     private static final AtomicBoolean registered = new AtomicBoolean(false);
 
     private final Map<String, Properties> destinationProperties = new ConcurrentHashMap<>();
+    private volatile DestinationDataEventListener eventListener;
 
     private SAPDestinationDataProvider() {}
 
@@ -89,23 +90,24 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     }
 
     /**
-     * No-op: this provider does not support runtime destination configuration changes.
-     * The event listener supplied by JCo is intentionally discarded; see {@link #supportsEvents()}.
+     * Stores the event listener supplied by JCo so that destination change events can be
+     * fired when properties are updated via {@link #addDestinationConfig} or
+     * {@link #addAdvancedDestinationConfig}.
      */
     @Override
     public void setDestinationDataEventListener(DestinationDataEventListener eventListener) {
+        this.eventListener = eventListener;
     }
 
     /**
-     * Returns {@code false} because this provider does not propagate destination configuration
-     * change events back to JCo. All destination properties are loaded once at initialisation and
-     * remain static for the lifetime of the JVM.
+     * Returns {@code true} so that JCo will invalidate its cached {@link com.sap.conn.jco.JCoDestination}
+     * instances when destination properties are updated, forcing a reload with the new configuration.
      *
-     * @return {@code false}
+     * @return {@code true}
      */
     @Override
     public boolean supportsEvents() {
-        return false;
+        return true;
     }
 
     /**
@@ -157,7 +159,11 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
                     throw new RuntimeException("Provided a empty advanced configuration for destination");
                 }
             }
+            boolean overwriting = destinationProperties.containsKey(destinationName.toString());
             destinationProperties.put(destinationName.toString(), properties);
+            if (overwriting && eventListener != null) {
+                eventListener.updated(destinationName.toString());
+            }
         } catch (Exception e) {
             throw new RuntimeException("Error while adding destination: " + e.getMessage());
         }
@@ -189,7 +195,11 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
             } else {
                 throw new RuntimeException("Provided a empty advanced configuration for destination");
             }
+            boolean overwriting = destinationProperties.containsKey(destinationName);
             destinationProperties.put(destinationName, properties);
+            if (overwriting && eventListener != null) {
+                eventListener.updated(destinationName);
+            }
         } catch (Exception e) {
             throw new RuntimeException("Error while adding destination: " + e.getMessage());
         }

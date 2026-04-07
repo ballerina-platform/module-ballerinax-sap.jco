@@ -22,6 +22,8 @@ scenarios to understand how to automate processes involving SAP systems and exte
    For examples that use a `jco:Client` (RFC execution and IDoc send):
 
     ```toml
+    apiEndpoint = "https://api.example.com/inventory"
+
     [sapConfig]
     ashost = "sap.example.com"
     sysnr = "00"
@@ -30,8 +32,6 @@ scenarios to understand how to automate processes involving SAP systems and exte
     passwd = "SECRET"
     group = "DEVGROUP"
     lang = "EN"
-
-    apiEndpoint = "https://api.example.com/inventory"
     ```
 
    For examples that use a `jco:Listener` (IDoc receive):
@@ -44,7 +44,7 @@ scenarios to understand how to automate processes involving SAP systems and exte
     connectionCount = 2
     ```
 
-   If the listener requires IDoc metadata resolution, also initialise a `jco:Client` with a matching `destinationId` and set `repositoryDestination` in the server config:
+   If the listener requires IDoc metadata resolution, also initialise a `jco:Client` with a matching `destinationId` and set `repositoryDestination` in the server config. The `destinationId` of the `jco:Client` must equal the value of `repositoryDestination`:
 
     ```toml
     [sapConfig]
@@ -60,6 +60,7 @@ scenarios to understand how to automate processes involving SAP systems and exte
     jcoClient = "000"
     user = "JCOTESTER"
     passwd = "SECRET"
+    destinationId = "MY_DESTINATION"
     ```
 
 ## Running an Example
