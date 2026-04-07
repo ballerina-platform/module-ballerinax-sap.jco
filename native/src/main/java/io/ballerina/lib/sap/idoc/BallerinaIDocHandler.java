@@ -23,18 +23,12 @@ import com.sap.conn.idoc.IDocXMLProcessor;
 import com.sap.conn.idoc.jco.JCoIDoc;
 import com.sap.conn.idoc.jco.JCoIDocHandler;
 import com.sap.conn.jco.server.JCoServerContext;
-import io.ballerina.lib.sap.ModuleUtils;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.lib.sap.SAPErrorCreator;
-import io.ballerina.lib.sap.SAPResourceCallback;
-import io.ballerina.runtime.api.Module;
-import io.ballerina.runtime.api.PredefinedTypes;
 import io.ballerina.runtime.api.Runtime;
-import io.ballerina.runtime.api.async.Callback;
-import io.ballerina.runtime.api.async.StrandMetadata;
+import io.ballerina.runtime.api.concurrent.StrandMetadata;
 import io.ballerina.runtime.api.types.MethodType;
 import io.ballerina.runtime.api.types.ObjectType;
-import io.ballerina.runtime.api.types.Type;
 import io.ballerina.runtime.api.utils.TypeUtils;
 import io.ballerina.runtime.api.utils.XmlUtils;
 import io.ballerina.runtime.api.values.BError;
@@ -45,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.concurrent.CountDownLatch;
+import java.util.Map;
 
 import static io.ballerina.runtime.api.utils.TypeUtils.getReferredType;
 
@@ -54,7 +48,7 @@ import static io.ballerina.runtime.api.utils.TypeUtils.getReferredType;
  * When JCo delivers an {@link IDocDocumentList}, this handler serialises it to XML, invokes
  * the Ballerina {@code onReceive} resource function, and waits synchronously for the strand
  * to finish before returning control to the JCo worker thread.
- * If processing fails, the Ballerina {@code onError} remote method is invoked asynchronously.
+ * If processing fails, the Ballerina {@code onError} remote method is invoked.
  */
 public class BallerinaIDocHandler implements JCoIDocHandler {
     private static final Logger logger = LoggerFactory.getLogger(BallerinaIDocHandler.class);
@@ -70,10 +64,8 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
      * Receives an IDoc document list from JCo, converts it to an XML string, and dispatches it
      * to the Ballerina {@code onReceive} resource function.
      * <p>
-     * The calling thread blocks on a {@link java.util.concurrent.CountDownLatch} until the
-     * Ballerina strand completes. Any exception that escapes (parse error, interrupted await,
-     * or a Ballerina panic surfaced as a {@link BError}) is forwarded to the service's
-     * {@code onError} remote method.
+     * Any exception that escapes (parse error or a Ballerina panic surfaced as a {@link BError})
+     * is forwarded to the service's {@code onError} remote method.
      *
      * @param serverCtx JCo server context for the current request (not used directly)
      * @param idocList  the list of IDoc documents delivered by SAP
@@ -87,29 +79,18 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
             xmlProcessor.render(idocList, stringWriter,
                     IDocXMLProcessor.RENDER_WITH_TABS_AND_CRLF);
             String xmlContent = stringWriter.toString();
-            CountDownLatch countDownLatch = new CountDownLatch(1);
-            SAPResourceCallback callback = new SAPResourceCallback(countDownLatch);
             try {
                 BXml xmlContentValue = XmlUtils.parse(xmlContent);
                 Object[] args = {xmlContentValue, true};
-                invokeOnReceive(callback, args);
-                countDownLatch.await();
-                BError returnedError = callback.getReturnedError();
-                if (returnedError != null) {
+                Object result = invokeOnReceive(args);
+                if (result instanceof BError returnedError) {
                     BError bError = SAPErrorCreator.createIDocError("IDoc processing failed.", returnedError);
                     invokeOnError(new Object[]{bError, true});
                 }
-            } catch (InterruptedException | BError exception) {
-                BError bError;
-                if (exception instanceof BError) {
-                    // Always wrap in IDocError so the type satisfies the `Error` union expected
-                    // by the service onError method. The original BError is preserved as cause.
-                    bError = SAPErrorCreator.createIDocError("IDoc processing failed.", (BError) exception);
-                } else {
-                    // Restore the interrupt status so that callers up the stack can observe it.
-                    Thread.currentThread().interrupt();
-                    bError = SAPErrorCreator.createIDocError("IDoc processing interrupted.", exception);
-                }
+            } catch (BError exception) {
+                // Always wrap in IDocError so the type satisfies the `Error` union expected
+                // by the service onError method. The original BError is preserved as cause.
+                BError bError = SAPErrorCreator.createIDocError("IDoc processing failed.", exception);
                 invokeOnError(new Object[]{bError, true});
             }
         } catch (Throwable thr) {
@@ -129,33 +110,24 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
 
     /**
      * Invokes the Ballerina {@code onReceive} resource function on the attached service.
-     * Chooses concurrent or sequential dispatch based on whether the service and the method
+     * Uses concurrent or sequential dispatch based on whether the service and the method
      * are both declared {@code isolated}.
      *
-     * @param callback the callback that will be notified when the strand completes
-     * @param args     the arguments to pass to the resource function (IDoc XML value + a {@code true} sentinel)
+     * @param args the arguments to pass to the resource function (IDoc XML value + a {@code true} sentinel)
+     * @return the return value from the Ballerina method (may be a {@link BError})
      */
-    public void invokeOnReceive(Callback callback, Object... args) {
-        Module module = ModuleUtils.getModule();
-        StrandMetadata metadata = new StrandMetadata(
-                module.getOrg(), module.getName(), module.getMajorVersion(), SAPConstants.ON_RECEIVE);
+    public Object invokeOnReceive(Object... args) {
         ObjectType serviceType = (ObjectType) getReferredType(TypeUtils.getType(service));
-        if (serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_RECEIVE)) {
-            runtime.invokeMethodAsyncConcurrently(service, SAPConstants.ON_RECEIVE, null, metadata, callback,
-                    null, PredefinedTypes.TYPE_NULL, args);
-        } else {
-            runtime.invokeMethodAsyncSequentially(service, SAPConstants.ON_RECEIVE, null, metadata, callback,
-                    null, PredefinedTypes.TYPE_NULL, args);
-        }
+        boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_RECEIVE);
+        StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
+        return runtime.callMethod(service, SAPConstants.ON_RECEIVE, metadata, args);
     }
 
     /**
      * Invokes the Ballerina {@code onError} remote method on the attached service if it exists.
-     * The invocation is fire-and-forget (no callback): errors that occur during error handling
-     * are not propagated further.
+     * Errors that occur during error handling are not propagated further.
      * <p>
-     * If the service does not declare an {@code onError} method the runtime call will fail
-     * silently; the return type defaults to {@code nil} so no type mismatch is raised.
+     * If the service does not declare an {@code onError} method the call is skipped.
      *
      * @param args the arguments to pass (Ballerina {@code Error} value + a {@code true} sentinel)
      */
@@ -175,20 +147,9 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
             return;
         }
 
-        Type returnType = onErrorFunction.getReturnType();
-        if (returnType == null) {
-            returnType = PredefinedTypes.TYPE_NULL;
-        }
-        Module module = ModuleUtils.getModule();
-        StrandMetadata metadata = new StrandMetadata(
-                module.getOrg(), module.getName(), module.getMajorVersion(), SAPConstants.ON_ERROR);
         ObjectType serviceType = (ObjectType) getReferredType(TypeUtils.getType(service));
-        if (serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR)) {
-            runtime.invokeMethodAsyncConcurrently(service, SAPConstants.ON_ERROR, null, metadata, null,
-                    null, returnType, args);
-        } else {
-            runtime.invokeMethodAsyncSequentially(service, SAPConstants.ON_ERROR, null, metadata, null,
-                    null, returnType, args);
-        }
+        boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
+        StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
+        runtime.callMethod(service, SAPConstants.ON_ERROR, metadata, args);
     }
 }
