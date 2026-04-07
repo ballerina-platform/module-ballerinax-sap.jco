@@ -221,13 +221,15 @@ public class ImportParameterProcessor {
         Object minuteObj = dateMap.get(StringUtils.fromString("minute"));
         Object secondObj = dateMap.get(StringUtils.fromString("second"));
 
-        if (yearObj == null || monthObj == null || dayObj == null) {
+        // For time:TimeOfDay records, year/month/day are absent — default to SAP epoch date.
+        boolean isTimeOnly = (yearObj == null && monthObj == null && dayObj == null);
+        if (!isTimeOnly && (yearObj == null || monthObj == null || dayObj == null)) {
             return null;
         }
 
-        int year = Integer.parseInt(yearObj.toString());
-        int month = Integer.parseInt(monthObj.toString());
-        int day = Integer.parseInt(dayObj.toString());
+        int year = isTimeOnly ? 1970 : Integer.parseInt(yearObj.toString());
+        int month = isTimeOnly ? 1 : Integer.parseInt(monthObj.toString());
+        int day = isTimeOnly ? 1 : Integer.parseInt(dayObj.toString());
 
         int hour = (hourObj != null) ? Integer.parseInt(hourObj.toString()) : 0;
         int minute = (minuteObj != null) ? Integer.parseInt(minuteObj.toString()) : 0;

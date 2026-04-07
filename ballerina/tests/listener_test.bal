@@ -43,7 +43,7 @@ Service receiveTestService = service object {
         }
     }
 
-    remote function onError(Error 'error) returns error? {
+    remote function onError(error 'error) returns error? {
         // Surface listener-level errors as test failures via the flag.
     }
 };
@@ -111,7 +111,7 @@ function testListenerInitWithInvalidGateway() returns error? {
 
 Service dummyService = service object {
     remote function onReceive(xml iDoc) returns error? {}
-    remote function onError(Error 'error) returns error? {}
+    remote function onError(error 'error) returns error? {}
 };
 
 @test:Config {
