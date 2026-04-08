@@ -87,6 +87,7 @@ public class SAPConstants {
     public static final String IDOC_ERROR_TYPE              = "IDocError";
     public static final String PARAMETER_ERROR_TYPE         = "ParameterError";
     public static final String CONFIGURATION_ERROR_TYPE     = "ConfigurationError";
+    public static final String EXECUTION_ERROR_TYPE         = "ExecutionError";
 
     // JCoErrorDetail field keys
     public static final BString DETAIL_ERROR_GROUP      = StringUtils.fromString("errorGroup");

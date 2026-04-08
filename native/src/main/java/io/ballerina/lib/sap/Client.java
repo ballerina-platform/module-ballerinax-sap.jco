@@ -155,7 +155,7 @@ public class Client {
             return SAPErrorCreator.fromJCoException(e);
         } catch (Throwable e) {
             logger.error("Unexpected error during RFC execution.");
-            return SAPErrorCreator.fromThrowable("RFC execution failed.", e);
+            return SAPErrorCreator.fromExecutionThrowable("RFC execution failed.", e);
         }
     }
 
