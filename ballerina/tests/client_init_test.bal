@@ -81,3 +81,65 @@ function testClientInitWithInvalidHost() {
     test:assertTrue(result is Error, "Expected an Error for an unreachable SAP host");
     test:assertTrue(result is ConnectionError, "Expected a ConnectionError for an unreachable host");
 }
+
+// Tests that a failed init cleans up the destination registration so the same
+// destination ID can be reused by a subsequent successful init.
+@test:Config {
+    enable: testsEnabled,
+    groups: ["client-init"]
+}
+function testFailedInitDoesNotLeakDestination() returns error? {
+    string destId = "test-dest-no-leak";
+    DestinationConfig invalidHostConfig = {
+        ashost: "invalid.sap.host.that.does.not.exist",
+        sysnr: "00",
+        jcoClient: "100",
+        user: "user",
+        passwd: "pass"
+    };
+    Client|Error first = new (invalidHostConfig, destId);
+    test:assertTrue(first is Error, "Expected an Error for an unreachable SAP host");
+    test:assertTrue(first is ConnectionError, "Expected a ConnectionError for an unreachable host");
+    // The rollback should have freed destId; re-using it with valid config must succeed.
+    Client second = check new (destinationConfig, destId);
+    check second.close();
+}
+
+// Tests that close() is idempotent and safe to call multiple times.
+@test:Config {
+    enable: testsEnabled,
+    groups: ["client-init"]
+}
+function testClientCloseIsIdempotent() returns error? {
+    Client sapClient = check new (destinationConfig);
+    check sapClient.close();
+    check sapClient.close();
+}
+
+// Tests that the destination ID is freed after close(), allowing a new client
+// to register the same ID without an "already registered" error.
+@test:Config {
+    enable: testsEnabled,
+    groups: ["client-init"]
+}
+function testDestinationIdReclaimableAfterClose() returns error? {
+    string sharedDestId = "test-dest-reclaim";
+    Client first = check new (destinationConfig, sharedDestId);
+    check first.close();
+    Client second = check new (destinationConfig, sharedDestId);
+    check second.close();
+}
+
+// Tests that execute() returns a ConfigurationError when called after close().
+@test:Config {
+    enable: testsEnabled,
+    groups: ["client-init"]
+}
+function testExecuteAfterCloseReturnsConfigurationError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    check sapClient.close();
+    json|Error result = sapClient->execute("RFC_PING", {});
+    test:assertTrue(result is Error, "Expected an Error when calling execute() after close()");
+    test:assertTrue(result is ConfigurationError,
+            "execute() after close() should return a ConfigurationError");
+}
