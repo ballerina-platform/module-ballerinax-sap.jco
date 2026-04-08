@@ -44,8 +44,6 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     private static final AtomicBoolean registered = new AtomicBoolean(false);
 
     private final Map<String, Properties> destinationProperties = new ConcurrentHashMap<>();
-    @SuppressWarnings("unused") // required by DestinationDataProvider interface; kept for subclass use
-    private volatile DestinationDataEventListener eventListener;
 
     private SAPDestinationDataProvider() {}
 
@@ -91,24 +89,24 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     }
 
     /**
-     * Stores the event listener supplied by JCo so that destination change events can be
-     * fired when properties are updated via {@link #addDestinationConfig} or
-     * {@link #addAdvancedDestinationConfig}.
+     * No-op implementation required by the {@link DestinationDataProvider} interface.
+     * Destination properties are registered once via {@link #addDestinationConfig} /
+     * {@link #addAdvancedDestinationConfig} and never updated, so no event listener is needed.
      */
     @Override
     public void setDestinationDataEventListener(DestinationDataEventListener eventListener) {
-        this.eventListener = eventListener;
+        // not used: destinations are registered once and never overwritten
     }
 
     /**
-     * Returns {@code true} so that JCo will invalidate its cached {@link com.sap.conn.jco.JCoDestination}
-     * instances when destination properties are updated, forcing a reload with the new configuration.
+     * Returns {@code false} because destinations are registered once and never updated, so JCo
+     * destination-change events are not needed.
      *
-     * @return {@code true}
+     * @return {@code false}
      */
     @Override
     public boolean supportsEvents() {
-        return true;
+        return false;
     }
 
     /**
