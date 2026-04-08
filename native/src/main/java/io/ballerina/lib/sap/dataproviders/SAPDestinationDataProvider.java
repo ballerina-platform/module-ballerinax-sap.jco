@@ -110,6 +110,19 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     }
 
     /**
+     * Removes the destination properties registered under {@code destinationId}, freeing the entry
+     * and allowing the ID to be reclaimed.
+     * <p>
+     * Call this after the associated client has been fully shut down. Thread-safe: delegates to
+     * {@link ConcurrentHashMap#remove}.
+     *
+     * @param destinationId the destination name to remove
+     */
+    public void removeDestinationConfig(String destinationId) {
+        destinationProperties.remove(destinationId);
+    }
+
+    /**
      * Registers destination properties derived from a structured {@code DestinationConfig} Ballerina record
      * or an advanced flat key-value map.
      * <p>

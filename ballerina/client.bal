@@ -22,12 +22,12 @@ public isolated client class Client {
 
     # Registers a JCo RFC destination and verifies connectivity with a ping.
     #
-    # + configurations - RFC destination connection parameters (`DestinationConfig` or `AdvancedConfig`).
+    # + config - RFC destination connection parameters (`DestinationConfig` or `AdvancedConfig`).
     # + destinationId - Unique name for this RFC destination; provide an explicit name when a `Listener` references it as `repositoryDestination`.
     # + return - An error if the connection cannot be established.
-    public isolated function init(DestinationConfig|AdvancedConfig configurations,
+    public isolated function init(DestinationConfig|AdvancedConfig config,
                                   string destinationId = uuid:createType4AsString()) returns Error? {
-        check initializeClient(self, configurations, destinationId);
+        check initializeClient(self, config, destinationId);
     }
 
     # Calls an RFC-enabled function module on the SAP system and returns the export parameters.
@@ -49,8 +49,18 @@ public isolated client class Client {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
+    # Releases the JCo destination registered for this client. After calling `close`, further
+    # `execute` or `sendIDoc` calls will fail. Call this when the client is no longer needed
+    # to free the destination ID for reuse.
+    #
+    # + return - Always `()`.
+    public isolated function close() returns Error? = @java:Method {
+        name: "closeClient",
+        'class: "io.ballerina.lib.sap.Client"
+    } external;
+
 }
 
-isolated function initializeClient(Client jcoClient, DestinationConfig|AdvancedConfig configurations, string destinationId) returns Error? = @java:Method {
+isolated function initializeClient(Client jcoClient, DestinationConfig|AdvancedConfig config, string destinationId) returns Error? = @java:Method {
     'class: "io.ballerina.lib.sap.Client"
 } external;

@@ -75,6 +75,7 @@ public class Client {
             destination.ping();
             logger.debug("JCo Client initialized");
             client.addNativeData(SAPConstants.RFC_DESTINATION, destination);
+            client.addNativeData(SAPConstants.RFC_DESTINATION_ID, destinationId.toString());
             return null;
         } catch (JCoException e) {
             logger.error("Destination lookup failed.");
@@ -157,6 +158,27 @@ public class Client {
             logger.error("Unexpected error during RFC execution.");
             return SAPErrorCreator.fromExecutionThrowable("RFC execution failed.", e);
         }
+    }
+
+    /**
+     * Releases the JCo destination registered for this client, freeing its entry in the
+     * {@link SAPDestinationDataProvider} so the destination ID can be reclaimed.
+     * <p>
+     * Should be called when the Ballerina {@code Client} is no longer needed. After this call
+     * any further {@link #execute} or {@link #sendIDoc} calls will fail.
+     *
+     * @param client the Ballerina {@code Client} object being closed
+     * @return {@code null} always
+     */
+    public static Object closeClient(BObject client) {
+        String destinationId = (String) client.getNativeData(SAPConstants.RFC_DESTINATION_ID);
+        if (destinationId != null) {
+            SAPDestinationDataProvider.getInstance().removeDestinationConfig(destinationId);
+            client.addNativeData(SAPConstants.RFC_DESTINATION_ID, null);
+            client.addNativeData(SAPConstants.RFC_DESTINATION, null);
+            logger.debug("JCo Client closed, destination '{}' removed.", destinationId);
+        }
+        return null;
     }
 
     /**
