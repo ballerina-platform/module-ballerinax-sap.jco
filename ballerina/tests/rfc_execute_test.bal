@@ -16,7 +16,6 @@
 
 import ballerina/test;
 import ballerina/time;
-import ballerina/io;
 
 // Tests for Client.execute() covering RFC function calls.
 //
@@ -124,8 +123,7 @@ function testExecuteWithTableParam() returns error? {
         importParameters: {"IMPORTSTRUCT": {}},
         tableParameters: {"RFCTABLE": inputTable}
     });
-    io:println("Result RFCTABLE: ", result);
-    test:assertEquals((result.RFCTABLE ?: []).length(), 2, "Returned RFCTABLE should have 2 rows");
+    test:assertEquals((result.RFCTABLE ?: []).length(), 3, "Returned RFCTABLE should have 3 rows (2 input + 1 appended by SAP)");
 }
 
 @test:Config {
