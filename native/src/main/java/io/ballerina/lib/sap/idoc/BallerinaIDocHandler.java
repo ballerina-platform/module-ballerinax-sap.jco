@@ -41,7 +41,6 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Map;
 
-import static io.ballerina.runtime.api.utils.TypeUtils.getReferredType;
 
 /**
  * JCo IDoc handler that bridges incoming SAP IDoc documents to the Ballerina service layer.
@@ -87,7 +86,6 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
                 invokeOnError(new Object[]{bError, true});
             }
         } catch (Throwable thr) {
-            logger.error("Error while processing IDoc", thr);
             BError error = (thr instanceof BError)
                     ? SAPErrorCreator.createIDocError("IDoc processing failed.", (BError) thr)
                     : SAPErrorCreator.createIDocError("IDoc processing failed.", thr);
@@ -110,7 +108,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
      * @return the return value from the Ballerina method (may be a {@link BError})
      */
     public Object invokeOnReceive(Object... args) {
-        ObjectType serviceType = (ObjectType) getReferredType(TypeUtils.getType(service));
+        ObjectType serviceType = (ObjectType) TypeUtils.getImpliedType(service.getOriginalType());
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_RECEIVE);
         StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
         return runtime.callMethod(service, SAPConstants.ON_RECEIVE, metadata, args);
@@ -126,7 +124,8 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
      */
     public void invokeOnError(Object... args) {
         MethodType onErrorFunction = null;
-        MethodType[] resourceFunctions = ((ObjectType) TypeUtils.getType(service)).getMethods();
+        MethodType[] resourceFunctions = ((ObjectType) TypeUtils.getImpliedType(service.getOriginalType()))
+                .getMethods();
 
         for (MethodType resourceFunction : resourceFunctions) {
             if (SAPConstants.ON_ERROR.equals(resourceFunction.getName())) {
@@ -136,17 +135,18 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
         }
 
         if (onErrorFunction == null) {
-            logger.debug("No onError method found on service; skipping error dispatch.");
+            BError bError = (BError) args[0];
+            logger.error("No onError method found on service; dropping error", bError);
             return;
         }
 
-        ObjectType serviceType = (ObjectType) getReferredType(TypeUtils.getType(service));
+        ObjectType serviceType = (ObjectType) TypeUtils.getImpliedType(service.getOriginalType());
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
         StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
         try {
             Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata, args);
             if (result instanceof BError onErrorResult) {
-                logger.error("onError handler returned an error: {}", onErrorResult.getMessage());
+                logger.error("onError handler returned an error", onErrorResult);
             }
         } catch (Throwable thr) {
             logger.error("onError handler threw an unexpected error; suppressing to avoid re-entry.", thr);

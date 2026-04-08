@@ -82,23 +82,11 @@ public class Client {
             return null;
         } catch (JCoException e) {
             logger.error("Destination lookup failed.");
-            if (configAdded) {
-                try {
-                    dp.removeDestinationConfig(destId);
-                } catch (Exception rollbackEx) {
-                    logger.error("Failed to roll back destination '{}' after init failure.", destId, rollbackEx);
-                }
-            }
+            rollbackDestinationConfig(dp, destId, configAdded);
             return SAPErrorCreator.fromJCoException(e);
         } catch (Exception e) {
             logger.error("Client initialization failed.");
-            if (configAdded) {
-                try {
-                    dp.removeDestinationConfig(destId);
-                } catch (Exception rollbackEx) {
-                    logger.error("Failed to roll back destination '{}' after init failure.", destId, rollbackEx);
-                }
-            }
+            rollbackDestinationConfig(dp, destId, configAdded);
             return SAPErrorCreator.createConfigError("Client initialization failed.", e);
         }
     }
@@ -255,6 +243,17 @@ public class Client {
         } catch (IDocException e) {
             logger.error("IDoc send failed.");
             return SAPErrorCreator.fromIDocException(e);
+        }
+    }
+
+    private static void rollbackDestinationConfig(SAPDestinationDataProvider dp, String destId,
+                                                  boolean configAdded) {
+        if (configAdded) {
+            try {
+                dp.removeDestinationConfig(destId);
+            } catch (Exception rollbackEx) {
+                logger.error("Failed to roll back destination '{}' after init failure.", destId, rollbackEx);
+            }
         }
     }
 
