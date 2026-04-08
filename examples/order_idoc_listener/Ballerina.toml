@@ -2,7 +2,7 @@
 org = "wso2"
 name = "order_idoc_listener"
 version = "0.1.0"
-distribution = "2201.9.1"
+distribution = "2201.11.0"
 
 [build-options]
 observabilityIncluded = true

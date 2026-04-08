@@ -2,7 +2,7 @@
 org = "wso2"
 name = "sap_inventory_update"
 version = "0.1.0"
-distribution = "2201.9.1"
+distribution = "2201.11.0"
 
 [build-options]
 observabilityIncluded = true
