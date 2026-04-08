@@ -66,67 +66,79 @@ import java.util.Map;
 public class ExportParameterProcessor {
 
     /**
-     * Converts the top-level JCo export parameter list into a Ballerina record.
+     * Creates a Ballerina record populated from both the JCo export parameter list and the JCo
+     * table parameter list. Either list may be {@code null} (e.g. the RFC has no table params).
      *
-     * @param exportList          the JCo export parameter list to read from
-     * @param outputParamType     the target Ballerina {@link RecordType}; fields not present in this
-     *                            type are skipped unless {@code isRestFieldsAllowed} is {@code true}
-     * @param isRestFieldsAllowed when {@code true}, fields not explicitly declared in
-     *                            {@code outputParamType} are included using runtime-inferred types
-     * @return a Ballerina record value populated with the export parameter values
+     * @param exportList          the JCo export parameter list, or {@code null}
+     * @param tableList           the JCo table parameter list, or {@code null}
+     * @param outputParamType     the target Ballerina {@link RecordType}
+     * @param isRestFieldsAllowed when {@code true}, fields not declared in {@code outputParamType}
+     *                            are included using runtime-inferred types
+     * @return a Ballerina record populated with values from both parameter lists
      * @throws BError if a JCo field type is not supported or a type cast fails
      */
-    public static BMap<BString, Object> getExportParams(JCoParameterList exportList, RecordType outputParamType,
-                                                        boolean isRestFieldsAllowed) {
+    public static BMap<BString, Object> getMergedParams(JCoParameterList exportList, JCoParameterList tableList,
+                                                         RecordType outputParamType, boolean isRestFieldsAllowed) {
         BMap<BString, Object> outputMap = ValueCreator.createRecordValue(outputParamType);
-        for (int i = 0; i < exportList.getMetaData().getFieldCount(); i++) {
-            String fieldName = exportList.getMetaData().getName(i);
-            String type = exportList.getMetaData().getClassNameOfField(i);
+        if (exportList != null) {
+            populateFromParamList(exportList, outputMap, outputParamType, isRestFieldsAllowed);
+        }
+        if (tableList != null) {
+            populateFromParamList(tableList, outputMap, outputParamType, isRestFieldsAllowed);
+        }
+        return outputMap;
+    }
+
+    private static void populateFromParamList(JCoParameterList paramList, BMap<BString, Object> outputMap,
+                                              RecordType outputParamType, boolean isRestFieldsAllowed) {
+        for (int i = 0; i < paramList.getMetaData().getFieldCount(); i++) {
+            String fieldName = paramList.getMetaData().getName(i);
+            String type = paramList.getMetaData().getClassNameOfField(i);
             if (!isRestFieldsAllowed && !outputParamType.getFields().containsKey(fieldName)) {
                 continue;
             }
             switch (type) {
                 case SAPConstants.JCO_STRING:
-                    String value = exportList.getString(i);
+                    String value = paramList.getString(i);
                     outputMap.put(StringUtils.fromString(fieldName), StringUtils.fromString(value));
                     break;
                 case SAPConstants.JCO_INTEGER:
-                    int intValue = exportList.getInt(i);
+                    int intValue = paramList.getInt(i);
                     outputMap.put(StringUtils.fromString(fieldName), intValue);
                     break;
                 case SAPConstants.JCO_DOUBLE:
-                    double doubleValue = exportList.getDouble(i);
+                    double doubleValue = paramList.getDouble(i);
                     outputMap.put(StringUtils.fromString(fieldName), doubleValue);
                     break;
                 case SAPConstants.JCO_LONG:
-                    long longValue = exportList.getLong(i);
+                    long longValue = paramList.getLong(i);
                     outputMap.put(StringUtils.fromString(fieldName), longValue);
                     break;
                 case SAPConstants.JCO_OBJECT:
-                    Object objectValue = exportList.getValue(i);
+                    Object objectValue = paramList.getValue(i);
                     if (objectValue == null) {
                         break;
                     }
                     outputMap.put(StringUtils.fromString(fieldName), objectValue.toString());
                     break;
                 case SAPConstants.JCO_BIG_DECIMAL:
-                    BigDecimal decimalValue = exportList.getBigDecimal(i);
+                    BigDecimal decimalValue = paramList.getBigDecimal(i);
                     if (decimalValue == null) {
                         break;
                     }
                     outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
                     break;
                 case SAPConstants.JCO_BYTE_ARRAY:
-                    byte[] byteArray = exportList.getByteArray(i);
+                    byte[] byteArray = paramList.getByteArray(i);
                     outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createArrayValue(byteArray));
                     break;
                 case SAPConstants.JCO_DATE:
-                    Date dateValue = exportList.getDate(i);
+                    Date dateValue = paramList.getDate(i);
                     if (dateValue == null) {
                         break;
                     }
                     outputMap.put(StringUtils.fromString(fieldName), createDateRecord(
-                            exportList.getMetaData().getTypeAsString(i), dateValue));
+                            paramList.getMetaData().getTypeAsString(i), dateValue));
                     break;
                 case SAPConstants.JCO_STRUCTURE:
                     RecordType nestedRecordType;
@@ -142,15 +154,15 @@ public class ExportParameterProcessor {
                         }
                     } else {
                         try {
-                            nestedRecordType = setFields(exportList.getStructure(i));
+                            nestedRecordType = setFields(paramList.getStructure(i));
                         } catch (ClassCastException e) {
                             throw SAPErrorCreator.createParameterError("Error while retrieving output anonymous " +
                                     "structure parameter for field: " + fieldName + ". Unsupported type "
-                                    + setFields(exportList.getStructure(i)));
+                                    + setFields(paramList.getStructure(i)));
                         }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
-                            populateRecord(exportList.getStructure(i), nestedRecordType, isRestFieldsAllowed));
+                            populateRecord(paramList.getStructure(i), nestedRecordType, isRestFieldsAllowed));
                     break;
                 case SAPConstants.JCO_TABLE:
                     RecordType recordType;
@@ -168,23 +180,22 @@ public class ExportParameterProcessor {
                     } else {
                         try {
                             recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                    setTableFields(exportList.getTable(i)).getElementType()).getElementType());
+                                    setTableFields(paramList.getTable(i)).getElementType()).getElementType());
                         } catch (ClassCastException e) {
                             throw SAPErrorCreator.createParameterError("Error while retrieving output anonymous " +
                                     "table parameter for field: " +
-                                    fieldName + ". Unsupported type " + setTableFields(exportList.getTable(i)).
+                                    fieldName + ". Unsupported type " + setTableFields(paramList.getTable(i)).
                                     getElementType().toString());
                         }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
-                            populateRecordArray(exportList.getTable(i), recordType, isRestFieldsAllowed));
+                            populateRecordArray(paramList.getTable(i), recordType, isRestFieldsAllowed));
                     break;
                 default:
                     throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for field: " +
                             fieldName + ". Unsupported type " + type);
             }
         }
-        return outputMap;
     }
 
     private static BMap<BString, Object> populateRecord(JCoStructure exportStructure, RecordType outputParamType,

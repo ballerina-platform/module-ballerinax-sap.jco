@@ -30,13 +30,17 @@ public isolated client class Client {
         check initializeClient(self, configurations, destinationId);
     }
 
-    # Calls an RFC-enabled function module on the SAP system and returns the export parameters.
+    # Calls an RFC-enabled function module on the SAP system and returns the response.
     #
     # + functionName - Name of the RFC function module to call (e.g. `"STFC_CONNECTION"`).
-    # + importParams - Import parameter values keyed by parameter name.
-    # + exportParams - Expected type of the RFC export parameters (`xml`, `json`, or a record type).
-    # + return - The export parameters converted to the `exportParams` type, or an error on failure.
-    isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json?> exportParams = <>) returns exportParams|Error = @java:Method {
+    # + parameters   - Input parameters organized by category. Import parameters are scalar/structure
+    #                  values; table parameters are named tables containing rows of data.
+    #                  Defaults to an empty parameter set (valid for parameter-free RFCs).
+    # + returnType   - Typedesc for the expected response. The response record is populated from
+    #                  both the SAP export parameter list and the table parameter list.
+    # + return - The RFC response cast to `returnType`, or an error on failure.
+    isolated remote function execute(string functionName, RfcParameters parameters = {},
+            typedesc<RfcRecord|xml|json?> returnType = <>) returns returnType|Error = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 

@@ -37,6 +37,7 @@ import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.RecordType;
 import io.ballerina.runtime.api.types.TypeTags;
 import io.ballerina.runtime.api.utils.JsonUtils;
+import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
@@ -88,19 +89,21 @@ public class Client {
     /**
      * Executes a Remote Function Call (RFC) on the SAP system.
      * <p>
-     * Import parameters are mapped from {@code inputParams} using
-     * {@link io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor}.
-     * Export parameters are mapped back to the Ballerina type described by {@code outputParamType},
+     * Input parameters are routed by category: {@code importParameters} go to the JCo import
+     * parameter list; {@code tableParameters} go to the JCo table parameter list. The response
+     * merges both the export parameter list and the table parameter list into the return type,
      * which may be {@code xml}, {@code json}, or a Ballerina record type.
      *
-     * @param client          the Ballerina {@code Client} object holding the JCo destination
-     * @param functionName    name of the RFC function module to call (must not be empty)
-     * @param inputParams     key-value map of import parameter values
-     * @param outputParamType the expected Ballerina type of the RFC export parameters
-     * @return the converted export parameters, or a Ballerina {@code Error} on failure
+     * @param client       the Ballerina {@code Client} object holding the JCo destination
+     * @param functionName name of the RFC function module to call (must not be empty)
+     * @param parameters   a Ballerina {@code RfcParameters} record with optional
+     *                     {@code importParameters} and {@code tableParameters} sections
+     * @param returnType   the expected Ballerina type of the RFC response
+     * @return the merged RFC response, or a Ballerina {@code Error} on failure
      */
+    @SuppressWarnings("unchecked")
     public static Object execute(BObject client, BString functionName,
-                                 BMap<BString, Object> inputParams, BTypedesc outputParamType) {
+                                 BMap<BString, Object> parameters, BTypedesc returnType) {
         try {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
             JCoRepository repository = destination.getRepository();
@@ -113,40 +116,48 @@ public class Client {
                         "RFC function '" + functionName + "' not found in SAP.");
             }
 
-            JCoParameterList importParams = function.getImportParameterList();
-            if (importParams == null && !inputParams.isEmpty()) {
-                return SAPErrorCreator.createParameterError("RFC function '" + functionName
-                        + "' has no import parameters but input params were provided.");
+            // Route each input category to the correct JCo parameter list.
+            BMap<BString, Object> importParameters = (BMap<BString, Object>)
+                    parameters.get(StringUtils.fromString("importParameters"));
+            BMap<BString, Object> tableParameters = (BMap<BString, Object>)
+                    parameters.get(StringUtils.fromString("tableParameters"));
+
+            if (importParameters != null) {
+                JCoParameterList importList = function.getImportParameterList();
+                if (importList == null) {
+                    return SAPErrorCreator.createParameterError("RFC function '" + functionName
+                            + "' has no import parameters but importParameters were provided.");
+                }
+                ImportParameterProcessor.setImportParams(importList, importParameters);
             }
-            if (importParams != null) {
-                ImportParameterProcessor.setImportParams(importParams, inputParams);
+            if (tableParameters != null) {
+                JCoParameterList tableList = function.getTableParameterList();
+                if (tableList == null) {
+                    return SAPErrorCreator.createParameterError("RFC function '" + functionName
+                            + "' has no table parameters but tableParameters were provided.");
+                }
+                ImportParameterProcessor.setTableParams(tableList, tableParameters);
             }
 
             function.execute(destination);
 
-            JCoParameterList exportParams = function.getExportParameterList();
-            int exportType = outputParamType.getDescribingType().getTag();
-            if (exportType == TypeTags.XML_TAG) {
-                if (exportParams == null) {
-                    return ValueCreator.createXmlValue("<result/>");
-                }
-                return ValueCreator.createXmlValue(exportParams.toXML());
-            } else if (exportType == TypeTags.JSON_TAG) {
-                if (exportParams == null) {
-                    return JsonUtils.parse("{}");
-                }
-                return JsonUtils.parse(exportParams.toJSON());
-            } else if (exportType == TypeTags.RECORD_TYPE_TAG) {
-                RecordType outputParamRecordType = (RecordType) outputParamType.getDescribingType();
-                boolean isRestFieldsAllowed = outputParamRecordType.getRestFieldType() != null;
-                if (exportParams == null) {
-                    return ValueCreator.createRecordValue(outputParamRecordType);
-                }
-                return ExportParameterProcessor.getExportParams(exportParams, outputParamRecordType,
-                        isRestFieldsAllowed);
+            // Merge export params and table params into a single response.
+            JCoParameterList exportList = function.getExportParameterList();
+            JCoParameterList tableOutputList = function.getTableParameterList();
+
+            int tag = returnType.getDescribingType().getTag();
+            if (tag == TypeTags.XML_TAG) {
+                return buildXmlResponse(exportList, tableOutputList);
+            } else if (tag == TypeTags.JSON_TAG) {
+                return buildJsonResponse(exportList, tableOutputList);
+            } else if (tag == TypeTags.RECORD_TYPE_TAG) {
+                RecordType outputRecordType = (RecordType) returnType.getDescribingType();
+                boolean isRestFieldsAllowed = outputRecordType.getRestFieldType() != null;
+                return ExportParameterProcessor.getMergedParams(
+                        exportList, tableOutputList, outputRecordType, isRestFieldsAllowed);
             } else {
                 return SAPErrorCreator.createParameterError(
-                        "Unsupported output parameter type: " + outputParamType.getType().getName());
+                        "Unsupported return type: " + returnType.getDescribingType().getName());
             }
         } catch (BError e) {
             return e;
@@ -157,6 +168,43 @@ public class Client {
             logger.error("Unexpected error during RFC execution.");
             return SAPErrorCreator.fromThrowable("RFC execution failed.", e);
         }
+    }
+
+    private static Object buildXmlResponse(JCoParameterList exportList, JCoParameterList tableList) {
+        if (exportList == null && tableList == null) {
+            return ValueCreator.createXmlValue("<result/>");
+        }
+        if (tableList == null) {
+            return ValueCreator.createXmlValue(exportList.toXML());
+        }
+        if (exportList == null) {
+            return ValueCreator.createXmlValue(tableList.toXML());
+        }
+        return ValueCreator.createXmlValue("<result>" + exportList.toXML() + tableList.toXML() + "</result>");
+    }
+
+    private static Object buildJsonResponse(JCoParameterList exportList, JCoParameterList tableList) {
+        if (exportList == null && tableList == null) {
+            return JsonUtils.parse("{}");
+        }
+        if (tableList == null) {
+            return JsonUtils.parse(exportList.toJSON());
+        }
+        if (exportList == null) {
+            return JsonUtils.parse(tableList.toJSON());
+        }
+        String exportJson = exportList.toJSON().trim();
+        String tableJson = tableList.toJSON().trim();
+        String merged;
+        if (exportJson.equals("{}")) {
+            merged = tableJson;
+        } else if (tableJson.equals("{}")) {
+            merged = exportJson;
+        } else {
+            merged = exportJson.substring(0, exportJson.lastIndexOf('}'))
+                    + "," + tableJson.substring(tableJson.indexOf('{') + 1);
+        }
+        return JsonUtils.parse(merged);
     }
 
     /**

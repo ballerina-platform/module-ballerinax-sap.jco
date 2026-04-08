@@ -70,6 +70,22 @@ public enum IDocType {
 # Any value that can appear as an RFC import/export parameter or a field inside a JCo structure or table.
 public type FieldType string|int|float|decimal|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
 
+# A named alias for the rest-field record pattern used throughout the connector.
+# Represents a single RFC parameter record — scalar, structure, or table row values.
+public type RfcRecord record {|
+    FieldType?...;
+|};
+
+# Wraps all input parameters for an RFC call with explicit per-category sections.
+#
+# + importParameters - Scalar values and structures sent to SAP (import parameter list).
+# + tableParameters  - Named tables sent to SAP as filter criteria or input data (table parameter list).
+#                      Key = SAP table parameter name; Value = array of row records.
+public type RfcParameters record {|
+    RfcRecord importParameters?;
+    map<RfcRecord[]> tableParameters?;
+|};
+
 # Detail record carried by JCo-origin errors, providing the JCo error group and SAP exception key.
 public type JCoErrorDetail record {|
     # JCo error group constant (e.g. `JCoException.JCO_ERROR_COMMUNICATION = 101`).

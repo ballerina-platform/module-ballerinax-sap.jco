@@ -107,6 +107,24 @@ public class ImportParameterProcessor {
         });
     }
 
+    /**
+     * Populates the given JCo table parameter list from a Ballerina map of table inputs.
+     * Each key is a SAP table parameter name; each value is an array of row records.
+     *
+     * @param tableParamList  the JCo table parameter list to populate
+     * @param tableParameters a Ballerina map where each entry is a named table
+     *                        (key = parameter name, value = array of row records)
+     * @throws BError if a row field type is not supported or a date record is malformed
+     */
+    @SuppressWarnings("unchecked")
+    public static void setTableParams(JCoParameterList tableParamList, BMap<BString, Object> tableParameters) {
+        tableParameters.entrySet().forEach(entry -> {
+            String tableName = entry.getKey().toString();
+            JCoTable table = tableParamList.getTable(tableName);
+            createTable(table, (BArray) entry.getValue());
+        });
+    }
+
     @SuppressWarnings("unchecked")
     private static void createTable(JCoTable table, BArray inputParams) {
         for (int i = 0; i < inputParams.size(); i++) {

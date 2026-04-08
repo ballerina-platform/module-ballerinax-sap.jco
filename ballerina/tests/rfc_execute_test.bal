@@ -16,6 +16,7 @@
 
 import ballerina/test;
 import ballerina/time;
+import ballerina/io;
 
 // Tests for Client.execute() covering RFC function calls.
 //
@@ -62,7 +63,7 @@ type StfcStructureOutput record {|
 }
 function testExecuteRfcPing() returns error? {
     Client sapClient = check new (destinationConfig);
-    xml _ = check sapClient->execute("RFC_PING", {});
+    xml _ = check sapClient->execute("RFC_PING");
 }
 
 @test:Config {
@@ -71,7 +72,8 @@ function testExecuteRfcPing() returns error? {
 }
 function testExecuteWithStringImportParamAndTypedOutput() returns error? {
     Client sapClient = check new (destinationConfig);
-    StfcConnectionOutput result = check sapClient->execute("STFC_CONNECTION", {"REQUTEXT": "Hello SAP"});
+    StfcConnectionOutput result = check sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": "Hello SAP"}});
     test:assertEquals(result.ECHOTEXT, "Hello SAP", "ECHOTEXT should mirror the REQUTEXT input");
 }
 
@@ -81,7 +83,7 @@ function testExecuteWithStringImportParamAndTypedOutput() returns error? {
 }
 function testExecuteReturningXml() returns error? {
     Client sapClient = check new (destinationConfig);
-    xml result = check sapClient->execute("STFC_CONNECTION", {"REQUTEXT": "Test"});
+    xml result = check sapClient->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "Test"}});
     test:assertTrue(result.length() > 0, "XML result should be non-empty");
 }
 
@@ -91,7 +93,7 @@ function testExecuteReturningXml() returns error? {
 }
 function testExecuteReturningJson() returns error? {
     Client sapClient = check new (destinationConfig);
-    json result = check sapClient->execute("STFC_CONNECTION", {"REQUTEXT": "Test"});
+    json result = check sapClient->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "Test"}});
     test:assertNotEquals(result, (), "JSON result should not be null");
 }
 
@@ -102,13 +104,14 @@ function testExecuteReturningJson() returns error? {
 function testExecuteWithStructureParam() returns error? {
     Client sapClient = check new (destinationConfig);
     RfcTestStruct importStruct = {RFCCHAR1: "X", RFCCHAR2: "AB", RFCINT1: 42, RFCFLOAT: 3.14};
-    StfcStructureOutput result = check sapClient->execute("STFC_STRUCTURE", {"IMPORTSTRUCT": importStruct});
+    StfcStructureOutput result = check sapClient->execute("STFC_STRUCTURE",
+            {importParameters: {"IMPORTSTRUCT": importStruct}});
     test:assertEquals(result.ECHOSTRUCT?.RFCCHAR1, "X", "ECHOSTRUCT should reflect IMPORTSTRUCT");
     test:assertEquals(result.ECHOSTRUCT?.RFCINT1, 42, "ECHOSTRUCT RFCINT1 should reflect IMPORTSTRUCT");
 }
 
 @test:Config {
-    enable: false,
+    enable: testsEnabled,
     groups: ["rfc-execute"]
 }
 function testExecuteWithTableParam() returns error? {
@@ -118,9 +121,10 @@ function testExecuteWithTableParam() returns error? {
         {RFCCHAR1: "B", RFCINT1: 2}
     ];
     StfcStructureOutput result = check sapClient->execute("STFC_STRUCTURE", {
-        "IMPORTSTRUCT": {},
-        "RFCTABLE": inputTable
+        importParameters: {"IMPORTSTRUCT": {}},
+        tableParameters: {"RFCTABLE": inputTable}
     });
+    io:println("Result RFCTABLE: ", result);
     test:assertEquals((result.RFCTABLE ?: []).length(), 2, "Returned RFCTABLE should have 2 rows");
 }
 
@@ -133,7 +137,8 @@ function testExecuteWithDateAndTimeParams() returns error? {
     time:Date testDate = {year: 2024, month: 6, day: 15};
     time:TimeOfDay testTime = {hour: 10, minute: 30, second: 0};
     RfcTestStruct importStruct = {RFCDATE: testDate, RFCTIME: testTime};
-    StfcStructureOutput result = check sapClient->execute("STFC_STRUCTURE", {"IMPORTSTRUCT": importStruct});
+    StfcStructureOutput result = check sapClient->execute("STFC_STRUCTURE",
+            {importParameters: {"IMPORTSTRUCT": importStruct}});
     test:assertEquals(result.ECHOSTRUCT?.RFCDATE, testDate, "Echo date should match the input date");
     test:assertEquals(result.ECHOSTRUCT?.RFCTIME, testTime, "Echo time should match the input time");
 }
@@ -144,7 +149,7 @@ function testExecuteWithDateAndTimeParams() returns error? {
 }
 function testExecuteWithEmptyFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
-    json?|error result = sapClient->execute("", {});
+    json?|error result = sapClient->execute("");
     test:assertTrue(result is Error, "Expected an Error for an empty function name");
     test:assertTrue(result is ParameterError, "Expected a ParameterError for an empty function name");
 }
@@ -155,7 +160,7 @@ function testExecuteWithEmptyFunctionName() returns error? {
 }
 function testExecuteWithInvalidFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
-    json?|error result = sapClient->execute("NONEXISTENT_RFC_FUNCTION_XYZ", {});
+    json?|error result = sapClient->execute("NONEXISTENT_RFC_FUNCTION_XYZ");
     test:assertTrue(result is Error, "Expected an Error for a non-existent RFC function name");
     test:assertTrue(result is ParameterError, "Expected a ParameterError for a non-existent RFC function");
 }
