@@ -185,9 +185,11 @@ When a client is no longer needed, its JCo destination registration should be re
 ```ballerina
 # Releases the JCo destination registered for this client. After calling `close`, further
 # `execute` or `sendIDoc` calls will fail with a `ConfigurationError`. Call this when the
-# client is no longer needed to free the destination ID for reuse.
+# client is no longer needed to free the destination ID for reuse. Calling `close` more
+# than once is safe and has no effect after the first call.
 #
-# + return - Always `()`.
+# + return - A `ConfigurationError` if the JCo destination could not be fully released,
+#            otherwise `()`. The client is marked closed regardless of the outcome.
 public isolated function close() returns Error?
 ```
 

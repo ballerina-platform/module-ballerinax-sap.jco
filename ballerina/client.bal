@@ -50,10 +50,12 @@ public isolated client class Client {
     } external;
 
     # Releases the JCo destination registered for this client. After calling `close`, further
-    # `execute` or `sendIDoc` calls will fail. Call this when the client is no longer needed
-    # to free the destination ID for reuse.
+    # `execute` or `sendIDoc` calls will fail with a `ConfigurationError`. Call this when the
+    # client is no longer needed to free the destination ID for reuse. Calling `close` more
+    # than once is safe and has no effect after the first call.
     #
-    # + return - Always `()`.
+    # + return - A `ConfigurationError` if the JCo destination could not be fully released,
+    #            otherwise `()`. The client is marked closed regardless of the outcome.
     public isolated function close() returns Error? = @java:Method {
         name: "closeClient",
         'class: "io.ballerina.lib.sap.Client"

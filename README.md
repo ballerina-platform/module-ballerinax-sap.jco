@@ -206,7 +206,7 @@ public function main() returns error? {
 Call `close` when the client is no longer needed to release the JCo destination registration:
 
 ```ballerina
-check jcoClient->close();
+check jcoClient.close();
 ```
 
 After `close`, any call to `execute` or `sendIDoc` returns a `ConfigurationError`. Calling `close` multiple times is safe.

@@ -79,18 +79,11 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
             xmlProcessor.render(idocList, stringWriter,
                     IDocXMLProcessor.RENDER_WITH_TABS_AND_CRLF);
             String xmlContent = stringWriter.toString();
-            try {
-                BXml xmlContentValue = XmlUtils.parse(xmlContent);
-                Object[] args = {xmlContentValue, true};
-                Object result = invokeOnReceive(args);
-                if (result instanceof BError returnedError) {
-                    BError bError = SAPErrorCreator.createIDocError("IDoc processing failed.", returnedError);
-                    invokeOnError(new Object[]{bError, true});
-                }
-            } catch (BError exception) {
-                // Always wrap in IDocError so the type satisfies the `Error` union expected
-                // by the service onError method. The original BError is preserved as cause.
-                BError bError = SAPErrorCreator.createIDocError("IDoc processing failed.", exception);
+            BXml xmlContentValue = XmlUtils.parse(xmlContent);
+            Object[] args = {xmlContentValue, true};
+            Object result = invokeOnReceive(args);
+            if (result instanceof BError returnedError) {
+                BError bError = SAPErrorCreator.createIDocError("IDoc processing failed.", returnedError);
                 invokeOnError(new Object[]{bError, true});
             }
         } catch (Throwable thr) {

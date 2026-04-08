@@ -188,15 +188,25 @@ public class Client {
      * any further {@link #execute} or {@link #sendIDoc} calls will fail.
      *
      * @param client the Ballerina {@code Client} object being closed
-     * @return {@code null} always
+     * @return {@code null} on success, or a Ballerina {@code ConfigurationError} if JCo could
+     *         not be notified of the destination deletion; the client-side native data is always
+     *         nulled out first so subsequent {@code execute}/{@code sendIDoc} calls fail fast
+     *         regardless of whether the JCo notification succeeded
      */
     public static Object closeClient(BObject client) {
         String destinationId = (String) client.getNativeData(SAPConstants.RFC_DESTINATION_ID);
         if (destinationId != null) {
-            SAPDestinationDataProvider.getInstance().removeDestinationConfig(destinationId);
+            // Null native data before cleanup so further calls fail fast even if cleanup throws.
             client.addNativeData(SAPConstants.RFC_DESTINATION_ID, null);
             client.addNativeData(SAPConstants.RFC_DESTINATION, null);
-            logger.debug("JCo Client closed, destination '{}' removed.", destinationId);
+            try {
+                SAPDestinationDataProvider.getInstance().removeDestinationConfig(destinationId);
+                logger.debug("JCo Client closed, destination '{}' removed.", destinationId);
+            } catch (Exception e) {
+                logger.error("Failed to release destination '{}'.", destinationId, e);
+                return SAPErrorCreator.createConfigError(
+                        "Failed to release destination '" + destinationId + "'.", e);
+            }
         }
         return null;
     }

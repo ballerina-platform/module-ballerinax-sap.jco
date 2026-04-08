@@ -122,13 +122,7 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
         destinationProperties.remove(destinationId);
         DestinationDataEventListener listener = this.eventListener;
         if (listener != null) {
-            try {
-                listener.deleted(destinationId);
-            } catch (Exception e) {
-                // Log and swallow so cleanup always completes
-                org.slf4j.LoggerFactory.getLogger(SAPDestinationDataProvider.class)
-                        .warn("Failed to notify JCo of destination '{}' deletion.", destinationId, e);
-            }
+            listener.deleted(destinationId);
         }
     }
 
