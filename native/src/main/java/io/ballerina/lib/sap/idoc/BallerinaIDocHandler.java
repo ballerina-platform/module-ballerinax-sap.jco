@@ -150,6 +150,13 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
         ObjectType serviceType = (ObjectType) getReferredType(TypeUtils.getType(service));
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
         StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
-        runtime.callMethod(service, SAPConstants.ON_ERROR, metadata, args);
+        try {
+            Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata, args);
+            if (result instanceof BError onErrorResult) {
+                logger.error("onError handler returned an error: {}", onErrorResult.getMessage());
+            }
+        } catch (Throwable thr) {
+            logger.error("onError handler threw an unexpected error; suppressing to avoid re-entry.", thr);
+        }
     }
 }

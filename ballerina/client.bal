@@ -36,7 +36,7 @@ public isolated client class Client {
     # + importParams - Import parameter values keyed by parameter name.
     # + exportParams - Expected type of the RFC export parameters (`xml`, `json`, or a record type).
     # + return - The export parameters converted to the `exportParams` type, or an error on failure.
-    isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json?> exportParams = <>) returns exportParams|Error = @java:Method {
+    isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json> exportParams = <>) returns exportParams|Error = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 

@@ -44,6 +44,7 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     private static final AtomicBoolean registered = new AtomicBoolean(false);
 
     private final Map<String, Properties> destinationProperties = new ConcurrentHashMap<>();
+    private volatile DestinationDataEventListener eventListener;
 
     private SAPDestinationDataProvider() {}
 
@@ -89,24 +90,23 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     }
 
     /**
-     * No-op implementation required by the {@link DestinationDataProvider} interface.
-     * Destination properties are registered once via {@link #addDestinationConfig} /
-     * {@link #addAdvancedDestinationConfig} and never updated, so no event listener is needed.
+     * Saves the JCo event listener so that deletion events can be fired when a destination is
+     * removed via {@link #removeDestinationConfig}.
      */
     @Override
     public void setDestinationDataEventListener(DestinationDataEventListener eventListener) {
-        // not used: destinations are registered once and never overwritten
+        this.eventListener = eventListener;
     }
 
     /**
-     * Returns {@code false} because destinations are registered once and never updated, so JCo
-     * destination-change events are not needed.
+     * Returns {@code true} so that JCo knows this provider will fire deletion events when a
+     * destination is removed, allowing JCo to invalidate its internal destination cache.
      *
-     * @return {@code false}
+     * @return {@code true}
      */
     @Override
     public boolean supportsEvents() {
-        return false;
+        return true;
     }
 
     /**
@@ -120,6 +120,16 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
      */
     public void removeDestinationConfig(String destinationId) {
         destinationProperties.remove(destinationId);
+        DestinationDataEventListener listener = this.eventListener;
+        if (listener != null) {
+            try {
+                listener.deleted(destinationId);
+            } catch (Exception e) {
+                // Log and swallow so cleanup always completes
+                org.slf4j.LoggerFactory.getLogger(SAPDestinationDataProvider.class)
+                        .warn("Failed to notify JCo of destination '{}' deletion.", destinationId, e);
+            }
+        }
     }
 
     /**

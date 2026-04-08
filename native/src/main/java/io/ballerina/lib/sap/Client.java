@@ -67,21 +67,38 @@ public class Client {
      */
     public static Object initializeClient(BObject client, BMap<BString, Object> destinationConfig,
                                           BString destinationId) {
+        SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
+        String destId = destinationId.toString();
+        boolean configAdded = false;
         try {
             SAPDestinationDataProvider.registerIfAbsent();
-            SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
             dp.addDestinationConfig(destinationConfig, destinationId);
-            JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
+            configAdded = true;
+            JCoDestination destination = JCoDestinationManager.getDestination(destId);
             destination.ping();
             logger.debug("JCo Client initialized");
             client.addNativeData(SAPConstants.RFC_DESTINATION, destination);
-            client.addNativeData(SAPConstants.RFC_DESTINATION_ID, destinationId.toString());
+            client.addNativeData(SAPConstants.RFC_DESTINATION_ID, destId);
             return null;
         } catch (JCoException e) {
             logger.error("Destination lookup failed.");
+            if (configAdded) {
+                try {
+                    dp.removeDestinationConfig(destId);
+                } catch (Exception rollbackEx) {
+                    logger.error("Failed to roll back destination '{}' after init failure.", destId, rollbackEx);
+                }
+            }
             return SAPErrorCreator.fromJCoException(e);
         } catch (Exception e) {
             logger.error("Client initialization failed.");
+            if (configAdded) {
+                try {
+                    dp.removeDestinationConfig(destId);
+                } catch (Exception rollbackEx) {
+                    logger.error("Failed to roll back destination '{}' after init failure.", destId, rollbackEx);
+                }
+            }
             return SAPErrorCreator.createConfigError("Client initialization failed.", e);
         }
     }
@@ -104,6 +121,9 @@ public class Client {
                                  BMap<BString, Object> inputParams, BTypedesc outputParamType) {
         try {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
+            if (destination == null) {
+                return SAPErrorCreator.createConfigError("Client is closed or not initialized.");
+            }
             JCoRepository repository = destination.getRepository();
             if (functionName.toString().isEmpty()) {
                 return SAPErrorCreator.createParameterError("Function name is empty.");
@@ -196,6 +216,9 @@ public class Client {
     public static Object sendIDoc(BObject client, BXml iDoc, BString iDocType) {
         try {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
+            if (destination == null) {
+                return SAPErrorCreator.createConfigError("Client is closed or not initialized.");
+            }
             String iDocXML = iDoc.toString();
             String iDocTypeStr = iDocType.toString();
             if (iDocTypeStr.length() != 1) {
