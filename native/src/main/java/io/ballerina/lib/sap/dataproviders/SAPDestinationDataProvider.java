@@ -44,6 +44,7 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     private static final AtomicBoolean registered = new AtomicBoolean(false);
 
     private final Map<String, Properties> destinationProperties = new ConcurrentHashMap<>();
+    @SuppressWarnings("unused") // required by DestinationDataProvider interface; kept for subclass use
     private volatile DestinationDataEventListener eventListener;
 
     private SAPDestinationDataProvider() {}
@@ -119,11 +120,16 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
      * {@link DestinationDataProvider} constants. For any other record/map type, all entries are
      * copied verbatim as JCo property key-value pairs, enabling advanced configuration not covered
      * by the structured type.
+     * <p>
+     * The registration is performed atomically via {@link ConcurrentHashMap#putIfAbsent} so that
+     * concurrent calls with the same {@code destinationName} cannot silently overwrite each other.
+     * A {@link RuntimeException} is thrown if the destination is already registered.
      *
      * @param jcoDestinationConfig the Ballerina configuration record or advanced map
      * @param destinationName      the name under which the properties are stored and later retrieved
      *                             by {@link #getDestinationProperties(String)}
-     * @throws RuntimeException if any property cannot be applied or the advanced map is empty
+     * @throws RuntimeException if the destination is already registered, any property cannot be
+     *                          applied, or the advanced map is empty
      */
     public void addDestinationConfig(BMap<BString, Object> jcoDestinationConfig, BString destinationName) {
         Properties properties = new Properties();
@@ -159,10 +165,9 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
                     throw new RuntimeException("Provided a empty advanced configuration for destination");
                 }
             }
-            boolean overwriting = destinationProperties.containsKey(destinationName.toString());
-            destinationProperties.put(destinationName.toString(), properties);
-            if (overwriting && eventListener != null) {
-                eventListener.updated(destinationName.toString());
+            if (destinationProperties.putIfAbsent(destinationName.toString(), properties) != null) {
+                throw new RuntimeException("Destination '" + destinationName
+                        + "' is already registered. Use a unique destination ID for each client.");
             }
         } catch (Exception e) {
             throw new RuntimeException("Error while adding destination: " + e.getMessage());
@@ -174,10 +179,15 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
      * key-value pairs. Used by the {@code Listener} init path when server and destination configuration
      * are supplied together as a single advanced map and destination keys have already been separated
      * from server keys.
+     * <p>
+     * The registration is performed atomically via {@link ConcurrentHashMap#putIfAbsent} so that
+     * concurrent calls with the same {@code destinationName} cannot silently overwrite each other.
+     * A {@link RuntimeException} is thrown if the destination is already registered.
      *
      * @param jcoAdvancedDestinationConfig the raw JCo property map (must not be empty)
      * @param destinationName              the name under which the properties are stored
-     * @throws RuntimeException if the map is empty or a property cannot be applied
+     * @throws RuntimeException if the destination is already registered, the map is empty, or a
+     *                          property cannot be applied
      */
     public void addAdvancedDestinationConfig(Map<String, String> jcoAdvancedDestinationConfig,
                                              String destinationName) {
@@ -195,10 +205,9 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
             } else {
                 throw new RuntimeException("Provided a empty advanced configuration for destination");
             }
-            boolean overwriting = destinationProperties.containsKey(destinationName);
-            destinationProperties.put(destinationName, properties);
-            if (overwriting && eventListener != null) {
-                eventListener.updated(destinationName);
+            if (destinationProperties.putIfAbsent(destinationName, properties) != null) {
+                throw new RuntimeException("Destination '" + destinationName
+                        + "' is already registered. Use a unique destination ID for each listener.");
             }
         } catch (Exception e) {
             throw new RuntimeException("Error while adding destination: " + e.getMessage());
