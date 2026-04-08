@@ -17,59 +17,59 @@
 import ballerina/jballerina.java as java;
 import ballerina/uuid;
 
-# Ballerina iDoc Listener
+# SAP JCo IDoc listener that registers as a JCo server with the SAP gateway and dispatches incoming IDocs to an attached service.
 public isolated class Listener {
 
-    # Initializes a Listener object with the given connection configuration.
-    # which is used to listen to iDoc messages.
+    # Registers a JCo IDoc server with the SAP gateway; reuses an existing server for the same (gwhost, gwserv, progid) combination.
     #
-    # + configurations - The configurations required to initialize the listener.
-    # + return - An error if the initialization fails.
-    public isolated function init(ServerConfig|AdvancedConfig severConfig, string serverName = uuid:createType4AsString()) returns Error? {
-        return externInit(self, severConfig, serverName);
+    # + serverConfig - JCo server connection parameters (`ServerConfig` or `AdvancedConfig`).
+    # + serverName - Unique name used to register the server with the JCo framework.
+    # + return - An error if the server cannot be registered.
+    public isolated function init(ServerConfig|AdvancedConfig serverConfig, string serverName = uuid:createType4AsString()) returns Error? {
+        return externInit(self, serverConfig, serverName);
     }
 
-    # Attach a listener to the iDoc listener.
+    # Attaches a service to receive incoming IDoc documents; only one service may be attached at a time.
     #
-    # + s - The service to be attached.
-    # + name - The name of the service.
-    # + return - An error if the attachment fails.
+    # + s - The service to attach.
+    # + name - Optional service name (not used by the JCo transport).
+    # + return - An error if the service cannot be attached.
     public isolated function attach(Service s, string[]|string? name = ()) returns Error? =
     @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
-    # Start the iDoc listener.
+    # Starts the JCo server and begins accepting IDoc connections from the SAP gateway.
     #
-    # + return - An error if the start fails.
+    # + return - An error if the server cannot be started.
     public isolated function 'start() returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
-    # Detach a service from the iDoc listener.
+    # Detaches the service and clears the server reference without stopping the JCo server.
     #
-    # + s - The service to be detached.
-    # + return - An error if the detachment fails.
+    # + s - The service to detach.
+    # + return - An error if the detach operation fails.
     public isolated function detach(Service s) returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
-    # Gracefully stop the iDoc listener.
+    # Stops the JCo server and blocks until it fully leaves the stopping state (up to 15 seconds).
     #
-    # + return - An error if the graceful stop fails.
+    # + return - An error if the server cannot be stopped.
     public isolated function gracefulStop() returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
-    # Immediately stop the iDoc listener.
+    # Stops the JCo server immediately; currently behaves identically to `gracefulStop`.
     #
-    # + return - An error if the immediate stop fails.
+    # + return - An error if the server cannot be stopped.
     public isolated function immediateStop() returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 }
 
-isolated function externInit(Listener jcoListener, ServerConfig|AdvancedConfig severConfig, string serverName) returns Error? = @java:Method {
+isolated function externInit(Listener jcoListener, ServerConfig|AdvancedConfig serverConfig, string serverName) returns Error? = @java:Method {
     name: "init",
     'class: "io.ballerina.lib.sap.Listener"
 } external;

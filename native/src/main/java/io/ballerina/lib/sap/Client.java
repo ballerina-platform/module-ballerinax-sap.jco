@@ -30,7 +30,6 @@ import com.sap.conn.jco.JCoException;
 import com.sap.conn.jco.JCoFunction;
 import com.sap.conn.jco.JCoParameterList;
 import com.sap.conn.jco.JCoRepository;
-import com.sap.conn.jco.ext.Environment;
 import io.ballerina.lib.sap.dataproviders.SAPDestinationDataProvider;
 import io.ballerina.lib.sap.parameterprocessor.ExportParameterProcessor;
 import io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor;
@@ -38,6 +37,7 @@ import io.ballerina.runtime.api.TypeTags;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.RecordType;
 import io.ballerina.runtime.api.utils.JsonUtils;
+import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
 import io.ballerina.runtime.api.values.BString;
@@ -46,14 +46,30 @@ import io.ballerina.runtime.api.values.BXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Native function implementations for the Ballerina SAP JCo {@code Client} object.
+ * Each public static method in this class corresponds to a Ballerina extern function.
+ */
 public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
+    /**
+     * Initializes a JCo RFC destination and pings the SAP system to verify connectivity.
+     * On success the {@link JCoDestination} is stored as native data on the Ballerina client object
+     * so that subsequent calls ({@link #execute} / {@link #sendIDoc}) can retrieve it without
+     * a destination-manager lookup.
+     *
+     * @param client            the Ballerina {@code Client} object being initialized
+     * @param destinationConfig a Ballerina record ({@code DestinationConfig} or advanced map) holding
+     *                          JCo connection properties
+     * @param destinationId     a unique name used to register the destination with the JCo framework
+     * @return {@code null} on success, or a Ballerina {@code Error} on failure
+     */
     public static Object initializeClient(BObject client, BMap<BString, Object> destinationConfig,
                                           BString destinationId) {
         try {
-            SAPDestinationDataProvider dp = new SAPDestinationDataProvider();
-            Environment.registerDestinationDataProvider(dp);
+            SAPDestinationDataProvider.registerIfAbsent();
+            SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
             dp.addDestinationConfig(destinationConfig, destinationId);
             JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
             destination.ping();
@@ -65,58 +81,106 @@ public class Client {
             return SAPErrorCreator.fromJCoException(e);
         } catch (Exception e) {
             logger.error("Client initialization failed.");
-            return SAPErrorCreator.createError("Client initialization failed.", e);
+            return SAPErrorCreator.createConfigError("Client initialization failed.", e);
         }
     }
 
+    /**
+     * Executes a Remote Function Call (RFC) on the SAP system.
+     * <p>
+     * Import parameters are mapped from {@code inputParams} using
+     * {@link io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor}.
+     * Export parameters are mapped back to the Ballerina type described by {@code outputParamType},
+     * which may be {@code xml}, {@code json}, or a Ballerina record type.
+     *
+     * @param client          the Ballerina {@code Client} object holding the JCo destination
+     * @param functionName    name of the RFC function module to call (must not be empty)
+     * @param inputParams     key-value map of import parameter values
+     * @param outputParamType the expected Ballerina type of the RFC export parameters
+     * @return the converted export parameters, or a Ballerina {@code Error} on failure
+     */
     public static Object execute(BObject client, BString functionName,
                                  BMap<BString, Object> inputParams, BTypedesc outputParamType) {
-            try {
-                
-                JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
-                JCoRepository repository = destination.getRepository();
-                if (functionName.toString().isEmpty()) {
-                    return SAPErrorCreator.fromBError("Function name is empty", null);
-                }
-                JCoFunction function = repository.getFunction(functionName.toString());
-                if (function == null) {
-                    return SAPErrorCreator.fromBError("RFC function '" + functionName + "' not found in SAP."
-                            , null);
-                }
+        try {
+            JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
+            JCoRepository repository = destination.getRepository();
+            if (functionName.toString().isEmpty()) {
+                return SAPErrorCreator.createParameterError("Function name is empty.");
+            }
+            JCoFunction function = repository.getFunction(functionName.toString());
+            if (function == null) {
+                return SAPErrorCreator.createParameterError(
+                        "RFC function '" + functionName + "' not found in SAP.");
+            }
 
-                JCoParameterList importParams = function.getImportParameterList();
+            JCoParameterList importParams = function.getImportParameterList();
+            if (importParams == null && !inputParams.isEmpty()) {
+                return SAPErrorCreator.createParameterError("RFC function '" + functionName
+                        + "' has no import parameters but input params were provided.");
+            }
+            if (importParams != null) {
                 ImportParameterProcessor.setImportParams(importParams, inputParams);
+            }
 
-                function.execute(destination);
+            function.execute(destination);
 
-                JCoParameterList exportParams = function.getExportParameterList();
+            JCoParameterList exportParams = function.getExportParameterList();
+            int exportType = outputParamType.getDescribingType().getTag();
+            if (exportType == TypeTags.XML_TAG) {
+                if (exportParams == null) {
+                    return ValueCreator.createXmlValue("<result/>");
+                }
+                return ValueCreator.createXmlValue(exportParams.toXML());
+            } else if (exportType == TypeTags.JSON_TAG) {
+                if (exportParams == null) {
+                    return JsonUtils.parse("{}");
+                }
+                return JsonUtils.parse(exportParams.toJSON());
+            } else if (exportType == TypeTags.RECORD_TYPE_TAG) {
                 RecordType outputParamRecordType = (RecordType) outputParamType.getDescribingType();
                 boolean isRestFieldsAllowed = outputParamRecordType.getRestFieldType() != null;
-
-
-                int exportType = outputParamType.getDescribingType().getTag();
-                if (exportType == TypeTags.XML_TAG) {
-                    return ValueCreator.createXmlValue(exportParams.toXML());
-                } else if (exportType == TypeTags.JSON_TAG) {
-                    return JsonUtils.parse(exportParams.toJSON());
-                } else if (exportType == TypeTags.RECORD_TYPE_TAG) {
-                    return ExportParameterProcessor.getExportParams(exportParams, outputParamRecordType,
-                            isRestFieldsAllowed);
-                } else {
-                    throw SAPErrorCreator.fromBError("Unsupported output parameter type: " +
-                            outputParamType.getType().getName(), null);
+                if (exportParams == null) {
+                    return ValueCreator.createRecordValue(outputParamRecordType);
                 }
-            } catch (Throwable e) {
-                logger.error("JCoException occurred. Error: " + e.getMessage());
-                return SAPErrorCreator.fromJCoException(e);
+                return ExportParameterProcessor.getExportParams(exportParams, outputParamRecordType,
+                        isRestFieldsAllowed);
+            } else {
+                return SAPErrorCreator.createParameterError(
+                        "Unsupported output parameter type: " + outputParamType.getType().getName());
             }
+        } catch (BError e) {
+            return e;
+        } catch (JCoException e) {
+            logger.error("RFC execution failed.");
+            return SAPErrorCreator.fromJCoException(e);
+        } catch (Throwable e) {
+            logger.error("Unexpected error during RFC execution.");
+            return SAPErrorCreator.fromExecutionThrowable("RFC execution failed.", e);
+        }
     }
 
+    /**
+     * Sends an IDoc to SAP using the Transactional RFC (tRFC) protocol.
+     * <p>
+     * A TID (Transaction ID) is created on the destination, the IDoc XML is parsed and sent
+     * via {@link com.sap.conn.idoc.jco.JCoIDoc#send}, and the TID is then confirmed so that
+     * SAP does not re-deliver the document on a subsequent connection.
+     *
+     * @param client   the Ballerina {@code Client} object holding the JCo destination
+     * @param iDoc     the IDoc payload as an XML value
+     * @param iDocType a single-character IDoc version identifier (e.g. {@code '3'} for IDoc type 3)
+     * @return {@code null} on success, or a Ballerina {@code Error} on failure
+     */
     public static Object sendIDoc(BObject client, BXml iDoc, BString iDocType) {
         try {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
             String iDocXML = iDoc.toString();
-            char version = iDocType.toString().charAt(0);
+            String iDocTypeStr = iDocType.toString();
+            if (iDocTypeStr.length() != 1) {
+                return SAPErrorCreator.createParameterError(
+                        "iDocType must be a single character, got: \"" + iDocTypeStr + "\"");
+            }
+            char version = iDocTypeStr.charAt(0);
 
             String tid = destination.createTID();
             logger.debug("TID created: {}", tid);
@@ -131,10 +195,10 @@ public class Client {
             logger.debug("IDoc sent successfully with TID: {}", tid);
             return null;
         } catch (JCoException e) {
-            logger.error("JCoException occurred");
+            logger.error("IDoc send failed.");
             return SAPErrorCreator.fromJCoException(e);
         } catch (IDocException e) {
-            logger.error("IDocException occurred");
+            logger.error("IDoc send failed.");
             return SAPErrorCreator.fromIDocException(e);
         }
     }

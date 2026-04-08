@@ -29,8 +29,8 @@ public class SAPConstants {
     public static final String TIME_OF_DAY = "TimeOfDay";
 
     // Config Types
-    public static final String JCO_SERVER_CONFIG_NAME = "ServerConfig & readonly";
-    public static final String JCO_DESTINATION_CONFIG_NAME = "DestinationConfig & readonly";
+    public static final String JCO_SERVER_CONFIG = "ServerConfig";
+    public static final String JCO_DESTINATION_CONFIG = "DestinationConfig";
     public static final String JCO_SERVER_PREFIX = "jco.server.";
 
     // Server Configs
@@ -54,6 +54,11 @@ public class SAPConstants {
     public static final String ON_RECEIVE = "onReceive";
     public static final String ON_ERROR = "onError";
     public static final String IS_SERVICE_ATTACHED = "isServiceAttached";
+    public static final String IS_STARTED = "isStarted";
+
+    // Server Config field names
+    public static final BString JCO_REPOSITORY_DESTINATION = StringUtils.fromString("repositoryDestination");
+    public static final BString JCO_CONNECTION_COUNT = StringUtils.fromString("connectionCount");
 
 
     // Class names
@@ -71,4 +76,30 @@ public class SAPConstants {
     // Sub date types
     public static final String JCO_DATE_TYPE_DATE = "DATE";
     public static final String JCO_DATE_TYPE_TIME = "TIME";
+
+    // Ballerina error type names — must match the type declarations in types.bal exactly
+    public static final String CONNECTION_ERROR_TYPE        = "ConnectionError";
+    public static final String LOGON_ERROR_TYPE             = "LogonError";
+    public static final String RESOURCE_ERROR_TYPE          = "ResourceError";
+    public static final String SYSTEM_ERROR_TYPE            = "SystemError";
+    public static final String ABAP_APPLICATION_ERROR_TYPE  = "AbapApplicationError";
+    public static final String JCO_ERROR_TYPE               = "JCoError";
+    public static final String IDOC_ERROR_TYPE              = "IDocError";
+    public static final String PARAMETER_ERROR_TYPE         = "ParameterError";
+    public static final String CONFIGURATION_ERROR_TYPE     = "ConfigurationError";
+    public static final String EXECUTION_ERROR_TYPE         = "ExecutionError";
+
+    // JCoErrorDetail field keys
+    public static final BString DETAIL_ERROR_GROUP      = StringUtils.fromString("errorGroup");
+    public static final BString DETAIL_KEY              = StringUtils.fromString("key");
+
+    // AbapApplicationErrorDetail field keys (reserved for future use when the JCo version
+    // exposes individual ABAP message part accessors on JCoException)
+    public static final BString DETAIL_ABAP_MSG_CLASS   = StringUtils.fromString("abapMsgClass");
+    public static final BString DETAIL_ABAP_MSG_TYPE    = StringUtils.fromString("abapMsgType");
+    public static final BString DETAIL_ABAP_MSG_NUMBER  = StringUtils.fromString("abapMsgNumber");
+    public static final BString DETAIL_ABAP_MSG_V1      = StringUtils.fromString("abapMsgV1");
+    public static final BString DETAIL_ABAP_MSG_V2      = StringUtils.fromString("abapMsgV2");
+    public static final BString DETAIL_ABAP_MSG_V3      = StringUtils.fromString("abapMsgV3");
+    public static final BString DETAIL_ABAP_MSG_V4      = StringUtils.fromString("abapMsgV4");
 }

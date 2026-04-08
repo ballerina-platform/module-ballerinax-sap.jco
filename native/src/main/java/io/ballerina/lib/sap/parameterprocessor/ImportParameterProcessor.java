@@ -22,7 +22,6 @@ import com.sap.conn.jco.JCoTable;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.lib.sap.SAPErrorCreator;
 import io.ballerina.runtime.api.TypeTags;
-import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.utils.TypeUtils;
 import io.ballerina.runtime.api.values.BArray;
@@ -33,8 +32,31 @@ import java.math.BigDecimal;
 import java.util.Calendar;
 import java.util.Date;
 
+/**
+ * Converts Ballerina values from an input parameter map into the corresponding JCo parameter list,
+ * structure, or table values before an RFC is executed.
+ * <p>
+ * Supported Ballerina-to-JCo type mappings:
+ * <ul>
+ *   <li>{@code string} → {@link String}</li>
+ *   <li>{@code int} → {@code int} (parsed via {@link Integer#parseInt})</li>
+ *   <li>{@code float} → {@code double}</li>
+ *   <li>{@code decimal} → {@link java.math.BigDecimal}</li>
+ *   <li>{@code byte[]} → {@code byte[]}</li>
+ *   <li>Date/TimeOfDay record → {@link java.util.Date}</li>
+ *   <li>other record types → nested {@link com.sap.conn.jco.JCoStructure}</li>
+ *   <li>array types → {@link com.sap.conn.jco.JCoTable}</li>
+ * </ul>
+ */
 public class ImportParameterProcessor {
 
+    /**
+     * Populates the given JCo import parameter list from a Ballerina map of input values.
+     *
+     * @param jcoParamList the JCo parameter list to populate
+     * @param inputParams  a Ballerina record/map whose keys match JCo parameter names
+     * @throws BError if a parameter type is not supported or a date record is malformed
+     */
     @SuppressWarnings("unchecked")
     public static void setImportParams(JCoParameterList jcoParamList, BMap<BString, Object> inputParams) {
         inputParams.entrySet().forEach(entry -> {
@@ -55,7 +77,7 @@ public class ImportParameterProcessor {
                     jcoParamList.setValue(key, new BigDecimal(value.toString()));
                     break;
                 case TypeTags.BYTE_ARRAY_TAG:
-                    jcoParamList.setValue(key, ValueCreator.createArrayValue((byte[]) value));
+                    jcoParamList.setValue(key, (byte[]) value);
                     break;
                 case TypeTags.RECORD_TYPE_TAG:
                     if (SAPConstants.DATE.equals(TypeUtils.getType(value).getName()) ||
@@ -65,8 +87,8 @@ public class ImportParameterProcessor {
                         if (dateValue != null) {
                             jcoParamList.setValue(key, dateValue);
                         } else {
-                            throw SAPErrorCreator.fromBError("Invalid date record: year, month, " +
-                                    "and day must be provided.", null);
+                            throw SAPErrorCreator.createParameterError(
+                                        "Invalid date record: year, month, and day must be provided.");
                         }
                     } else {
                         JCoStructure structure = jcoParamList.getStructure(key);
@@ -78,7 +100,6 @@ public class ImportParameterProcessor {
                 case TypeTags.ARRAY_TAG:
                     JCoTable table = jcoParamList.getTable(key);
                     createTable(table, (BArray) value);
-                    jcoParamList.setValue(key, table);
                     break;
                 default:
                     throwUnsupportedUnionTypeError(entry.getKey(), TypeUtils.getType(value).getName());
@@ -109,7 +130,7 @@ public class ImportParameterProcessor {
                         table.setValue(fieldName, new BigDecimal(fieldValue.toString()));
                         break;
                     case TypeTags.BYTE_ARRAY_TAG:
-                        table.setValue(fieldName, ValueCreator.createArrayValue((byte[]) fieldValue));
+                        table.setValue(fieldName, (byte[]) fieldValue);
                         break;
                     case TypeTags.RECORD_TYPE_TAG:
                         if (SAPConstants.DATE.equals(TypeUtils.getType(fieldValue).getName()) ||
@@ -119,8 +140,8 @@ public class ImportParameterProcessor {
                             if (dateValue != null) {
                                 table.setValue(fieldName, dateValue);
                             } else {
-                                throw SAPErrorCreator.fromBError("Invalid date record: year, month, " +
-                                        "and day must be provided.", null);
+                                throw SAPErrorCreator.createParameterError(
+                                        "Invalid date record: year, month, and day must be provided.");
                             }
                         } else {
                             JCoStructure structure = table.getStructure(fieldName);
@@ -161,7 +182,7 @@ public class ImportParameterProcessor {
                     structure.setValue(key, new BigDecimal(value.toString()));
                     break;
                 case TypeTags.BYTE_ARRAY_TAG:
-                    structure.setValue(key, ValueCreator.createArrayValue((byte[]) value));
+                    structure.setValue(key, (byte[]) value);
                     break;
                 case TypeTags.RECORD_TYPE_TAG:
                     if (SAPConstants.DATE.equals(TypeUtils.getType(value).getName()) ||
@@ -171,13 +192,13 @@ public class ImportParameterProcessor {
                         if (dateValue != null) {
                             structure.setValue(key, dateValue);
                         } else {
-                            throw SAPErrorCreator.fromBError("Invalid date record: year, month, " +
-                                    "and day must be provided.", null);
+                            throw SAPErrorCreator.createParameterError(
+                                        "Invalid date record: year, month, and day must be provided.");
                         }
                     } else {
                         JCoStructure nestedStructure = structure.getStructure(key);
                         BMap<BString, Object> record = (BMap<BString, Object>) value;
-                        createStructure(structure, record);
+                        createStructure(nestedStructure, record);
                         structure.setValue(key, nestedStructure);
                     }
                     break;
@@ -200,23 +221,35 @@ public class ImportParameterProcessor {
         Object minuteObj = dateMap.get(StringUtils.fromString("minute"));
         Object secondObj = dateMap.get(StringUtils.fromString("second"));
 
-        int year = (yearObj != null) ? Integer.parseInt(yearObj.toString()) : 1970;
-        int month = (monthObj != null) ? Integer.parseInt(monthObj.toString()) : 1;
-        int day = (dayObj != null) ? Integer.parseInt(dayObj.toString()) : 1;
+        // For time:TimeOfDay records, year/month/day are absent — default to SAP epoch date.
+        boolean isTimeOnly = (yearObj == null && monthObj == null && dayObj == null);
+        if (!isTimeOnly && (yearObj == null || monthObj == null || dayObj == null)) {
+            return null;
+        }
+
+        int year = isTimeOnly ? 1970 : Integer.parseInt(yearObj.toString());
+        int month = isTimeOnly ? 1 : Integer.parseInt(monthObj.toString());
+        int day = isTimeOnly ? 1 : Integer.parseInt(dayObj.toString());
 
         int hour = (hourObj != null) ? Integer.parseInt(hourObj.toString()) : 0;
         int minute = (minuteObj != null) ? Integer.parseInt(minuteObj.toString()) : 0;
         int second = (secondObj != null) ? Integer.parseInt(secondObj.toString()) : 0;
 
         Calendar calendar = Calendar.getInstance();
-        calendar.set(year, month - 1, day, hour, minute, second);
-        return calendar.getTime();
+        calendar.setLenient(false);
+        try {
+            calendar.set(year, month - 1, day, hour, minute, second);
+            calendar.set(Calendar.MILLISECOND, 0);
+            return calendar.getTime();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static void throwUnsupportedUnionTypeError(Object key, String type) {
-        throw SAPErrorCreator.fromBError("Error while processing destination properties: " +
-                key.toString() + ". Unsupported union type '" + type + "'. Supported types " +
-                "are: string, int, float, decimal and nullable supported types.", null);
+        throw SAPErrorCreator.createParameterError(
+                "Unsupported parameter type for '" + key + "': '" + type + "'. " +
+                "Supported types are: string, int, float, decimal, byte[], Date, TimeOfDay, record, and array.");
     }
 
 }

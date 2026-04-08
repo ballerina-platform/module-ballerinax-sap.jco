@@ -20,18 +20,65 @@ package io.ballerina.lib.sap.dataproviders;
 
 import com.sap.conn.jco.ext.DestinationDataEventListener;
 import com.sap.conn.jco.ext.DestinationDataProvider;
+import com.sap.conn.jco.ext.Environment;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * Singleton {@link DestinationDataProvider} that supplies JCo destination properties from an
+ * in-memory map populated at client/listener initialisation time.
+ * <p>
+ * JCo's {@link com.sap.conn.jco.ext.Environment} only allows one destination data provider per
+ * JVM. {@link #registerIfAbsent()} uses an {@link AtomicBoolean} to ensure the provider is
+ * registered exactly once regardless of how many Ballerina clients are created concurrently.
+ */
 public class SAPDestinationDataProvider implements DestinationDataProvider {
 
-    private final Map<String, Properties> destinationProperties = new HashMap<>();
+    private static final SAPDestinationDataProvider INSTANCE = new SAPDestinationDataProvider();
+    private static final AtomicBoolean registered = new AtomicBoolean(false);
 
+    private final Map<String, Properties> destinationProperties = new ConcurrentHashMap<>();
+
+    private SAPDestinationDataProvider() {}
+
+    /**
+     * Returns the singleton provider instance.
+     *
+     * @return the single {@link SAPDestinationDataProvider} for this JVM
+     */
+    public static SAPDestinationDataProvider getInstance() {
+        return INSTANCE;
+    }
+
+    /**
+     * Registers this provider with the JCo {@link Environment} if it has not been registered yet.
+     * Subsequent calls are no-ops. Thread-safe via {@link AtomicBoolean#compareAndSet}.
+     */
+    public static void registerIfAbsent() {
+        if (registered.compareAndSet(false, true)) {
+            try {
+                Environment.registerDestinationDataProvider(INSTANCE);
+            } catch (Exception e) {
+                registered.set(false);
+                throw e;
+            }
+        }
+    }
+
+    /**
+     * Returns the JCo connection properties for the named destination.
+     *
+     * @param destinationName the destination name previously registered via
+     *                        {@link #addDestinationConfig} or {@link #addAdvancedDestinationConfig}
+     * @return the {@link Properties} for the destination
+     * @throws RuntimeException if no properties have been registered for {@code destinationName}
+     */
     @Override
     public Properties getDestinationProperties(String destinationName) {
         if (destinationProperties.containsKey(destinationName)) {
@@ -41,19 +88,51 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
         }
     }
 
+    /**
+     * No-op implementation required by the {@link DestinationDataProvider} interface.
+     * Destination properties are registered once via {@link #addDestinationConfig} /
+     * {@link #addAdvancedDestinationConfig} and never updated, so no event listener is needed.
+     */
     @Override
     public void setDestinationDataEventListener(DestinationDataEventListener eventListener) {
+        // not used: destinations are registered once and never overwritten
     }
 
+    /**
+     * Returns {@code false} because destinations are registered once and never updated, so JCo
+     * destination-change events are not needed.
+     *
+     * @return {@code false}
+     */
     @Override
     public boolean supportsEvents() {
-        return true;
+        return false;
     }
 
+    /**
+     * Registers destination properties derived from a structured {@code DestinationConfig} Ballerina record
+     * or an advanced flat key-value map.
+     * <p>
+     * When {@code jcoDestinationConfig} is a {@code DestinationConfig} record, the well-known fields
+     * ({@code jcoClient}, {@code user}, {@code passwd}, etc.) are mapped to the corresponding
+     * {@link DestinationDataProvider} constants. For any other record/map type, all entries are
+     * copied verbatim as JCo property key-value pairs, enabling advanced configuration not covered
+     * by the structured type.
+     * <p>
+     * The registration is performed atomically via {@link ConcurrentHashMap#putIfAbsent} so that
+     * concurrent calls with the same {@code destinationName} cannot silently overwrite each other.
+     * A {@link RuntimeException} is thrown if the destination is already registered.
+     *
+     * @param jcoDestinationConfig the Ballerina configuration record or advanced map
+     * @param destinationName      the name under which the properties are stored and later retrieved
+     *                             by {@link #getDestinationProperties(String)}
+     * @throws RuntimeException if the destination is already registered, any property cannot be
+     *                          applied, or the advanced map is empty
+     */
     public void addDestinationConfig(BMap<BString, Object> jcoDestinationConfig, BString destinationName) {
         Properties properties = new Properties();
         try {
-            if (jcoDestinationConfig.getType().getName().equals(SAPConstants.JCO_DESTINATION_CONFIG_NAME)) {
+            if (jcoDestinationConfig.getType().getName().equals(SAPConstants.JCO_DESTINATION_CONFIG)) {
                 properties.setProperty(DestinationDataProvider.JCO_CLIENT,
                         jcoDestinationConfig.getStringValue(SAPConstants.JCO_CLIENT).toString());
                 properties.setProperty(DestinationDataProvider.JCO_USER,
@@ -73,9 +152,8 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
                     jcoDestinationConfig.entrySet().forEach(entry -> {
                         BString key = entry.getKey();
                         BString value = (BString) entry.getValue();
-                        String stripedKey = key.toString().substring(1, key.toString().length() - 1);
                         try {
-                            properties.setProperty(stripedKey, value.toString());
+                            properties.setProperty(key.toString(), value.toString());
                         } catch (Exception e) {
                             throw new RuntimeException("Error while adding destination property " + key.toString()
                                     + " : " + e.getMessage());
@@ -85,12 +163,30 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
                     throw new RuntimeException("Provided a empty advanced configuration for destination");
                 }
             }
-            destinationProperties.put(destinationName.toString(), properties);
+            if (destinationProperties.putIfAbsent(destinationName.toString(), properties) != null) {
+                throw new RuntimeException("Destination '" + destinationName
+                        + "' is already registered. Use a unique destination ID for each client.");
+            }
         } catch (Exception e) {
             throw new RuntimeException("Error while adding destination: " + e.getMessage());
         }
     }
 
+    /**
+     * Registers destination properties from a pre-parsed {@code Map<String, String>} of JCo property
+     * key-value pairs. Used by the {@code Listener} init path when server and destination configuration
+     * are supplied together as a single advanced map and destination keys have already been separated
+     * from server keys.
+     * <p>
+     * The registration is performed atomically via {@link ConcurrentHashMap#putIfAbsent} so that
+     * concurrent calls with the same {@code destinationName} cannot silently overwrite each other.
+     * A {@link RuntimeException} is thrown if the destination is already registered.
+     *
+     * @param jcoAdvancedDestinationConfig the raw JCo property map (must not be empty)
+     * @param destinationName              the name under which the properties are stored
+     * @throws RuntimeException if the destination is already registered, the map is empty, or a
+     *                          property cannot be applied
+     */
     public void addAdvancedDestinationConfig(Map<String, String> jcoAdvancedDestinationConfig,
                                              String destinationName) {
         Properties properties = new Properties();
@@ -107,7 +203,10 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
             } else {
                 throw new RuntimeException("Provided a empty advanced configuration for destination");
             }
-            destinationProperties.put(destinationName, properties);
+            if (destinationProperties.putIfAbsent(destinationName, properties) != null) {
+                throw new RuntimeException("Destination '" + destinationName
+                        + "' is already registered. Use a unique destination ID for each listener.");
+            }
         } catch (Exception e) {
             throw new RuntimeException("Error while adding destination: " + e.getMessage());
         }

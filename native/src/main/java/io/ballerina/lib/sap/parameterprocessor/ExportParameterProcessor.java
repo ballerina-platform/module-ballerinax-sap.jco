@@ -23,7 +23,6 @@ import io.ballerina.lib.sap.ModuleUtils;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.lib.sap.SAPErrorCreator;
 import io.ballerina.runtime.api.PredefinedTypes;
-import io.ballerina.runtime.api.TypeTags;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.ArrayType;
@@ -42,8 +41,41 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Converts the JCo export parameter list returned by a Remote Function Call into a Ballerina
+ * record value. Nested JCo structures map to nested Ballerina records; JCo tables map to
+ * Ballerina arrays of records. When the caller supplies a concrete {@link RecordType}, its
+ * declared fields drive the conversion; when no type information is available (i.e. the record
+ * allows rest fields), the JCo metadata is used to infer the field types at runtime.
+ * <p>
+ * Supported JCo-to-Ballerina type mappings:
+ * <ul>
+ *   <li>{@code java.lang.String} → {@code string}</li>
+ *   <li>{@code java.lang.Integer} → {@code int}</li>
+ *   <li>{@code java.lang.Double} → {@code float}</li>
+ *   <li>{@code java.lang.Long} → {@code int}</li>
+ *   <li>{@code java.lang.Object} → {@code string} (via {@link Object#toString()})</li>
+ *   <li>{@code java.math.BigDecimal} → {@code decimal}</li>
+ *   <li>{@code byte[]} → {@code byte[]}</li>
+ *   <li>{@code java.util.Date} (DATE) → {@code time:Date}</li>
+ *   <li>{@code java.util.Date} (TIME) → {@code time:TimeOfDay}</li>
+ *   <li>{@code com.sap.conn.jco.JCoStructure} → nested record</li>
+ *   <li>{@code com.sap.conn.jco.JCoTable} → array of records</li>
+ * </ul>
+ */
 public class ExportParameterProcessor {
 
+    /**
+     * Converts the top-level JCo export parameter list into a Ballerina record.
+     *
+     * @param exportList          the JCo export parameter list to read from
+     * @param outputParamType     the target Ballerina {@link RecordType}; fields not present in this
+     *                            type are skipped unless {@code isRestFieldsAllowed} is {@code true}
+     * @param isRestFieldsAllowed when {@code true}, fields not explicitly declared in
+     *                            {@code outputParamType} are included using runtime-inferred types
+     * @return a Ballerina record value populated with the export parameter values
+     * @throws BError if a JCo field type is not supported or a type cast fails
+     */
     public static BMap<BString, Object> getExportParams(JCoParameterList exportList, RecordType outputParamType,
                                                         boolean isRestFieldsAllowed) {
         BMap<BString, Object> outputMap = ValueCreator.createRecordValue(outputParamType);
@@ -66,25 +98,35 @@ public class ExportParameterProcessor {
                     double doubleValue = exportList.getDouble(i);
                     outputMap.put(StringUtils.fromString(fieldName), doubleValue);
                     break;
-                case SAPConstants.JCO_BIG_DECIMAL:
-                    BigDecimal decimalValue = exportList.getBigDecimal(i);
-                    outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
-                    break;
                 case SAPConstants.JCO_LONG:
                     long longValue = exportList.getLong(i);
                     outputMap.put(StringUtils.fromString(fieldName), longValue);
                     break;
                 case SAPConstants.JCO_OBJECT:
                     Object objectValue = exportList.getValue(i);
+                    if (objectValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), objectValue.toString());
+                    break;
+                case SAPConstants.JCO_BIG_DECIMAL:
+                    BigDecimal decimalValue = exportList.getBigDecimal(i);
+                    if (decimalValue == null) {
+                        break;
+                    }
+                    outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
                     break;
                 case SAPConstants.JCO_BYTE_ARRAY:
                     byte[] byteArray = exportList.getByteArray(i);
                     outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createArrayValue(byteArray));
                     break;
                 case SAPConstants.JCO_DATE:
+                    Date dateValue = exportList.getDate(i);
+                    if (dateValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), createDateRecord(
-                            exportList.getMetaData().getTypeAsString(i), exportList.getDate(i)));
+                            exportList.getMetaData().getTypeAsString(i), dateValue));
                     break;
                 case SAPConstants.JCO_STRUCTURE:
                     RecordType nestedRecordType;
@@ -93,18 +135,18 @@ public class ExportParameterProcessor {
                             nestedRecordType = (RecordType) TypeUtils.getReferredType(
                                     outputParamType.getFields().get(fieldName).getFieldType());
                         } catch (ClassCastException e) {
-                            throw SAPErrorCreator.fromBError("Error while retrieving output structure " +
+                            throw SAPErrorCreator.createParameterError("Error while retrieving output structure " +
                                     "parameter for field: " +
                                     fieldName + ". Unsupported type " + TypeUtils.getReferredType(
-                                    outputParamType.getFields().get(fieldName).getFieldType()).toString(), null);
+                                    outputParamType.getFields().get(fieldName).getFieldType()).toString());
                         }
                     } else {
                         try {
                             nestedRecordType = setFields(exportList.getStructure(i));
                         } catch (ClassCastException e) {
-                            throw SAPErrorCreator.fromBError("Error while retrieving output anonymous " +
+                            throw SAPErrorCreator.createParameterError("Error while retrieving output anonymous " +
                                     "structure parameter for field: " + fieldName + ". Unsupported type "
-                                    + setFields(exportList.getStructure(i)), null);
+                                    + setFields(exportList.getStructure(i)));
                         }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
@@ -117,29 +159,29 @@ public class ExportParameterProcessor {
                             recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
                                     outputParamType.getFields().get(fieldName).getFieldType()).getElementType());
                         } catch (ClassCastException e) {
-                            throw SAPErrorCreator.fromBError("Error while retrieving output table " +
+                            throw SAPErrorCreator.createParameterError("Error while retrieving output table " +
                                     "parameter for field: " +
                                     fieldName + ". Unsupported type " + TypeUtils.getReferredType(((ArrayType)
                                             outputParamType.getFields().get(fieldName).getFieldType()).getElementType())
-                                    .toString(), null);
+                                    .toString());
                         }
                     } else {
                         try {
                             recordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
                                     setTableFields(exportList.getTable(i)).getElementType()).getElementType());
                         } catch (ClassCastException e) {
-                            throw SAPErrorCreator.fromBError("Error while retrieving output anonymous " +
+                            throw SAPErrorCreator.createParameterError("Error while retrieving output anonymous " +
                                     "table parameter for field: " +
                                     fieldName + ". Unsupported type " + setTableFields(exportList.getTable(i)).
-                                    getElementType().toString(), null);
+                                    getElementType().toString());
                         }
                     }
                     outputMap.put(StringUtils.fromString(fieldName),
                             populateRecordArray(exportList.getTable(i), recordType, isRestFieldsAllowed));
                     break;
                 default:
-                    throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                            fieldName + ". Unsupported type " + type, null);
+                    throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for field: " +
+                            fieldName + ". Unsupported type " + type);
             }
         }
         return outputMap;
@@ -166,6 +208,9 @@ public class ExportParameterProcessor {
                     break;
                 case SAPConstants.JCO_BIG_DECIMAL:
                     BigDecimal decimalValue = exportStructure.getBigDecimal(i);
+                    if (decimalValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
                     break;
                 case SAPConstants.JCO_LONG:
@@ -174,6 +219,9 @@ public class ExportParameterProcessor {
                     break;
                 case SAPConstants.JCO_OBJECT:
                     Object objectValue = exportStructure.getValue(i);
+                    if (objectValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), objectValue.toString());
                     break;
                 case SAPConstants.JCO_BYTE_ARRAY:
@@ -181,8 +229,12 @@ public class ExportParameterProcessor {
                     outputMap.put(StringUtils.fromString(fieldName), ValueCreator.createArrayValue(byteArray));
                     break;
                 case SAPConstants.JCO_DATE:
+                    Date structDateValue = exportStructure.getDate(i);
+                    if (structDateValue == null) {
+                        break;
+                    }
                     outputMap.put(StringUtils.fromString(fieldName), createDateRecord(
-                            exportStructure.getMetaData().getTypeAsString(i), exportStructure.getDate(i)));
+                            exportStructure.getMetaData().getTypeAsString(i), structDateValue));
                     break;
                 case SAPConstants.JCO_STRUCTURE:
                     RecordType nestedRecordType;
@@ -209,8 +261,8 @@ public class ExportParameterProcessor {
                             populateRecordArray(exportStructure.getTable(i), recordType, isRestFieldsAllowed));
                     break;
                 default:
-                    throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                            fieldName + ". Unsupported type " + type, null);
+                    throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for field: " +
+                            fieldName + ". Unsupported type " + type);
             }
         }
         return outputMap;
@@ -244,6 +296,9 @@ public class ExportParameterProcessor {
                         break;
                     case SAPConstants.JCO_BIG_DECIMAL:
                         BigDecimal decimalValue = table.getBigDecimal(j);
+                        if (decimalValue == null) {
+                            break;
+                        }
                         record.put(StringUtils.fromString(fieldName), ValueCreator.createDecimalValue(decimalValue));
                         break;
                     case SAPConstants.JCO_LONG:
@@ -252,6 +307,9 @@ public class ExportParameterProcessor {
                         break;
                     case SAPConstants.JCO_OBJECT:
                         Object objectValue = table.getValue(j);
+                        if (objectValue == null) {
+                            break;
+                        }
                         record.put(StringUtils.fromString(fieldName), objectValue.toString());
                         break;
                     case SAPConstants.JCO_BYTE_ARRAY:
@@ -259,8 +317,12 @@ public class ExportParameterProcessor {
                         record.put(StringUtils.fromString(fieldName), ValueCreator.createArrayValue(byteArray));
                         break;
                     case SAPConstants.JCO_DATE:
+                        Date tableDateValue = table.getDate(j);
+                        if (tableDateValue == null) {
+                            break;
+                        }
                         record.put(StringUtils.fromString(fieldName), createDateRecord(
-                                table.getMetaData().getTypeAsString(j), table.getDate(j)));
+                                table.getMetaData().getTypeAsString(j), tableDateValue));
                         break;
                     case SAPConstants.JCO_STRUCTURE:
                         if (outputRecordType.getFields().containsKey(fieldName)) {
@@ -278,15 +340,15 @@ public class ExportParameterProcessor {
                                     outputRecordType.getFields().get(fieldName).getFieldType()).getElementType());
                         } else {
                             nestedRecordType = (RecordType) TypeUtils.getReferredType(((ArrayType)
-                                    setTableFields(table.getTable(i)).getElementType()).getElementType());
+                                    setTableFields(table.getTable(j)).getElementType()).getElementType());
                         }
                         BArray nestedRecordArray = populateRecordArray(table.getTable(j), nestedRecordType,
                                 isRestFieldsAllowed);
                         record.put(StringUtils.fromString(fieldName), nestedRecordArray);
                         break;
                     default:
-                        throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                                fieldName + ". Unsupported type " + type, null);
+                        throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for " + 
+                            "field: " + fieldName + ". Unsupported type " + type);
                 }
             }
             recordArray.append(record);
@@ -333,7 +395,7 @@ public class ExportParameterProcessor {
                                         0, true, 0),
                                 fieldName, 0));
                     } else {
-                        throw SAPErrorCreator.fromBError("Unsupported date type " + type, null);
+                        throw SAPErrorCreator.createParameterError("Unsupported date type: " + type);
                     }
                     break;
                 case SAPConstants.JCO_STRUCTURE:
@@ -343,8 +405,8 @@ public class ExportParameterProcessor {
                     fields.put(fieldName, TypeCreator.createField(setTableFields(structure.getTable(i)), fieldName, 0));
                     break;
                 default:
-                    throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                            fieldName + ". Unsupported type " + type, null);
+                    throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for field: " +
+                            fieldName + ". Unsupported type " + type);
 
             }
         }
@@ -398,7 +460,7 @@ public class ExportParameterProcessor {
                                         0, true, 0),
                                 tableFieldName, 0));
                     } else {
-                        throw SAPErrorCreator.fromBError("Unsupported date type.", null);
+                        throw SAPErrorCreator.createParameterError("Unsupported date type.");
                     }
                     break;
                 case SAPConstants.JCO_STRUCTURE:
@@ -410,8 +472,8 @@ public class ExportParameterProcessor {
                             table.getTable(j)), tableFieldName, 0));
                     break;
                 default:
-                    throw SAPErrorCreator.fromBError("Error while retrieving output parameter for field: " +
-                            tableFieldName + ". Unsupported type " + tableFieldType, null);
+                    throw SAPErrorCreator.createParameterError("Error while retrieving output parameter for field: " +
+                            tableFieldName + ". Unsupported type " + tableFieldType);
             }
         }
         return TypeCreator.createArrayType(TypeCreator.createArrayType(TypeCreator.createRecordType(
@@ -445,85 +507,8 @@ public class ExportParameterProcessor {
                     .TIME_OF_DAY_RECORD_SECOND), calendar.get(Calendar.SECOND));
             return timeMap;
         } else {
-            throw SAPErrorCreator.fromBError("Unsupported date type " + type, null);
+            throw SAPErrorCreator.createParameterError("Unsupported date type: " + type);
         }
     }
 
-    private static void populateStructure(JCoStructure structure, BMap<BString, Object> record) {
-        record.entrySet().forEach(entry -> {
-            int type = TypeUtils.getType(entry.getValue()).getTag();
-            String key = entry.getKey().toString();
-
-            switch (type) {
-                case TypeTags.STRING_TAG:
-                    structure.setValue(key, entry.getValue().toString());
-                    break;
-                case TypeTags.INT_TAG:
-                    structure.setValue(key, Integer.parseInt(entry.getValue().toString()));
-                    break;
-                case TypeTags.FLOAT_TAG:
-                    structure.setValue(key, Double.parseDouble(entry.getValue().toString()));
-                    break;
-                case TypeTags.DECIMAL_TAG:
-                    structure.setValue(key, new BigDecimal(entry.getValue().toString()));
-                    break;
-                case TypeTags.BYTE_ARRAY_TAG:
-                    structure.setValue(key, ((byte[]) entry.getValue()));
-                    break;
-                case TypeTags.RECORD_TYPE_TAG:
-                    handleNestedRecordType(structure, key, entry.getValue());
-                    break;
-                default:
-                    throwUnsupportedUnionTypeError(entry.getKey(), TypeUtils.getType(entry).getName());
-            }
-        });
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void handleNestedRecordType(JCoStructure structure, String key, Object value) {
-        if (SAPConstants.DATE.equals(TypeUtils.getType(value).getName())) {
-            BMap<BString, Object> dateMap = (BMap<BString, Object>) value;
-            Date dateValue = extractDate(dateMap);
-            if (dateValue != null) {
-                structure.setValue(key, dateValue);
-            } else {
-                throw SAPErrorCreator.fromBError("Invalid date record: year, month, " +
-                        "and day must be provided.", null);
-            }
-        } else {
-            JCoStructure nestedStructure = structure.getStructure(key);
-            BMap<BString, Object> nestedRecord = (BMap<BString, Object>) value;
-            populateStructure(nestedStructure, nestedRecord);
-        }
-    }
-
-    private static Date extractDate(BMap<BString, Object> dateMap) {
-        Object yearObj = dateMap.get(StringUtils.fromString("year"));
-        Object monthObj = dateMap.get(StringUtils.fromString("month"));
-        Object dayObj = dateMap.get(StringUtils.fromString("day"));
-        Object hourObj = dateMap.get(StringUtils.fromString("hour"));
-        Object minuteObj = dateMap.get(StringUtils.fromString("minute"));
-        Object secondObj = dateMap.get(StringUtils.fromString("second"));
-
-        if (yearObj != null && monthObj != null && dayObj != null) {
-            int year = Integer.parseInt(yearObj.toString());
-            int month = Integer.parseInt(monthObj.toString());
-            int day = Integer.parseInt(dayObj.toString());
-
-            int hour = (hourObj != null) ? Integer.parseInt(hourObj.toString()) : 0;
-            int minute = (minuteObj != null) ? Integer.parseInt(minuteObj.toString()) : 0;
-            int second = (secondObj != null) ? Integer.parseInt(secondObj.toString()) : 0;
-
-            Calendar calendar = Calendar.getInstance();
-            calendar.set(year, month - 1, day, hour, minute, second);
-            return calendar.getTime();
-        }
-        return null;
-    }
-
-    private static void throwUnsupportedUnionTypeError(Object key, String type) {
-        throw SAPErrorCreator.fromBError("Error while processing destination properties: " +
-                key.toString() + ". Unsupported union type '" + type + "'. Supported types " +
-                "are: string, int, float, decimal and nullable supported types.", null);
-    }
 }

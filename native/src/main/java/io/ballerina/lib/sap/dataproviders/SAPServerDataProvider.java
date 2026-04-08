@@ -18,20 +18,64 @@
 
 package io.ballerina.lib.sap.dataproviders;
 
+import com.sap.conn.jco.ext.Environment;
 import com.sap.conn.jco.ext.ServerDataEventListener;
 import com.sap.conn.jco.ext.ServerDataProvider;
 import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * Singleton {@link ServerDataProvider} that supplies JCo server properties from an in-memory
+ * map populated at listener initialisation time.
+ * <p>
+ * JCo's {@link com.sap.conn.jco.ext.Environment} only allows one server data provider per JVM.
+ * {@link #registerIfAbsent()} uses an {@link AtomicBoolean} to ensure the provider is
+ * registered exactly once regardless of how many Ballerina listeners are created concurrently.
+ */
 public class SAPServerDataProvider implements ServerDataProvider {
 
-    private final Map<String, Properties> serverProperties = new HashMap<>();
+    public static final String JCO_REP_DEST = ServerDataProvider.JCO_REP_DEST;
 
+    private static final SAPServerDataProvider INSTANCE = new SAPServerDataProvider();
+    private static final AtomicBoolean registered = new AtomicBoolean(false);
+
+    private final Map<String, Properties> serverProperties = new ConcurrentHashMap<>();
+
+    private SAPServerDataProvider() {}
+
+    /**
+     * Returns the singleton provider instance.
+     *
+     * @return the single {@link SAPServerDataProvider} for this JVM
+     */
+    public static SAPServerDataProvider getInstance() {
+        return INSTANCE;
+    }
+
+    /**
+     * Registers this provider with the JCo {@link Environment} if it has not been registered yet.
+     * Subsequent calls are no-ops. Thread-safe via {@link AtomicBoolean#compareAndSet}.
+     */
+    public static void registerIfAbsent() {
+        if (registered.compareAndSet(false, true)) {
+            Environment.registerServerDataProvider(INSTANCE);
+        }
+    }
+
+    /**
+     * Returns the JCo server properties for the named server.
+     *
+     * @param serverName the server name previously registered via
+     *                   {@link #addServerConfig} or {@link #addAdvancedServerConfig}
+     * @return the {@link Properties} for the server
+     * @throws RuntimeException if no properties have been registered for {@code serverName}
+     */
     @Override
     public Properties getServerProperties(String serverName) {
         if (serverProperties.containsKey(serverName)) {
@@ -41,16 +85,40 @@ public class SAPServerDataProvider implements ServerDataProvider {
         }
     }
 
+    /**
+     * No-op: this provider does not support runtime server configuration changes.
+     * The event listener supplied by JCo is intentionally discarded; see {@link #supportsEvents()}.
+     */
     @Override
     public void setServerDataEventListener(ServerDataEventListener serverDataEventListener) {
     }
 
+    /**
+     * Returns {@code false} because this provider does not propagate server configuration
+     * change events back to JCo. All server properties are loaded once at initialisation and
+     * remain static for the lifetime of the JVM.
+     *
+     * @return {@code false}
+     */
     @Override
     public boolean supportsEvents() {
-        return true;
+        return false;
     }
 
-    public void addServerConfig(BMap<BString, Object> jcoServerConfig, String serverName) {
+    /**
+     * Registers server properties derived from a structured {@code ServerConfig} Ballerina record.
+     * Maps {@code gwhost}, {@code gwserv}, {@code progid}, and {@code connectionCount} to the
+     * corresponding {@link ServerDataProvider} constants. If a repository destination is provided,
+     * it is also stored so that JCo can look up RFC metadata.
+     *
+     * @param jcoServerConfig       the Ballerina {@code ServerConfig} record
+     * @param serverName            the name under which the properties are stored
+     * @param repositoryDestination optional destination name used for RFC repository look-ups;
+     *                              may be {@code null}
+     * @throws RuntimeException if a required property cannot be applied
+     */
+    public void addServerConfig(BMap<BString, Object> jcoServerConfig, String serverName,
+                                String repositoryDestination) {
         Properties properties = new Properties();
         try {
             properties.setProperty(ServerDataProvider.JCO_GWHOST,
@@ -59,12 +127,26 @@ public class SAPServerDataProvider implements ServerDataProvider {
                     jcoServerConfig.getStringValue(SAPConstants.JCO_GWSERV).toString());
             properties.setProperty(ServerDataProvider.JCO_PROGID,
                     jcoServerConfig.getStringValue(SAPConstants.JCO_PROGID).toString());
+            properties.setProperty(ServerDataProvider.JCO_CONNECTION_COUNT,
+                    jcoServerConfig.getIntValue(SAPConstants.JCO_CONNECTION_COUNT).toString());
+            if (repositoryDestination != null) {
+                properties.setProperty(ServerDataProvider.JCO_REP_DEST, repositoryDestination);
+            }
             serverProperties.put(serverName, properties);
         } catch (Exception e) {
             throw new RuntimeException("Error while adding server config: " + e.getMessage());
         }
     }
 
+    /**
+     * Registers server properties from a pre-parsed {@code Map<String, String>} of JCo server
+     * property key-value pairs. Used when the listener is configured via an advanced flat map
+     * and server keys have already been separated from destination keys.
+     *
+     * @param jcoAdvancedServerConfig the raw JCo server property map
+     * @param serverName              the name under which the properties are stored
+     * @throws RuntimeException if a property cannot be applied
+     */
     public void addAdvancedServerConfig(Map<String, String> jcoAdvancedServerConfig, String serverName) {
         Properties properties = new Properties();
         jcoAdvancedServerConfig.forEach((key, value) -> {

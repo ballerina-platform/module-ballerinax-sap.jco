@@ -17,33 +17,34 @@
 import ballerina/jballerina.java as java;
 import ballerina/uuid;
 
-# A Ballerina client for SAP BAPI/RFC.
-@display {label: "RFC Client", iconPath: "icon.png"}
+# SAP JCo client for calling RFC-enabled function modules and sending IDocs to an SAP system.
 public isolated client class Client {
 
-    # Initializes the connector.
+    # Registers a JCo RFC destination and verifies connectivity with a ping.
     #
-    # + configurations - The configurations required to initialize the BAPI client.
-    # + return - An error if the initialization fails.
-    public isolated function init(DestinationConfig|AdvancedConfig configurations) returns Error? {
-        check initializeClient(self, configurations, uuid:createType4AsString());
+    # + configurations - RFC destination connection parameters (`DestinationConfig` or `AdvancedConfig`).
+    # + destinationId - Unique name for this RFC destination; provide an explicit name when a `Listener` references it as `repositoryDestination`.
+    # + return - An error if the connection cannot be established.
+    public isolated function init(DestinationConfig|AdvancedConfig configurations,
+                                  string destinationId = uuid:createType4AsString()) returns Error? {
+        check initializeClient(self, configurations, destinationId);
     }
 
-    # Executes the RFC function.
+    # Calls an RFC-enabled function module on the SAP system and returns the export parameters.
     #
-    # + functionName - The name of the function to be executed.
-    # + importParams - The input parameters for the function.
-    # + exportParams - The output parameters for the function.
-    # + return - An error if the execution fails.
+    # + functionName - Name of the RFC function module to call (e.g. `"STFC_CONNECTION"`).
+    # + importParams - Import parameter values keyed by parameter name.
+    # + exportParams - Expected type of the RFC export parameters (`xml`, `json`, or a record type).
+    # + return - The export parameters converted to the `exportParams` type, or an error on failure.
     isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json?> exportParams = <>) returns exportParams|Error = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
-    # Send the iDoc.
+    # Sends an IDoc to the SAP system over tRFC, including TID creation and confirmation.
     #
-    # + iDoc - The XML string of the iDoc.
-    # + iDocType - The type of the iDoc.
-    # + return - An error if the execution fails.
+    # + iDoc - IDoc payload as XML.
+    # + iDocType - IDoc version/protocol variant.
+    # + return - An error if the IDoc cannot be delivered or the TID cannot be confirmed.
     isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;

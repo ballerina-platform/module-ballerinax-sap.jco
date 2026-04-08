@@ -17,19 +17,50 @@ scenarios to understand how to automate processes involving SAP systems and exte
 1. Refer to the [Setup Guide](../../README.md) to configure the Ballerina SAP JCo Connector.
 
 2. For each example, create a `Config.toml` file in the example directory with your SAP connection parameters and any
-   required API endpoints. Here's an example of what your `Config.toml` file might look like:
+   required API endpoints.
+
+   For examples that use a `jco:Client` (RFC execution and IDoc send):
 
     ```toml
-    [DestinationConfig]
-    host = "sap.example.com"
-    systemNumber = "00"
+    apiEndpoint = "https://api.example.com/inventory"
+
+    [sapConfig]
+    ashost = "sap.example.com"
+    sysnr = "00"
     jcoClient = "000"
     user = "JCOTESTER"
-    password = "SECRET"
+    passwd = "SECRET"
     group = "DEVGROUP"
+    lang = "EN"
+    ```
 
-    [APIConfig]
-    apiEndpoint = "https://api.example.com/inventory"
+   For examples that use a `jco:Listener` (IDoc receive):
+
+    ```toml
+    [sapConfig]
+    gwhost = "sapgw.example.com"
+    gwserv = "sapgw00"
+    progid = "JCO_PROGRAM_ID"
+    connectionCount = 2
+    ```
+
+   If the listener requires IDoc metadata resolution, also initialise a `jco:Client` with a matching `destinationId` and set `repositoryDestination` in the server config. The `destinationId` of the `jco:Client` must equal the value of `repositoryDestination`:
+
+    ```toml
+    [sapConfig]
+    gwhost = "sapgw.example.com"
+    gwserv = "sapgw00"
+    progid = "JCO_PROGRAM_ID"
+    connectionCount = 2
+    repositoryDestination = "MY_DESTINATION"
+
+    [clientConfig]
+    ashost = "sap.example.com"
+    sysnr = "00"
+    jcoClient = "000"
+    user = "JCOTESTER"
+    passwd = "SECRET"
+    destinationId = "MY_DESTINATION"
     ```
 
 ## Running an Example
