@@ -14,17 +14,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
-# Contract for a service that receives IDoc documents and error notifications from a `Listener`.
+# IDoc handler that receives IDoc documents and error notifications from a JCo listener.
 public type Service distinct service object {
-    # Called when an IDoc is received from the SAP system, delivered as XML by the JCo IDoc XML processor.
+    # Called when an IDoc is received from the SAP system.
     #
-    # + iDoc - The received IDoc document serialised as XML.
-    # + return - An error if processing fails.
+    # + iDoc - The received IDoc document as XML
+    # + return - An error if processing fails
     remote function onReceive(xml iDoc) returns error?;
 
     # Called when an error occurs during IDoc delivery or processing.
     #
-    # + 'error - The error that occurred.
-    # + return - An error if the error handler itself fails.
+    # + 'error - The error that occurred during IDoc handling
+    # + return - An error if the error handler itself fails
     remote function onError(error 'error) returns error?;
 };
