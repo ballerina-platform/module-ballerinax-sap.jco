@@ -31,7 +31,6 @@ import io.ballerina.runtime.api.values.BString;
 import java.math.BigDecimal;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.TimeZone;
 
 /**
  * Converts Ballerina values from an input parameter map into the corresponding JCo parameter list,
@@ -254,7 +253,7 @@ public class ImportParameterProcessor {
         int minute = (minuteObj != null) ? Integer.parseInt(minuteObj.toString()) : 0;
         int second = (secondObj != null) ? Integer.parseInt(secondObj.toString()) : 0;
 
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        Calendar calendar = Calendar.getInstance();
         calendar.setLenient(false);
         try {
             calendar.set(year, month - 1, day, hour, minute, second);

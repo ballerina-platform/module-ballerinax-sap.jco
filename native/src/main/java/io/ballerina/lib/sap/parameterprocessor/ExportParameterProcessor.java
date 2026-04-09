@@ -40,7 +40,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TimeZone;
 
 /**
  * Converts the JCo export parameter list returned by a Remote Function Call into a Ballerina
@@ -500,7 +499,7 @@ public class ExportParameterProcessor {
     }
 
     private static BMap<BString, Object> createDateRecord(String type, Date date) {
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
         if (SAPConstants.JCO_DATE_TYPE_DATE.equals(type)) {
             BMap<BString, Object> dateMap = ValueCreator.createRecordValue(
