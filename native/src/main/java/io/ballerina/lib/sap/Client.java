@@ -37,7 +37,6 @@ import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.RecordType;
 import io.ballerina.runtime.api.types.TypeTags;
 import io.ballerina.runtime.api.utils.JsonUtils;
-import io.ballerina.runtime.api.utils.StringUtils;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
@@ -127,9 +126,9 @@ public class Client {
 
             // Route each input category to the correct JCo parameter list.
             BMap<BString, Object> importParameters = (BMap<BString, Object>)
-                    parameters.get(StringUtils.fromString("importParameters"));
+                    parameters.get(SAPConstants.RFC_IMPORT_PARAMETERS);
             BMap<BString, Object> tableParameters = (BMap<BString, Object>)
-                    parameters.get(StringUtils.fromString("tableParameters"));
+                    parameters.get(SAPConstants.RFC_TABLE_PARAMETERS);
 
             if (importParameters != null) {
                 JCoParameterList importList = function.getImportParameterList();

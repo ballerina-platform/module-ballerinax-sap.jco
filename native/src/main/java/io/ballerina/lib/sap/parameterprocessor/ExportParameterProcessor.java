@@ -96,9 +96,10 @@ public class ExportParameterProcessor {
 
     private static void populateFromParamList(JCoParameterList paramList, BMap<BString, Object> outputMap,
                                               RecordType outputParamType, boolean isRestFieldsAllowed) {
-        for (int i = 0; i < paramList.getMetaData().getFieldCount(); i++) {
-            String fieldName = paramList.getMetaData().getName(i);
-            String type = paramList.getMetaData().getClassNameOfField(i);
+        var meta = paramList.getMetaData();
+        for (int i = 0; i < meta.getFieldCount(); i++) {
+            String fieldName = meta.getName(i);
+            String type = meta.getClassNameOfField(i);
             if (!isRestFieldsAllowed && !outputParamType.getFields().containsKey(fieldName)) {
                 continue;
             }
@@ -143,7 +144,7 @@ public class ExportParameterProcessor {
                         break;
                     }
                     outputMap.put(StringUtils.fromString(fieldName), createDateRecord(
-                            paramList.getMetaData().getTypeAsString(i), dateValue));
+                            meta.getTypeAsString(i), dateValue));
                     break;
                 case SAPConstants.JCO_STRUCTURE:
                     RecordType nestedRecordType;
