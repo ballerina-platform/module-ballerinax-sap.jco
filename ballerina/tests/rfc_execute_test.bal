@@ -124,7 +124,28 @@ function testExecuteWithTableParam() returns error? {
         tableParameters: {"RFCTABLE": inputTable}
     });
     test:assertEquals((result.RFCTABLE ?: []).length(), 3, "Returned RFCTABLE should have 3 rows (2 input + 1 appended by SAP)");
+    // Verify export params and table params are both present in the merged output.
+    test:assertNotEquals(result.ECHOSTRUCT, (), "ECHOSTRUCT export param should be present alongside RFCTABLE in merged response");
 }
+
+// Type definitions for RFC_READ_TABLE — a real-world RFC that accepts two table parameters
+// on input (OPTIONS = WHERE clause rows, FIELDS = column selection) and returns result rows
+// as a table parameter on output (DATA). Used to test the primary table-parameter use case.
+type OptionsRow record {|
+    string TEXT;
+|};
+
+type FieldsRow record {|
+    string FIELDNAME;
+|};
+
+type DataRow record {|
+    string WA;
+|};
+
+type ReadTableResponse record {|
+    DataRow[] DATA?;
+|};
 
 @test:Config {
     enable: testsEnabled,
@@ -147,7 +168,7 @@ function testExecuteWithDateAndTimeParams() returns error? {
 }
 function testExecuteWithEmptyFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
-    json?|error result = sapClient->execute("");
+    json|error result = sapClient->execute("");
     test:assertTrue(result is Error, "Expected an Error for an empty function name");
     test:assertTrue(result is ParameterError, "Expected a ParameterError for an empty function name");
 }
@@ -158,7 +179,101 @@ function testExecuteWithEmptyFunctionName() returns error? {
 }
 function testExecuteWithInvalidFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
-    json?|error result = sapClient->execute("NONEXISTENT_RFC_FUNCTION_XYZ");
+    json|error result = sapClient->execute("NONEXISTENT_RFC_FUNCTION_XYZ");
     test:assertTrue(result is Error, "Expected an Error for a non-existent RFC function name");
     test:assertTrue(result is ParameterError, "Expected a ParameterError for a non-existent RFC function");
+}
+
+// --- Table parameter gap coverage ---
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteWithExplicitEmptyParameters() returns error? {
+    // Verify that parameters = {} (the default value) works when passed explicitly,
+    // not just when the argument is omitted.
+    Client sapClient = check new (destinationConfig);
+    xml _ = check sapClient->execute("RFC_PING", {});
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteWithTableParamOnlyNoImportParams() returns error? {
+    // tableParameters supplied without importParameters — exercises the null-check path
+    // for importParameters in Client.java.
+    Client sapClient = check new (destinationConfig);
+    RfcTestStruct[] inputTable = [{RFCCHAR1: "C", RFCINT1: 3}];
+    StfcStructureOutput result = check sapClient->execute("STFC_STRUCTURE", {
+        tableParameters: {"RFCTABLE": inputTable}
+    });
+    test:assertEquals((result.RFCTABLE ?: []).length(), 2,
+        "RFCTABLE should have 2 rows (1 input + 1 appended by SAP) when importParameters is omitted");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteWithEmptyTableParam() returns error? {
+    // Zero-row table parameter — exercises the empty-array path in setTableParams
+    // and verifies SAP still appends its own row on return.
+    Client sapClient = check new (destinationConfig);
+    StfcStructureOutput result = check sapClient->execute("STFC_STRUCTURE", {
+        importParameters: {"IMPORTSTRUCT": {}},
+        tableParameters: {"RFCTABLE": []}
+    });
+    test:assertEquals((result.RFCTABLE ?: []).length(), 1,
+        "SAP should append one row to an empty input RFCTABLE");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteRfcReadTableWithMultipleTableInputsAndTableOutput() returns error? {
+    // RFC_READ_TABLE is the canonical real-world RFC for this feature:
+    //   - Two table parameters on input: OPTIONS (WHERE clause) and FIELDS (column list)
+    //   - One table parameter on output: DATA (result rows)
+    // This exercises sending multiple table params in a single call and receiving table output.
+    Client sapClient = check new (destinationConfig);
+    ReadTableResponse result = check sapClient->execute("RFC_READ_TABLE", {
+        importParameters: {"QUERY_TABLE": "T000", "ROWCOUNT": 5},
+        tableParameters: {
+            "OPTIONS": [{"TEXT": "MANDT >= '000'"}],
+            "FIELDS": [{"FIELDNAME": "MANDT"}, {"FIELDNAME": "MTEXT"}]
+        }
+    });
+    test:assertTrue((result.DATA ?: []).length() > 0,
+        "RFC_READ_TABLE DATA should contain at least one row for table T000");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteReturningXmlWithTableData() returns error? {
+    // Verify XML serialization includes table parameter rows in the response.
+    Client sapClient = check new (destinationConfig);
+    xml result = check sapClient->execute("STFC_STRUCTURE", {
+        importParameters: {"IMPORTSTRUCT": {"RFCCHAR1": "Z"}},
+        tableParameters: {"RFCTABLE": [{"RFCCHAR1": "D", "RFCINT1": 4}]}
+    });
+    test:assertTrue(result.length() > 0, "XML result should be non-empty when table data is present");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteReturningJsonWithTableData() returns error? {
+    // Verify JSON serialization includes table parameter rows in the response.
+    Client sapClient = check new (destinationConfig);
+    json result = check sapClient->execute("STFC_STRUCTURE", {
+        importParameters: {"IMPORTSTRUCT": {"RFCCHAR1": "Z"}},
+        tableParameters: {"RFCTABLE": [{"RFCCHAR1": "E", "RFCINT1": 5}]}
+    });
+    test:assertNotEquals(result, (), "JSON result should not be null when table data is present");
 }
