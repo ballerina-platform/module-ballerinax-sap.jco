@@ -10,9 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `destinationId` parameter to the `Client.init` function, allowing an explicit name to be assigned to the RFC destination. This is required when a `Listener` references the client as its `repositoryDestination`.
+- Added `close()` method to `Client` to release the JCo destination registration. After `close`, calls to `execute` or `sendIDoc` return a `ConfigurationError`. Calling `close` more than once is safe.
 - Added `connectionCount` field to `ServerConfig` to control the maximum number of concurrent JCo server connections (maps to `jco.server.connection_count`, default `2`).
 - Added `repositoryDestination` field to `ServerConfig` to specify the RFC destination used by the JCo server to look up IDoc metadata. The value must match the `destinationId` of an already-initialised `Client`.
-- Introduced distinct error types aligned with Ballerina conventions: `ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `JCoError`, `IDocError`, `ParameterError`, and `ConfigurationError`. All are members of the existing `Error` union.
+- Added `RfcRecord` type alias (`record {| FieldType?...; |}`) as the base record type for RFC import, export, and table row values.
+- Added `RfcParameters` record type that wraps `importParameters` (`RfcRecord`) and `tableParameters` (`map<RfcRecord[]>`) for use with `execute`.
+- Changed `execute` signature: import and table parameters are now supplied via `RfcParameters parameters = {}`; the return type descriptor parameter is renamed to `returnType` and typed as `typedesc<RfcRecord|xml|json>` (non-nullable `json`); the response now merges both export parameters and table parameters returned by SAP.
+- Introduced distinct error types aligned with Ballerina conventions: `ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `JCoError`, `IDocError`, `ParameterError`, `ConfigurationError`, and `ExecutionError`. All are members of the existing `Error` union.
 - Added `JCoErrorDetail` and `AbapApplicationErrorDetail` record types that are carried as error detail by JCo-origin errors.
 - Added integration tests covering client initialisation, RFC execution, IDoc send, and listener scenarios.
 
