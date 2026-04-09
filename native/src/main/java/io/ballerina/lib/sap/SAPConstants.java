@@ -25,6 +25,7 @@ public class SAPConstants {
 
     // Constants for SAP Client
     public static final String RFC_DESTINATION = "RFC_DESTINATION";
+    public static final String RFC_DESTINATION_ID = "RFC_DESTINATION_ID";
     public static final String DATE = "Date";
     public static final String TIME_OF_DAY = "TimeOfDay";
 

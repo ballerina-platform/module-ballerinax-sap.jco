@@ -33,9 +33,9 @@ import com.sap.conn.jco.JCoRepository;
 import io.ballerina.lib.sap.dataproviders.SAPDestinationDataProvider;
 import io.ballerina.lib.sap.parameterprocessor.ExportParameterProcessor;
 import io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor;
-import io.ballerina.runtime.api.TypeTags;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.RecordType;
+import io.ballerina.runtime.api.types.TypeTags;
 import io.ballerina.runtime.api.utils.JsonUtils;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
@@ -67,20 +67,26 @@ public class Client {
      */
     public static Object initializeClient(BObject client, BMap<BString, Object> destinationConfig,
                                           BString destinationId) {
+        SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
+        String destId = destinationId.toString();
+        boolean configAdded = false;
         try {
             SAPDestinationDataProvider.registerIfAbsent();
-            SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
             dp.addDestinationConfig(destinationConfig, destinationId);
-            JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
+            configAdded = true;
+            JCoDestination destination = JCoDestinationManager.getDestination(destId);
             destination.ping();
             logger.debug("JCo Client initialized");
             client.addNativeData(SAPConstants.RFC_DESTINATION, destination);
+            client.addNativeData(SAPConstants.RFC_DESTINATION_ID, destId);
             return null;
         } catch (JCoException e) {
             logger.error("Destination lookup failed.");
+            rollbackDestinationConfig(dp, destId, configAdded);
             return SAPErrorCreator.fromJCoException(e);
         } catch (Exception e) {
             logger.error("Client initialization failed.");
+            rollbackDestinationConfig(dp, destId, configAdded);
             return SAPErrorCreator.createConfigError("Client initialization failed.", e);
         }
     }
@@ -103,6 +109,9 @@ public class Client {
                                  BMap<BString, Object> inputParams, BTypedesc outputParamType) {
         try {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
+            if (destination == null) {
+                return SAPErrorCreator.createConfigError("Client is closed or not initialized.");
+            }
             JCoRepository repository = destination.getRepository();
             if (functionName.toString().isEmpty()) {
                 return SAPErrorCreator.createParameterError("Function name is empty.");
@@ -160,6 +169,37 @@ public class Client {
     }
 
     /**
+     * Releases the JCo destination registered for this client, freeing its entry in the
+     * {@link SAPDestinationDataProvider} so the destination ID can be reclaimed.
+     * <p>
+     * Should be called when the Ballerina {@code Client} is no longer needed. After this call
+     * any further {@link #execute} or {@link #sendIDoc} calls will fail.
+     *
+     * @param client the Ballerina {@code Client} object being closed
+     * @return {@code null} on success, or a Ballerina {@code ConfigurationError} if JCo could
+     *         not be notified of the destination deletion; the client-side native data is always
+     *         nulled out first so subsequent {@code execute}/{@code sendIDoc} calls fail fast
+     *         regardless of whether the JCo notification succeeded
+     */
+    public static Object closeClient(BObject client) {
+        String destinationId = (String) client.getNativeData(SAPConstants.RFC_DESTINATION_ID);
+        if (destinationId != null) {
+            // Null native data before cleanup so further calls fail fast even if cleanup throws.
+            client.addNativeData(SAPConstants.RFC_DESTINATION_ID, null);
+            client.addNativeData(SAPConstants.RFC_DESTINATION, null);
+            try {
+                SAPDestinationDataProvider.getInstance().removeDestinationConfig(destinationId);
+                logger.debug("JCo Client closed, destination '{}' removed.", destinationId);
+            } catch (Exception e) {
+                logger.error("Failed to release destination '{}'.", destinationId, e);
+                return SAPErrorCreator.createConfigError(
+                        "Failed to release destination '" + destinationId + "'.", e);
+            }
+        }
+        return null;
+    }
+
+    /**
      * Sends an IDoc to SAP using the Transactional RFC (tRFC) protocol.
      * <p>
      * A TID (Transaction ID) is created on the destination, the IDoc XML is parsed and sent
@@ -174,6 +214,9 @@ public class Client {
     public static Object sendIDoc(BObject client, BXml iDoc, BString iDocType) {
         try {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
+            if (destination == null) {
+                return SAPErrorCreator.createConfigError("Client is closed or not initialized.");
+            }
             String iDocXML = iDoc.toString();
             String iDocTypeStr = iDocType.toString();
             if (iDocTypeStr.length() != 1) {
@@ -200,6 +243,17 @@ public class Client {
         } catch (IDocException e) {
             logger.error("IDoc send failed.");
             return SAPErrorCreator.fromIDocException(e);
+        }
+    }
+
+    private static void rollbackDestinationConfig(SAPDestinationDataProvider dp, String destId,
+                                                  boolean configAdded) {
+        if (configAdded) {
+            try {
+                dp.removeDestinationConfig(destId);
+            } catch (Exception rollbackEx) {
+                logger.error("Failed to roll back destination '{}' after init failure.", destId, rollbackEx);
+            }
         }
     }
 

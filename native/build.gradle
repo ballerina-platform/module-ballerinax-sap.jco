@@ -37,16 +37,18 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
-sourceCompatibility = JavaVersion.VERSION_17
+sourceCompatibility = JavaVersion.VERSION_21
 
 spotbugsMain {
     ignoreFailures = true
-    effort = "max"
-    reportLevel = "low"
-    reportsDir = file("$project.buildDir/reports/spotbugs")
+    def classLoader = plugins["com.github.spotbugs"].class.classLoader
+    def SpotBugsConfidence = classLoader.loadClass("com.github.spotbugs.snom.Confidence")
+    def SpotBugsEffort = classLoader.loadClass("com.github.spotbugs.snom.Effort")
+    effort = SpotBugsEffort.MAX
+    reportLevel = SpotBugsConfidence.LOW
     def excludeFile = file("${rootDir}/build-config/spotbugs-exclude.xml")
     if (excludeFile.exists()) {
-        it.excludeFilter = excludeFile
+        excludeFilter.set(excludeFile)
     }
     reports {
         text.enabled = true

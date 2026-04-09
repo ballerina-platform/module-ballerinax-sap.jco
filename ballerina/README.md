@@ -1,15 +1,20 @@
 ## Overview
 
-[SAP](https://www.sap.com/index.html) is a global leader in enterprise resource planning (ERP) software. Beyond ERP, SAP offers a diverse range of solutions including human capital management (HCM), customer relationship management (CRM), enterprise performance management (EPM), product lifecycle management (PLM), supplier relationship management (SRM), supply chain management (SCM), and business technology platform (BTP).
+[SAP](https://www.sap.com/india/index.html) is a global leader in enterprise resource planning (ERP) software. Beyond
+ERP, SAP offers a diverse range of solutions including human capital management (HCM), customer relationship
+management (CRM), enterprise performance management (EPM), product lifecycle management (PLM), supplier relationship
+management (SRM), supply chain management (SCM), business technology platform (BTP), and the SAP AppGyver programming
+environment for businesses.
 
-The SAP JCo connector exposes the SAP Java Connector (JCo) library, enabling integration with SAP systems for various business operations.
+The `ballerinax/sap.jco` package exposes the SAP JCo library as ballerina functions.
+
 
 ### Key Features
 
 - Connect to SAP systems via SAP JCo (Java Connector)
 - Execute BAPIs and Remote Function Calls (RFC)
 - Support for IDoc processing and exchange — both sending and receiving
-- Distinct typed error hierarchy (`ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `IDocError`, and more) for precise error handling
+- Distinct typed error hierarchy (`ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `IDocError`, `ConfigurationError`, `ExecutionError`, and more) for precise error handling
 - Singleton destination and server data providers enabling multiple concurrent clients and listeners without JCo provider conflicts
 - Compatible with SAP ERP and S/4HANA systems
 
@@ -45,7 +50,7 @@ support portal and add the dependencies to your Ballerina project.
 
 #### Step 2: Setting Up Environment
 
-1. **Install JRE**: Ensure you have Java Runtime Environment (JRE) version 17 installed on your system.
+1. **Install JRE**: Ensure you have Java Runtime Environment (JRE) version 21 installed on your system.
 
 2. **Set CLASSPATH**: Configure the CLASSPATH environment variable to include the JAR files and the following native SAP JCo libraries based on your operating system:
 
@@ -61,13 +66,13 @@ After downloading the libraries, add them to your `Ballerina.toml` file in the B
 paths and relevant details.
 
 ```toml
-[[platform.java17.dependency]]
+[[platform.java21.dependency]]
 path = "../sapidoc3.jar"
 groupId = "com.sap"
 artifactId = "com.sap.conn.idoc"
 version = "3.1.*"
 
-[[platform.java17.dependency]]
+[[platform.java21.dependency]]
 path = "../sapjco3.jar"
 groupId = "com.sap"
 artifactId = "com.sap.conn.jco"
@@ -131,7 +136,7 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-`repositoryDestination` must match the `destinationId` of an already-initialised `Client` that provides IDoc metadata lookups. It can be omitted if the listener does not require metadata resolution.
+`repositoryDestination` must match the `destinationId` of an already-initialized `Client` that provides IDoc metadata lookups. It can be omitted if the listener does not require metadata resolution.
 
 Then, create a new JCo listener instance for IDoc listener operations.
 
@@ -190,6 +195,16 @@ public function main() returns error? {
     io:println("IDoc sent successfully.");
 }
 ```
+
+#### Close the client
+
+Call `close` when the client is no longer needed to release the JCo destination registration:
+
+```ballerina
+check jcoClient.close();
+```
+
+After `close`, any call to `execute` or `sendIDoc` returns a `ConfigurationError`. Calling `close` multiple times is safe.
 
 #### Initialize a listener for incoming IDocs
 
