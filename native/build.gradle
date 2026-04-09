@@ -42,14 +42,13 @@ sourceCompatibility = JavaVersion.VERSION_21
 spotbugsMain {
     ignoreFailures = true
     def classLoader = plugins["com.github.spotbugs"].class.classLoader
-    def SpotBugsConfidence = classLoader.findLoadedClass("com.github.spotbugs.snom.Confidence")
-    def SpotBugsEffort = classLoader.findLoadedClass("com.github.spotbugs.snom.Effort")
+    def SpotBugsConfidence = classLoader.loadClass("com.github.spotbugs.snom.Confidence")
+    def SpotBugsEffort = classLoader.loadClass("com.github.spotbugs.snom.Effort")
     effort = SpotBugsEffort.MAX
     reportLevel = SpotBugsConfidence.LOW
-    reportsDir = file("$project.buildDir/reports/spotbugs")
     def excludeFile = file("${rootDir}/build-config/spotbugs-exclude.xml")
     if (excludeFile.exists()) {
-        it.excludeFilter = excludeFile
+        excludeFilter.set(excludeFile)
     }
     reports {
         text.enabled = true

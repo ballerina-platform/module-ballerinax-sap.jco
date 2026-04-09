@@ -110,3 +110,17 @@ function testSendIDocWithMissingIdocElement() returns error? {
     test:assertTrue(result is Error, "Expected an Error when the IDOC element is absent");
     test:assertTrue(result is IDocError, "Expected an IDocError when the IDOC element is absent");
 }
+
+// Tests that sendIDoc() returns a ConfigurationError when called after close().
+@test:Config {
+    enable: testsEnabled,
+    groups: ["idoc-send"]
+}
+function testSendIDocAfterCloseReturnsConfigurationError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    check sapClient.close();
+    Error? result = sapClient->sendIDoc(validTestIDoc);
+    test:assertTrue(result is Error, "Expected an Error when calling sendIDoc() after close()");
+    test:assertTrue(result is ConfigurationError,
+            "sendIDoc() after close() should return a ConfigurationError");
+}

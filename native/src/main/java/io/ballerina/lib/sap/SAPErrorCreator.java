@@ -184,7 +184,7 @@ public class SAPErrorCreator {
 
     /**
      * Wraps an unexpected (non-JCo, non-IDoc) throwable as a {@code ConfigurationError}.
-     * Use this as a last resort when the exception type is not one of the known SAP types.
+     * Use this for errors during client or listener initialization and lifecycle management.
      *
      * @param message a human-readable description of the context in which the error occurred
      * @param e       the throwable to attach as cause
@@ -193,6 +193,20 @@ public class SAPErrorCreator {
     public static BError fromThrowable(String message, Throwable e) {
         BError cause = ErrorCreator.createError(e);
         return ErrorCreator.createError(ModuleUtils.getModule(), SAPConstants.CONFIGURATION_ERROR_TYPE,
+                StringUtils.fromString(message), cause, null);
+    }
+
+    /**
+     * Wraps an unexpected (non-JCo, non-IDoc) throwable as an {@code ExecutionError}.
+     * Use this for errors that occur during RFC execution or other runtime operations.
+     *
+     * @param message a human-readable description of the context in which the error occurred
+     * @param e       the throwable to attach as cause
+     * @return a Ballerina {@code ExecutionError}
+     */
+    public static BError fromExecutionThrowable(String message, Throwable e) {
+        BError cause = ErrorCreator.createError(e);
+        return ErrorCreator.createError(ModuleUtils.getModule(), SAPConstants.EXECUTION_ERROR_TYPE,
                 StringUtils.fromString(message), cause, null);
     }
 

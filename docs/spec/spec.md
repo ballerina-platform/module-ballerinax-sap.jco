@@ -26,7 +26,8 @@ The conforming implementation of the specification is released and included in t
        - 2.1.1.2 [Advanced configurations](#2112-advanced-configurations)
      - 2.1.2 [Available operations](#212-available-operations)
        - 2.1.2.1 [Execute a function module via RFC](#2121-execute-a-function-module-via-rfc)
-       - 2.1.2.2 [Send iDocs to an SAP system](#2122-send-idocs-to-an-sap-system)
+       - 2.1.2.2 [Close the client](#2122-close-the-client)
+       - 2.1.2.3 [Send iDocs to an SAP system](#2123-send-idocs-to-an-sap-system)
      - 2.1.3 [Data types](#213-data-type-mapping-between-ballerina-and-sap-jco)
    - 2.2 [Listener](#22-listener)
      - 2.2.1 [Configurations](#221-configurations)
@@ -146,7 +147,7 @@ An RFC function call is made using the following function;
 # + importParams - Import parameter values keyed by parameter name.
 # + exportParams - Expected type of the RFC export parameters (`xml`, `json`, or a record type).
 # + return - The export parameters converted to the `exportParams` type, or an error on failure.
-isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json?> exportParams = <>) returns exportParams|Error
+isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json> exportParams = <>) returns exportParams|Error
 ```
 
 The input parameters require functionName and importParams. The functionName refers to the Remote Function Module name and importParams accepts a FieldType value, which can be;
@@ -177,7 +178,24 @@ public function main() returns error? {
 }
 ```
 
-##### 2.1.2.2 Send iDocs to an SAP system
+##### 2.1.2.2 Close the client
+
+When a client is no longer needed, its JCo destination registration should be released by calling `close`:
+
+```ballerina
+# Releases the JCo destination registered for this client. After calling `close`, further
+# `execute` or `sendIDoc` calls will fail with a `ConfigurationError`. Call this when the
+# client is no longer needed to free the destination ID for reuse. Calling `close` more
+# than once is safe and has no effect after the first call.
+#
+# + return - A `ConfigurationError` if the JCo destination could not be fully released,
+#            otherwise `()`. The client is marked closed regardless of the outcome.
+public isolated function close() returns Error?
+```
+
+Any call to `execute` or `sendIDoc` after `close` returns a `ConfigurationError` immediately without contacting SAP. Calling `close` more than once is safe and has no effect after the first call.
+
+##### 2.1.2.3 Send iDocs to an SAP system
 
 The RFC Client also supports sending IDocs to an SAP system, allowing you to automate the exchange of structured data.
 
@@ -405,7 +423,7 @@ The connector defines distinct error types aligned with Ballerina conventions. A
 
 ```ballerina
 public type Error ConnectionError|LogonError|ResourceError|SystemError|AbapApplicationError
-    |JCoError|IDocError|ParameterError|ConfigurationError;
+    |JCoError|IDocError|ParameterError|ConfigurationError|ExecutionError;
 ```
 
 | Error type               | Description                                                                                   |
@@ -418,6 +436,7 @@ public type Error ConnectionError|LogonError|ResourceError|SystemError|AbapAppli
 | `JCoError`               | Raised for all other JCo-level errors not covered by a more specific type.                    |
 | `IDocError`              | Raised for IDoc-specific failures (XML parsing, send, or server-side processing).             |
 | `ParameterError`         | Raised when an RFC import or export parameter cannot be converted to or from a Ballerina type.|
-| `ConfigurationError`     | Raised during client or listener initialisation and lifecycle management.                     |
+| `ConfigurationError`     | Raised during client or listener initialisation and lifecycle management, including calls to `execute` or `sendIDoc` after `close`.|
+| `ExecutionError`         | Raised when an unexpected error occurs during RFC execution or other runtime operations.                                           |
 
 Most JCo-origin errors carry a `JCoErrorDetail` record with an `errorGroup` integer and an optional `key` string. ABAP application errors additionally carry ABAP message class, type, number, and up to four message variables via `AbapApplicationErrorDetail`.

@@ -140,6 +140,9 @@ public type ParameterError distinct error;
 # Raised during client or listener initialization and lifecycle management.
 public type ConfigurationError distinct error;
 
+# Raised when an unexpected error occurs during RFC execution or other runtime operations.
+public type ExecutionError distinct error;
+
 # Union of all errors that can be returned by the SAP JCo connector.
 public type Error ConnectionError|LogonError|ResourceError|SystemError|AbapApplicationError
-    |JCoError|IDocError|ParameterError|ConfigurationError;
+    |JCoError|IDocError|ParameterError|ConfigurationError|ExecutionError;
