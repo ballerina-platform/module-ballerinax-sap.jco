@@ -67,7 +67,12 @@ public class ExportParameterProcessor {
 
     /**
      * Creates a Ballerina record populated from both the JCo export parameter list and the JCo
-     * table parameter list. Either list may be {@code null} (e.g. the RFC has no table params).
+     * table parameter list. Both lists are processed sequentially using {@link #populateFromParamList}.
+     * <p>
+     * <b>Precedence:</b> When both {@code exportList} and {@code tableList} contain the same field name,
+     * the value from {@code tableList} will overwrite the value from {@code exportList} because both
+     * are merged sequentially into the same {@code outputMap}. Callers should avoid name collisions
+     * or handle them accordingly.
      *
      * @param exportList          the JCo export parameter list, or {@code null}
      * @param tableList           the JCo table parameter list, or {@code null}

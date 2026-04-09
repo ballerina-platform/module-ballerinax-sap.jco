@@ -7,7 +7,7 @@ Version 2.0.0 introduces breaking changes to the `Client.execute()` signature, c
 ## Prerequisites
 
 - Ballerina **2201.11.x** or later
-- Add the mininum required version of `sap.jco` to your `Ballerina.toml`:
+- Add the minimum required version of `sap.jco` to your `Ballerina.toml`:
 
   ```toml
   [[dependency]]
