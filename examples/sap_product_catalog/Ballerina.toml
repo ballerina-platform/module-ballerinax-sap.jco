@@ -1,0 +1,20 @@
+[package]
+org = "wso2"
+name = "sap_product_catalog"
+version = "0.1.0"
+distribution = "2201.11.0"
+
+[build-options]
+observabilityIncluded = true
+
+[[platform.java21.dependency]]
+path = "../../native/libs/sapidoc3.jar"
+groupId="com.sap"
+artifactId="com.sap.conn.idoc"
+version="3.1.*"
+
+[[platform.java21.dependency]]
+path = "../../native/libs/sapjco3.jar"
+groupId="com.sap"
+artifactId="com.sap.conn.jco"
+version="3.1.*"
