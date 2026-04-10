@@ -25,7 +25,8 @@ Version 2.0.0 introduces breaking changes to the `Client.execute()` signature, c
 | `Client.execute()` | Input restructured into `RfcParameters`; return descriptor renamed `returnType` | All RFC call sites must be updated |
 | `Client.init()` | Parameter renamed from `configurations` to `config`; new optional `destinationId` | Named-argument call sites break |
 | Error types | Generic `Error` replaced with ten distinct error types | `is Error` checks still work; type-specific `is` checks need updating |
-| `ServerConfig` | Two new fields: `connectionCount`, `repositoryDestination` | Additive — existing configs compile unchanged |
+| `ServerConfig` | `connectionCount` added (defaulted); `repositoryDestination` added and is now **required** | Listener configs must now include `repositoryDestination` |
+| `Service` type | Renamed to `IDocService`; new `RfcService` type added | All `service jco:Service` declarations must be renamed |
 
 ---
 
@@ -260,7 +261,7 @@ if err is sap:ConnectionError {
 
 ---
 
-## 4. `ServerConfig` — two new optional fields
+## 4. `ServerConfig` — `repositoryDestination` is now required
 
 ### What changed
 
@@ -272,23 +273,77 @@ public type ServerConfig record {|
     string progid;
 |};
 
-// 2.0.0 — two new optional fields added
+// 2.0.0 — connectionCount defaulted; repositoryDestination is now required
 public type ServerConfig record {|
     string gwhost;
     string gwserv;
     string progid;
-    int connectionCount = 2;          // new — defaults to 2, no action required
-    string repositoryDestination?;    // new — required when listener resolves IDoc metadata
+    int connectionCount = 2;       // new — defaults to 2, no action required
+    string repositoryDestination;  // required — must match a Client's destinationId
 |};
 ```
 
-Existing `ServerConfig` literals compile unchanged. No migration is required unless you want to:
-- Tune concurrent connections via `connectionCount`
-- Enable IDoc metadata resolution via `repositoryDestination` (must match a `Client`'s `destinationId`)
+`repositoryDestination` is a **required** field. All `ServerConfig` literals and `Config.toml` files must include it. The value must match the `destinationId` of a `Client` that is initialised **before** the `Listener`.
+
+```ballerina
+// Required: initialise the client before the listener
+jco:Client sapClient = check new (destConfig, destinationId = "MY_DEST");
+
+jco:Listener sapListener = check new ({
+    gwhost: "sap-gw.example.com",
+    gwserv: "3300",
+    progid: "BALLERINA_PROG",
+    repositoryDestination: "MY_DEST"   // must match destinationId above
+});
+```
 
 ---
 
-## 5. `Client.close()` — new lifecycle method
+## 5. `Service` renamed to `IDocService`; new `RfcService` type
+
+### What changed
+
+The `Service` distinct service type has been renamed to `IDocService`. A new `RfcService` type is introduced for handling inbound RFC calls from SAP.
+
+### Migrating listener service declarations
+
+**Rename `jco:Service` to `jco:IDocService` everywhere:**
+
+```ballerina
+// Before
+service jco:Service on iDocListener {
+    remote function onReceive(xml iDoc) returns error? { ... }
+    remote function onError(error 'error) returns error? { ... }
+}
+
+// After
+service jco:IDocService on iDocListener {
+    remote function onReceive(xml iDoc) returns error? { ... }
+    remote function onError(error err) returns error? { ... }
+}
+```
+
+Note also that the `onError` parameter was renamed from `'error` to `err`.
+
+### Using the new `RfcService` type
+
+Attach an `RfcService` to handle inbound RFC calls from SAP. At most one `IDocService` and one `RfcService` may be attached to the same listener simultaneously.
+
+```ballerina
+service jco:RfcService on rfcListener {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|json|error? {
+        io:println("RFC called: ", functionName);
+        return ();
+    }
+    remote function onError(error err) returns error? {
+        io:println("Error: ", err.message());
+    }
+}
+```
+
+---
+
+## 6. `Client.close()` — new lifecycle method
 
 `close()` is a new addition, not a breaking change. It releases the JCo destination registration. After `close()`, calls to `execute()` or `sendIDoc()` return a `ConfigurationError`. Calling `close()` more than once is safe.
 
@@ -311,7 +366,9 @@ Work through each item in order:
 - [ ] **`execute()` — response types:** add table-parameter fields to response record types if you need tabular data that was previously unavailable
 - [ ] **`Client.init()` named args:** rename `configurations =` to `config =` at any named call sites
 - [ ] **`Client.init()` destinationId:** supply an explicit `destinationId` for any client referenced by a listener's `repositoryDestination`
-- [ ] **`ServerConfig`:** add `repositoryDestination` if your listener needs to resolve IDoc metadata
+- [ ] **`ServerConfig`:** add `repositoryDestination` (now required) and ensure the value matches the `destinationId` of an already-initialised `Client`
+- [ ] **`Service` → `IDocService`:** rename all `service jco:Service` declarations to `service jco:IDocService`
+- [ ] **`onError` parameter:** rename `error 'error` to `error err` in all `onError` remote function signatures
 - [ ] **Error handling:** review `on fail` / `is` checks — `is sap:Error` continues to work; add specific error types where finer handling is needed
 - [ ] **`Client.close()`:** add `close()` calls in cleanup paths where clients are no longer needed
 - [ ] Run the integration test suite against your SAP sandbox to confirm correct behavior

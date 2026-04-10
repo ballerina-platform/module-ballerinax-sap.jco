@@ -37,17 +37,9 @@ scenarios to understand how to automate processes involving SAP systems and exte
     lang = "EN"
     ```
 
-   For examples that use a `jco:Listener` (IDoc receive):
+   For examples that use a `jco:Listener` (IDoc receive or inbound RFC):
 
-    ```toml
-    [sapConfig]
-    gwhost = "sapgw.example.com"
-    gwserv = "sapgw00"
-    progid = "JCO_PROGRAM_ID"
-    connectionCount = 2
-    ```
-
-   If the listener requires IDoc metadata resolution, also initialise a `jco:Client` with a matching `destinationId` and set `repositoryDestination` in the server config. The `destinationId` of the `jco:Client` must equal the value of `repositoryDestination`:
+    `repositoryDestination` is required and must match the `destinationId` of an already-initialized `jco:Client`. The listener uses this connection to look up IDoc segment metadata and RFC function module metadata from SAP. Initialize the `jco:Client` before the `jco:Listener`:
 
     ```toml
     [sapConfig]

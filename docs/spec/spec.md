@@ -36,7 +36,8 @@ The conforming implementation of the specification is released and included in t
      - 2.2.2 [Listener lifecycle](#222-listener-lifecycle)
      - 2.2.3 [Available operations](#223-available-operations)
        - 2.2.3.1 [Receive iDocs](#2231-receive-idocs)
-       - 2.2.3.2 [Error handling in listener](#2232-error-handling-in-listener)
+       - 2.2.3.2 [Handle inbound RFC calls](#2232-handle-inbound-rfc-calls)
+       - 2.2.3.3 [Error handling in listener](#2233-error-handling-in-listener)
 3. [Error types](#3-error-types)
          
 ## 1. Overview
@@ -350,7 +351,7 @@ This section describes how to initialise, attach, start, and stop the listener.
 - To initialise the listener with a given configuration, the `init` function can be used.
 
 ```ballerina
-# Registers a JCo IDoc server with the SAP gateway; reuses an existing server for the same (gwhost, gwserv, progid) combination.
+# Registers a JCo server with the SAP gateway; reuses an existing server for the same (gwhost, gwserv, progid) combination.
 #
 # + serverConfig - JCo server connection parameters (`ServerConfig` or `AdvancedConfig`).
 # + serverName - Unique name used to register the server with the JCo framework (default is a UUID).
@@ -358,37 +359,45 @@ This section describes how to initialise, attach, start, and stop the listener.
 public isolated function init(ServerConfig|AdvancedConfig serverConfig, string serverName = uuid:createType4AsString()) returns Error?
 ```
 
-- To attach a service to the iDoc listener, the `attach` function can be used.
+- To attach a service to the listener, the `attach` function can be used.
 
 ```ballerina
-# Attaches a service to receive incoming IDoc documents; only one service may be attached at a time.
+# Attaches a service to the listener. At most one IDocService and one RfcService may be
+# attached at the same time. Both service types require repositoryDestination to be set in
+# ServerConfig and a Client with that destinationId to have been created first.
 #
-# + s - The service to attach.
-# + name - Optional service name (not used by the JCo transport).
-# + return - An error if the service cannot be attached.
-public isolated function attach(Service s, string[]|string? name = ()) returns Error?
+# + s - The service to attach; must be an IDocService or an RfcService.
+# + name - Optional service name (unused at runtime).
+# + return - An error if the repositoryDestination is not registered, the service type is already attached, or attachment fails.
+public isolated function attach(IDocService|RfcService s, string[]|string? name = ()) returns Error?
 ```
 
-- To detach a service from the iDoc listener, the `detach` function can be used.
+- To detach a service from the listener, the `detach` function can be used.
 
 ```ballerina
-# Detaches the service and clears the server reference without stopping the JCo server.
+# Unregisters a service from the listener without stopping the JCo server.
+# The other service type, if attached, continues to operate.
 #
 # + s - The service to detach.
 # + return - An error if the detach operation fails.
-public isolated function detach(Service s) returns Error?
+public isolated function detach(IDocService|RfcService s) returns Error?
 ```
 
-- To start the iDoc listener, the `'start` function can be used.
+- To start the listener, the `'start` function can be used.
 
 ```ballerina
-# Starts the JCo server and begins accepting IDoc connections from the SAP gateway.
+# Starts the JCo server and returns immediately. Gateway connectivity is established
+# asynchronously by JCo's internal connection threads. A successful return means the server
+# has been submitted to JCo's scheduler — it does not mean the gateway handshake is complete.
 #
-# + return - An error if the server cannot be started.
+# If the gateway is unreachable, JCo retries automatically and delivers each failure to the
+# attached service's `onError` handler as an `ExecutionError`.
+#
+# + return - An error only for pre-flight failures: listener not initialised or already started.
 public isolated function 'start() returns Error?
 ```
 
-- To stop the iDoc listener gracefully, the `gracefulStop` function can be used.
+- To stop the listener gracefully, the `gracefulStop` function can be used.
 
 ```ballerina
 # Stops the JCo server and blocks until it fully leaves the stopping state (up to 15 seconds).
@@ -397,10 +406,11 @@ public isolated function 'start() returns Error?
 public isolated function gracefulStop() returns Error?
 ```
 
-- To stop the iDoc listener immediately, the `immediateStop` function can be used.
+- To stop the listener immediately, the `immediateStop` function can be used.
 
 ```ballerina
-# Stops the JCo server immediately; currently behaves identically to `gracefulStop`.
+# Stops the JCo server. Behaves identically to gracefulStop because JCo exposes a single
+# stop operation with no immediate/graceful distinction.
 #
 # + return - An error if the server cannot be stopped.
 public isolated function immediateStop() returns Error?
@@ -410,37 +420,45 @@ public isolated function immediateStop() returns Error?
 
 ##### 2.2.3.1 Receive iDocs
 
-The Listener can be used to receive IDocs from the SAP system, which can then be processed within your Ballerina application.
+The Listener can be used to receive IDocs from the SAP system using the `IDocService` type.
 
 ```ballerina
 listener jco:Listener iDocListener = new (configurations);
 
-service jco:Service on iDocListener {
+service jco:IDocService on iDocListener {
     remote function onReceive(xml iDoc) returns error? {
         check io:fileWriteXml("resources/received_idoc.xml", iDoc);
         io:println("IDoc received and saved.");
+    }
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
     }
 }
 ```
 
 When an IDoc is received, it will be in XML format, and the user can easily map it to a record using Ballerina's XML-to-Record conversion features.
 
-##### 2.2.3.2 Error handling in listener
+##### 2.2.3.2 Handle inbound RFC calls
 
-The Listener also supports error handling, allowing you to capture and manage any issues that occur during IDoc reception.
+The Listener can also receive inbound RFC calls from the SAP system using the `RfcService` type. SAP invokes this service as if it were a registered RFC function module.
 
 ```ballerina
-service jco:Service on iDocListener {
-    remote function onReceive(xml iDoc) returns error? {
-        check io:fileWriteXml("resources/received_idoc.xml", iDoc);
-        io:println("IDoc received and saved.");
+service jco:RfcService on rfcListener {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|json|error? {
+        io:println("RFC called: ", functionName);
+        return ();
     }
-
-    remote function onError(error 'error) returns error? {
-        io:println("Error occurred: ", 'error.message());
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
     }
 }
 ```
+
+The return value of `onCall` is serialized and sent back to the SAP caller as the RFC response. An error return causes an `AbapException` to be raised on the SAP side. An empty (`()`) response is valid for fire-and-forget RFCs.
+
+##### 2.2.3.3 Error handling in listener
+
+Both `IDocService` and `RfcService` expose an `onError` remote function that receives server-level errors, including gateway connectivity failures. Because the listener starts before the gateway handshake completes, this handler is the primary signal for connectivity problems. JCo retries the connection automatically and calls this method on every failed attempt. When the gateway becomes reachable again, JCo reconnects silently and the errors stop — there is no need to restart the listener.
 
 ## 3. Error types
 

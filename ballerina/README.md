@@ -210,8 +210,8 @@ service jco:IDocService on iDocListener {
         check io:fileWriteXml("resources/received_idoc.xml", iDoc);
         io:println("IDoc received and saved.");
     }
-    remote function onError(error 'error) returns error? {
-        io:println("Error occurred: ", 'error.message());
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
     }
 }
 ```

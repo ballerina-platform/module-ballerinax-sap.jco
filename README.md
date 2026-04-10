@@ -141,7 +141,7 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-`repositoryDestination` must match the `destinationId` of an already-initialised `Client` that provides IDoc metadata lookups. It can be omitted if the listener does not require metadata resolution.
+`repositoryDestination` is required and must match the `destinationId` of an already-initialized `Client`. The listener uses this connection to look up IDoc segment metadata and RFC function module metadata from SAP.
 
 Then, create a new JCo listener instance for IDoc listener operations.
 
@@ -210,13 +210,27 @@ After `close`, any call to `execute` or `sendIDoc` returns a `ConfigurationError
 #### Initialize a listener for incoming IDocs
 
 ```ballerina
-service jco:Service on iDocListener {
+service jco:IDocService on iDocListener {
     remote function onReceive(xml iDoc) returns error? {
         check io:fileWriteXml("resources/received_idoc.xml", iDoc);
         io:println("IDoc received and saved.");
     }
-    remote function onError(error 'error) returns error? {
-        io:println("Error occurred: ", 'error.message());
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
+    }
+}
+```
+
+#### Initialize a listener for inbound RFC calls
+
+```ballerina
+service jco:RfcService on rfcListener {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|json|error? {
+        io:println("RFC called: ", functionName);
+        return ();
+    }
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
     }
 }
 ```
