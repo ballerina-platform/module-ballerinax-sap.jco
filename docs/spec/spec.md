@@ -289,8 +289,8 @@ public type ServerConfig record {|
     string progid;
     # Maximum number of concurrent RFC connections (jco.server.connection_count)
     int connectionCount = 2;
-    # RFC destination used to look up IDoc metadata; must match the `destinationId` of an initialised `Client` (jco.server.repository_destination)
-    string repositoryDestination?;
+    # RFC destination used to look up IDoc and RFC metadata; must match the `destinationId` of an already-initialised `Client` (jco.server.repository_destination)
+    string repositoryDestination;
 |};
 ```
 
@@ -312,7 +312,7 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-When `repositoryDestination` is set it must match the `destinationId` of an already-initialised `Client`. This allows the listener to look up IDoc metadata from the SAP system using an existing RFC connection.
+`repositoryDestination` is required and must match the `destinationId` of an already-initialised `Client`. The listener uses this connection to look up IDoc segment metadata and RFC function module metadata from SAP.
 
 ##### 2.2.1.2 Advanced configurations
 

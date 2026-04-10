@@ -14,17 +14,42 @@
 // specific language governing permissions and limitations
 // under the License.
 
-# IDoc handler that receives IDoc documents and error notifications from a JCo listener.
-public type Service distinct service object {
+# Service type for receiving IDocs pushed from an SAP system.
+public type IDocService distinct service object {
     # Called when an IDoc is received from the SAP system.
     #
     # + iDoc - The received IDoc document as XML
     # + return - An error if processing fails
     remote function onReceive(xml iDoc) returns error?;
 
-    # Called when an error occurs during IDoc delivery or processing.
+    # Called when a server-level error occurs, including gateway connectivity failures.
     #
-    # + 'error - The error that occurred during IDoc handling
+    # Because `Listener.start()` returns before the gateway handshake completes, this
+    # handler is the primary signal for connectivity problems. JCo retries the connection
+    # automatically and calls this method on every failed attempt. When the gateway becomes
+    # reachable again, JCo reconnects silently and the errors stop.
+    #
+    # + 'error - The error that occurred
+    # + return - An error if the error handler itself fails
+    remote function onError(error 'error) returns error?;
+};
+
+# Service type for handling inbound RFC calls from an SAP system.
+# SAP calls the Ballerina service as if it were a registered RFC function module.
+public type RfcService distinct service object {
+    # Invoked synchronously when SAP calls a function module registered on this server.
+    # The return value is serialized and sent back to the SAP caller as the RFC response.
+    #
+    # + functionName - The name of the RFC function module being called
+    # + parameters   - The import and table parameters sent by the SAP caller
+    # + return       - The response to send back to SAP, or an error.
+    #                  Returning nil sends an empty response (valid for fire-and-forget RFCs).
+    #                  Returning an error causes an AbapException to be raised back to the SAP caller.
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|json|error?;
+
+    # Called when a server-level error or gateway connectivity problem occurs.
+    #
+    # + 'error - The error that occurred
     # + return - An error if the error handler itself fails
     remote function onError(error 'error) returns error?;
 };

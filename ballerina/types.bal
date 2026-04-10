@@ -46,8 +46,8 @@ public type ServerConfig record {|
     string progid;
     # Maximum number of concurrent RFC connections
     int connectionCount = 2;
-    # RFC destination used to look up IDoc metadata; defaults to the server name
-    string repositoryDestination?;
+    # RFC destination used to look up IDoc and RFC metadata; must match the destinationId of an already-initialised Client
+    string repositoryDestination;
 |};
 
 # IDoc protocol version used when sending IDocs to the SAP system.
