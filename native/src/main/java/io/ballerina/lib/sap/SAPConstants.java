@@ -54,7 +54,11 @@ public class SAPConstants {
     public static final String JCO_SERVER = "JCO_SERVER";
     public static final String ON_RECEIVE = "onReceive";
     public static final String ON_ERROR = "onError";
-    public static final String IS_SERVICE_ATTACHED = "isServiceAttached";
+    public static final String ON_CALL = "onCall";
+    public static final String IS_IDOC_SERVICE_ATTACHED = "isIDocServiceAttached";
+    public static final String IS_RFC_SERVICE_ATTACHED = "isRfcServiceAttached";
+    public static final String IS_TID_HANDLER_SET = "isTidHandlerSet";
+    public static final String THROWABLE_LISTENER = "throwableListener";
     public static final String IS_STARTED = "isStarted";
 
     // Server Config field names

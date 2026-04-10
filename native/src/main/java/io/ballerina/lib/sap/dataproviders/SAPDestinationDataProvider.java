@@ -73,19 +73,31 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     }
 
     /**
+     * Returns {@code true} if a destination with the given name has been registered.
+     * Used by {@code Listener.attach()} to validate the {@code repositoryDestination} before
+     * starting the RFC server.
+     *
+     * @param destinationName the destination name to check; {@code null} returns {@code false}
+     * @return {@code true} if the destination is registered, {@code false} otherwise
+     */
+    public boolean hasDestination(String destinationName) {
+        return destinationName != null && destinationProperties.containsKey(destinationName);
+    }
+
+    /**
      * Returns the JCo connection properties for the named destination.
      *
      * @param destinationName the destination name previously registered via
      *                        {@link #addDestinationConfig} or {@link #addAdvancedDestinationConfig}
      * @return the {@link Properties} for the destination
-     * @throws RuntimeException if no properties have been registered for {@code destinationName}
+     * @throws DataProviderException if no properties have been registered for {@code destinationName}
      */
     @Override
     public Properties getDestinationProperties(String destinationName) {
         if (destinationProperties.containsKey(destinationName)) {
             return destinationProperties.get(destinationName);
         } else {
-            throw new RuntimeException("Destination " + destinationName + " not found");
+            throw new DataProviderException("Destination " + destinationName + " not found");
         }
     }
 

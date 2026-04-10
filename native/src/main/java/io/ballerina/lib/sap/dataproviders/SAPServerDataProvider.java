@@ -74,14 +74,14 @@ public class SAPServerDataProvider implements ServerDataProvider {
      * @param serverName the server name previously registered via
      *                   {@link #addServerConfig} or {@link #addAdvancedServerConfig}
      * @return the {@link Properties} for the server
-     * @throws RuntimeException if no properties have been registered for {@code serverName}
+     * @throws DataProviderException if no properties have been registered for {@code serverName}
      */
     @Override
     public Properties getServerProperties(String serverName) {
         if (serverProperties.containsKey(serverName)) {
             return serverProperties.get(serverName);
         } else {
-            throw new RuntimeException("Server " + serverName + " not found");
+            throw new DataProviderException("Server " + serverName + " not found");
         }
     }
 
@@ -113,8 +113,8 @@ public class SAPServerDataProvider implements ServerDataProvider {
      *
      * @param jcoServerConfig       the Ballerina {@code ServerConfig} record
      * @param serverName            the name under which the properties are stored
-     * @param repositoryDestination optional destination name used for RFC repository look-ups;
-     *                              may be {@code null}
+     * @param repositoryDestination destination name used for IDoc and RFC metadata look-ups;
+     *                              should not be {@code null} when called from the {@code ServerConfig} path
      * @throws RuntimeException if a required property cannot be applied
      */
     public void addServerConfig(BMap<BString, Object> jcoServerConfig, String serverName,
