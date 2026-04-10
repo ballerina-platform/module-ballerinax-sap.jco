@@ -57,8 +57,10 @@ configurable string repoDestination = "";
 final boolean testsEnabled = ashost != "" && sysnr != "" && jcoClient != ""
     && sapUser != "" && passwd != "";
 
-// Listener tests additionally require the SAP gateway configuration.
-final boolean listenerTestsEnabled = testsEnabled && gwhost != "" && gwserv != "" && progid != "";
+// Listener tests additionally require the SAP gateway configuration and a repository
+// destination (repositoryDestination is a required field in ServerConfig).
+final boolean listenerTestsEnabled = testsEnabled && gwhost != "" && gwserv != ""
+    && progid != "" && repoDestination != "";
 
 final DestinationConfig destinationConfig = {
     ashost,
@@ -69,11 +71,4 @@ final DestinationConfig destinationConfig = {
     lang
 };
 
-function buildServerConfig() returns ServerConfig {
-    if repoDestination != "" {
-        return {gwhost, gwserv, progid, repositoryDestination: repoDestination};
-    }
-    return {gwhost, gwserv, progid};
-}
-
-final ServerConfig serverConfig = buildServerConfig();
+final ServerConfig serverConfig = {gwhost, gwserv, progid, repositoryDestination: repoDestination};

@@ -33,7 +33,7 @@ isolated boolean iDocReceived = false;
 isolated xml receivedIDoc = xml `<empty/>`;
 
 // Service used in the receive round-trip test.
-Service receiveTestService = service object {
+IDocService receiveTestService = service object {
     remote function onReceive(xml iDoc) returns error? {
         lock {
             iDocReceived = true;
@@ -55,7 +55,7 @@ Service receiveTestService = service object {
 // ---------------------------------------------------------------------------
 @test:BeforeGroups {value: ["listener"]}
 function setUpListenerRepositoryDestination() returns error? {
-    if listenerTestsEnabled && repoDestination != "" {
+    if listenerTestsEnabled {
         Client _ = check new (destinationConfig, repoDestination);
     }
 }
@@ -85,10 +85,11 @@ function testListenerInitWithAdvancedConfig() returns error? {
     Listener _ = check new (advancedConfig);
 }
 
-// Expects an Error when the gateway host is unreachable.
-// JCo defers gateway connectivity validation to start(), not init(), so we
-// verify the error is raised on start() rather than on listener construction.
-// Note: connection timeout may make this test slow depending on network settings.
+// Verifies that start() succeeds even when the gateway host is unreachable.
+// JCo establishes gateway connectivity asynchronously: start() returns as soon as the
+// server is submitted to JCo's scheduler. Connection failures are delivered to the
+// attached service's onError handler and JCo retries automatically until the gateway
+// becomes reachable. The listener can be stopped cleanly regardless of connectivity state.
 @test:Config {
     enable: listenerTestsEnabled,
     groups: ["listener"]
@@ -97,12 +98,12 @@ function testListenerInitWithInvalidGateway() returns error? {
     ServerConfig invalidServerConfig = {
         gwhost: "invalid.gateway.host.that.does.not.exist",
         gwserv: "3300",
-        progid: "INVALID_PROGID"
+        progid: "INVALID_PROGID",
+        repositoryDestination: repoDestination
     };
     Listener sapListener = check new (invalidServerConfig);
     check sapListener.attach(dummyService);
-    Error? result = sapListener.'start();
-    test:assertTrue(result is Error, "Expected an Error when starting with an unreachable SAP gateway");
+    check sapListener.'start();
     check sapListener.gracefulStop();
 }
 
@@ -110,7 +111,7 @@ function testListenerInitWithInvalidGateway() returns error? {
 // Attach tests
 // ---------------------------------------------------------------------------
 
-Service dummyService = service object {
+IDocService dummyService = service object {
     remote function onReceive(xml iDoc) returns error? {}
     remote function onError(error 'error) returns error? {}
 };
@@ -259,5 +260,275 @@ function testListenerReceivesIDoc() returns error? {
 
     lock {
         test:assertTrue(iDocReceived, "Listener did not receive the iDoc within 30 seconds");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Shared state for the RFC receive integration test (testListenerReceivesRfcCall)
+// ---------------------------------------------------------------------------
+isolated boolean rfcCallReceived = false;
+isolated string receivedFunctionName = "";
+
+// ---------------------------------------------------------------------------
+// RfcService stubs used across RFC listener tests
+// ---------------------------------------------------------------------------
+
+// A minimal RfcService that returns nil for all calls (models fire-and-forget RFCs).
+RfcService nilReturnRfcService = service object {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|json|error? {
+        return ();
+    }
+
+    remote function onError(error 'error) returns error? {}
+};
+
+// An RfcService that echoes back the import parameters as the export response.
+RfcService echoRfcService = service object {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|json|error? {
+        RfcRecord result = parameters.importParameters ?: {};
+        return result;
+    }
+
+    remote function onError(error 'error) returns error? {}
+};
+
+// An RfcService that captures call metadata for the integration test.
+RfcService captureRfcService = service object {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|json|error? {
+        lock {
+            rfcCallReceived = true;
+        }
+        lock {
+            receivedFunctionName = functionName;
+        }
+        return ();
+    }
+
+    remote function onError(error 'error) returns error? {}
+};
+
+// ---------------------------------------------------------------------------
+// Attach tests — unregistered repositoryDestination (both service types)
+// ---------------------------------------------------------------------------
+
+// Expects ConfigurationError when repositoryDestination names a destination that no Client
+// has been created for — applies to both IDocService and RfcService because both need the
+// repository connection for metadata look-ups.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerAttachIDocServiceWithUnregisteredRepoDestination() returns error? {
+    ServerConfig unregisteredRepoConfig = {
+        gwhost,
+        gwserv,
+        progid,
+        repositoryDestination: "NONEXISTENT_DESTINATION_XYZ"
+    };
+    Listener sapListener = check new (unregisteredRepoConfig);
+    Error? result = sapListener.attach(dummyService);
+    test:assertTrue(result is ConfigurationError,
+        "Expected a ConfigurationError when attaching IDocService with an unregistered repositoryDestination");
+}
+
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerAttachRfcServiceWithUnregisteredRepoDestination() returns error? {
+    ServerConfig unregisteredRepoConfig = {
+        gwhost,
+        gwserv,
+        progid,
+        repositoryDestination: "NONEXISTENT_DESTINATION_XYZ"
+    };
+    Listener sapListener = check new (unregisteredRepoConfig);
+    Error? result = sapListener.attach(nilReturnRfcService);
+    test:assertTrue(result is ConfigurationError,
+        "Expected a ConfigurationError when attaching RfcService with an unregistered repositoryDestination");
+}
+
+// ---------------------------------------------------------------------------
+// Attach tests — RfcService
+// ---------------------------------------------------------------------------
+
+// Verifies that an RfcService attaches successfully when all prerequisites are met:
+// serverConfig carries a repositoryDestination and the matching Client has been created
+// by setUpListenerRepositoryDestination().
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerAttachRfcService() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(nilReturnRfcService);
+}
+
+// Expects ConfigurationError when a second RfcService is attached to the same listener.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerAttachMultipleRfcServices() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(nilReturnRfcService);
+    Error? result = sapListener.attach(echoRfcService);
+    test:assertTrue(result is ConfigurationError,
+        "Expected a ConfigurationError when attaching a second RfcService");
+}
+
+// Verifies that one IDocService and one RfcService can both be attached to the same listener.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerAttachBothServiceTypes() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(dummyService);
+    check sapListener.attach(nilReturnRfcService);
+}
+
+// ---------------------------------------------------------------------------
+// Detach tests
+// ---------------------------------------------------------------------------
+
+// Verifies that detaching an IDocService frees the slot so another IDocService can attach.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerDetachIDocService() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(dummyService);
+    check sapListener.detach(dummyService);
+    // After the detach the IDocService slot is free; re-attachment must succeed.
+    check sapListener.attach(receiveTestService);
+}
+
+// Verifies that detaching an RfcService frees the slot so another RfcService can attach.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerDetachRfcService() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(nilReturnRfcService);
+    check sapListener.detach(nilReturnRfcService);
+    // After the detach the RfcService slot is free; re-attachment must succeed.
+    check sapListener.attach(echoRfcService);
+}
+
+// Verifies that detaching one service type leaves the other type's slot intact:
+// after detaching the IDocService, re-attaching a second RfcService must still fail.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerDetachOneServiceLeavesOtherIntact() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(dummyService);
+    check sapListener.attach(nilReturnRfcService);
+    // Detach only the IDocService; the RfcService slot is still occupied.
+    check sapListener.detach(dummyService);
+    // The freed IDocService slot must accept a new attachment.
+    check sapListener.attach(receiveTestService);
+    // The RfcService slot is still occupied — a second attachment must fail.
+    Error? result = sapListener.attach(echoRfcService);
+    test:assertTrue(result is ConfigurationError,
+        "Expected a ConfigurationError: RfcService slot is still occupied after IDocService detach");
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle tests with RfcService
+// ---------------------------------------------------------------------------
+
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerStartAndGracefulStopWithRfcService() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(nilReturnRfcService);
+    check sapListener.'start();
+    check sapListener.gracefulStop();
+}
+
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"],
+    dependsOn: [testListenerStartAndGracefulStopWithRfcService]
+}
+function testListenerStartAndImmediateStopWithRfcService() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(nilReturnRfcService);
+    check sapListener.'start();
+    check sapListener.immediateStop();
+}
+
+// Verifies that a listener carrying both service types starts and stops without error.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"],
+    dependsOn: [testListenerStartAndImmediateStopWithRfcService]
+}
+function testListenerStartAndStopWithBothServiceTypes() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(dummyService);
+    check sapListener.attach(nilReturnRfcService);
+    check sapListener.'start();
+    check sapListener.gracefulStop();
+}
+
+// ---------------------------------------------------------------------------
+// RFC receive integration test
+//
+// Requires an external SAP system to initiate an inbound RFC call to the
+// program ID registered via progid. The test:
+//   1. Starts the listener with an RfcService.
+//   2. Waits up to 30 seconds for onCall to be invoked by the SAP caller.
+//   3. Asserts the RFC call was received and records the function name.
+//   4. Stops the listener.
+//
+// This test is disabled by default because it requires external SAP interaction.
+// ---------------------------------------------------------------------------
+@test:Config {
+    enable: false,
+    groups: ["listener"],
+    dependsOn: [testListenerStartAndStopWithBothServiceTypes]
+}
+function testListenerReceivesRfcCall() returns error? {
+    lock {
+        rfcCallReceived = false;
+    }
+    lock {
+        receivedFunctionName = "";
+    }
+
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(captureRfcService);
+    check sapListener.'start();
+
+    // Poll for up to 30 seconds for an inbound RFC call initiated by the SAP system.
+    int attempts = 0;
+    while attempts < 30 {
+        boolean received;
+        lock {
+            received = rfcCallReceived;
+        }
+        if received {
+            break;
+        }
+        runtime:sleep(1);
+        attempts += 1;
+    }
+
+    check sapListener.gracefulStop();
+
+    lock {
+        test:assertTrue(rfcCallReceived, "Listener did not receive an RFC call within 30 seconds");
+    }
+    lock {
+        test:assertTrue(receivedFunctionName.length() > 0,
+            "onCall() should have captured a non-empty function name");
     }
 }
