@@ -67,20 +67,20 @@ isolated remote function execute(
 
 ```ballerina
 // Before
-MyResponse result = check client->execute("STFC_CONNECTION", {"REQUTEXT": "hello"}, MyResponse);
+MyResponse result = check sapClient->execute("STFC_CONNECTION", {"REQUTEXT": "hello"}, MyResponse);
 
 // After — wrap importParams content inside importParameters
-MyResponse result = check client->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "hello"}}, MyResponse);
+MyResponse result = check sapClient->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "hello"}}, MyResponse);
 ```
 
 **Case 2 — RFC with no input parameters**
 
 ```ballerina
 // Before
-MyResponse result = check client->execute("PING", {}, MyResponse);
+MyResponse result = check sapClient->execute("PING", {}, MyResponse);
 
 // After — parameters defaults to {}, omit entirely and use named argument for returnType
-MyResponse result = check client->execute("PING", returnType = MyResponse);
+MyResponse result = check sapClient->execute("PING", returnType = MyResponse);
 ```
 
 **Case 3 — RFC with table input parameters**
@@ -89,7 +89,7 @@ Previously these failed at runtime. Now use `tableParameters`:
 
 ```ballerina
 // Before (runtime error — array fields were routed to the wrong JCo list)
-check client->execute("RFC_READ_TABLE", {
+check sapClient->execute("RFC_READ_TABLE", {
     "QUERY_TABLE": "MARA",
     "OPTIONS": [{"TEXT": "MATNR LIKE '100%'"}]
 }, ReadTableResponse);
@@ -99,7 +99,7 @@ type OptionsRow record {| string TEXT; |};
 type DataRow record {| string WA; |};
 type ReadTableResponse record {| DataRow[] DATA; |};
 
-ReadTableResponse result = check client->execute("RFC_READ_TABLE",
+ReadTableResponse result = check sapClient->execute("RFC_READ_TABLE",
     {
         importParameters: {"QUERY_TABLE": "MARA", "DELIMITER": "|"},
         tableParameters: {
@@ -117,10 +117,10 @@ The return format is unchanged; only the input wrapping is required:
 
 ```ballerina
 // Before
-xml response = check client->execute("RFC_READ_TABLE", {"QUERY_TABLE": "MARA"});
+xml response = check sapClient->execute("RFC_READ_TABLE", {"QUERY_TABLE": "MARA"});
 
 // After
-xml response = check client->execute("RFC_READ_TABLE", {importParameters: {"QUERY_TABLE": "MARA"}});
+xml response = check sapClient->execute("RFC_READ_TABLE", {importParameters: {"QUERY_TABLE": "MARA"}});
 ```
 
 ### Output: table parameters now included
@@ -222,7 +222,7 @@ When `destinationId` is omitted, a UUID is generated automatically — no change
 
 ```ballerina
 // Works unchanged in 2.0.0
-MyResponse|sap:Error result = client->execute("FUNC", {importParameters: params}, MyResponse);
+MyResponse|sap:Error result = sapClient->execute("FUNC", {importParameters: params}, MyResponse);
 if result is sap:Error {
     log:printError("RFC failed", result);
 }
@@ -232,7 +232,7 @@ if result is sap:Error {
 
 ```ballerina
 do {
-     MyResponse result = check client->execute("FUNC", {importParameters: params}, MyResponse);
+     MyResponse result = check sapClient->execute("FUNC", {importParameters: params}, MyResponse);
      // process result
 } on fail sap:Error err {
      if err is sap:AbapApplicationError {
@@ -294,7 +294,7 @@ Existing `ServerConfig` literals compile unchanged. No migration is required unl
 
 ```ballerina
 // Best practice: close the client when done
-check client->close();
+check sapClient.close();
 ```
 
 ---
