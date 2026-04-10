@@ -88,7 +88,7 @@ public type JCoErrorDetail record {|
     string key?;
 |};
 
-# Error detail for ABAP application exceptions, extending JCoErrorDetail with ABAP message fields.
+# Error detail for ABAP application exceptions, providing all fields from JCoErrorDetail along with additional ABAP message fields.
 public type AbapApplicationErrorDetail record {|
     *JCoErrorDetail;
     # ABAP message class (two-character identifier)

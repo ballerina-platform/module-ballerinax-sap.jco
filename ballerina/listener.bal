@@ -36,7 +36,7 @@ public isolated class Listener {
     # ServerConfig and a Client with that destinationId to have been created first.
     #
     # + s - The service to attach; must be an IDocService or an RfcService
-    # + name - Optional service name (unused at runtime; present for the Ballerina listener contract)
+    # + name - Optional service name (unused at runtime)
     # + return - An error if the repositoryDestination is not registered, the service type is already attached, or attachment fails
     public isolated function attach(IDocService|RfcService s, string[]|string? name = ()) returns Error? =
     @java:Method {
@@ -78,7 +78,7 @@ public isolated class Listener {
     } external;
 
     # Stops the JCo server immediately without waiting for in-flight requests to complete.
-    # Use gracefulStop() when a clean shutdown is possible.
+    # Use graceful stop when a clean shutdown is possible.
     #
     # + return - An error if the server cannot be stopped
     public isolated function immediateStop() returns Error? = @java:Method {
