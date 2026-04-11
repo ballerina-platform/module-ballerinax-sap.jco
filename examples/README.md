@@ -15,6 +15,10 @@ scenarios to understand how to automate processes involving SAP systems and exte
 4. [SAP Product Catalog Sync](./sap_product_catalog/) - Query SAP material master data using RFC table parameters
    (filter criteria and field selection) and sync the results to an external product catalog API.
 
+5. [SAP Real-Time Credit Check Service](./sap_credit_check_service/) - Expose a Ballerina service as an inbound RFC
+   server that SAP calls synchronously during sales order creation to validate customer creditworthiness against an
+   external credit bureau API.
+
 ## Prerequisites
 
 1. Refer to the [Setup Guide](../../README.md) to configure the Ballerina SAP JCo Connector.
