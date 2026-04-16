@@ -225,7 +225,7 @@ service jco:IDocService on iDocListener {
 
 ```ballerina
 service jco:RfcService on rfcListener {
-    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|json|error? {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
         io:println("RFC called: ", functionName);
         return ();
     }

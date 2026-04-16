@@ -43,7 +43,7 @@ The old signature accepted a flat record for input and discarded all table outpu
 isolated remote function execute(
     string functionName,
     record {|FieldType?...;|} importParams,
-    typedesc<record {|FieldType?...;|}|xml|json> exportParams = <>
+    typedesc<record {|FieldType?...;|}|xml|json?> exportParams = <>
 ) returns exportParams|Error
 ```
 
@@ -58,7 +58,7 @@ The new signature uses explicit input categories and merges all output into one 
 isolated remote function execute(
     string functionName,
     RfcParameters parameters = {},
-    typedesc<RfcRecord|xml|json> returnType = <>
+    typedesc<RfcRecord|xml> returnType = <>
 ) returns returnType|Error
 ```
 
@@ -331,7 +331,7 @@ Attach an `RfcService` to handle inbound RFC calls from SAP. At most one `IDocSe
 
 ```ballerina
 service jco:RfcService on rfcListener {
-    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|json|error? {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
         io:println("RFC called: ", functionName);
         return ();
     }

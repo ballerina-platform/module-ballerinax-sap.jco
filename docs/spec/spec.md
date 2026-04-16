@@ -146,9 +146,9 @@ An RFC function call is made using the following function:
 #
 # + functionName - Name of the RFC function module to call (e.g. `"STFC_CONNECTION"`).
 # + parameters - Import and table parameter values wrapped in an `RfcParameters` record.
-# + returnType - Expected type of the RFC response (`xml`, `json`, or a record type).
+# + returnType - Expected type of the RFC response (`xml` or a record type).
 # + return - The export and table parameters merged and converted to the `returnType` type, or an error on failure.
-isolated remote function execute(string functionName, RfcParameters parameters = {}, typedesc<RfcRecord|xml|json> returnType = <>) returns returnType|Error
+isolated remote function execute(string functionName, RfcParameters parameters = {}, typedesc<RfcRecord|xml> returnType = <>) returns returnType|Error
 ```
 
 The `RfcParameters` type wraps import parameters and optional table parameters:
@@ -174,7 +174,7 @@ public type FieldType string|int|float|decimal|time:Date|time:TimeOfDay|byte[]|r
 
 The `functionName` refers to the Remote Function Module name. The `parameters.importParameters` map holds scalar, structure, and table values keyed by SAP parameter name. The `parameters.tableParameters` map holds table input parameters, where each key is a SAP table parameter name and the value is an array of `RfcRecord` rows.
 
-For the return type, the type descriptor of the user's `returnType` is extracted. The response merges both export parameters and table parameters returned by the SAP function module. Use a `RfcRecord`-compatible record to receive typed results, or `json`/`xml` for untyped access.
+For the return type, the type descriptor of the user's `returnType` is extracted. The response merges both export parameters and table parameters returned by the SAP function module. Use a `RfcRecord`-compatible record to receive typed results, or `xml` for untyped access.
 
 Users can invoke it as shown below:
 
@@ -444,7 +444,7 @@ The Listener can also receive inbound RFC calls from the SAP system using the `R
 
 ```ballerina
 service jco:RfcService on rfcListener {
-    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|json|error? {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
         io:println("RFC called: ", functionName);
         return ();
     }

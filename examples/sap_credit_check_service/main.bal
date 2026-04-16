@@ -43,7 +43,7 @@ service jco:RfcService on creditCheckListener {
     //   CREDIT_SCORE  - Numeric credit score from the bureau
     //   CREDIT_LIMIT  - Maximum credit amount the bureau will extend
     //   MESSAGE       - Human-readable decision summary
-    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|json|error? {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|error {
         if functionName != "Z_CHECK_CUSTOMER_CREDIT" {
             return error("Unsupported function module: " + functionName);
         }
