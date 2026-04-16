@@ -19,6 +19,7 @@ The `ballerinax/sap.jco` package exposes the SAP JCo library as Ballerina functi
 - Connect to SAP systems via SAP JCo (Java Connector)
 - Execute BAPIs and Remote Function Calls (RFC)
 - Support for IDoc processing and exchange — both sending and receiving
+- Receive and handle inbound RFC calls from SAP systems using the `RfcService` listener type
 - Distinct typed error hierarchy (`ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `IDocError`, `ConfigurationError`, `ExecutionError`, and more) for precise error handling
 - Singleton destination and server data providers enabling multiple concurrent clients and listeners without JCo provider conflicts
 - Compatible with SAP ERP and S/4HANA systems
@@ -256,6 +257,12 @@ scenarios to understand how to automate processes involving SAP systems and exte
 
 3. [Automated Supplier Order Processing via iDoc Listener](https://github.com/ballerina-platform/module-ballerinax-sap.jco/tree/main/examples/order_idoc_listener) - Set up an iDoc listener to automate
    supplier order processing.
+
+4. [SAP Product Catalog Sync](https://github.com/ballerina-platform/module-ballerinax-sap.jco/tree/main/examples/sap_product_catalog) - Query SAP material master data using RFC table parameters
+   (filter criteria and field selection) and sync the results to an external product catalog API.
+
+5. [SAP Real-Time Credit Check Service](https://github.com/ballerina-platform/module-ballerinax-sap.jco/tree/main/examples/sap_credit_check_service) - Expose a Ballerina service as an inbound RFC
+   server that SAP calls synchronously during sales order creation to validate customer creditworthiness.
 
 ## Issues and projects
 

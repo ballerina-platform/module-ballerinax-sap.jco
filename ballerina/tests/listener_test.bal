@@ -479,6 +479,23 @@ function testListenerStartAndStopWithBothServiceTypes() returns error? {
     check sapListener.gracefulStop();
 }
 
+// Expects a ConfigurationError when start() is called on an already-running listener
+// that has an RfcService attached.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"],
+    dependsOn: [testListenerStartAndStopWithBothServiceTypes]
+}
+function testListenerStartTwiceWithRfcService() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(nilReturnRfcService);
+    check sapListener.'start();
+    Error? result = sapListener.'start();
+    test:assertTrue(result is ConfigurationError,
+        "Expected a ConfigurationError when starting an already-running listener with RfcService");
+    check sapListener.gracefulStop();
+}
+
 // ---------------------------------------------------------------------------
 // RFC receive integration test
 //
