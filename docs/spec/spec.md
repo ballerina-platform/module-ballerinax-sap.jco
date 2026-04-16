@@ -169,7 +169,7 @@ public type RfcRecord record {| FieldType?...; |};
 `FieldType` covers all scalar, temporal, binary, structure, and table value types supported by SAP JCo:
 
 ```ballerina
-public type FieldType string|int|float|decimal|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
+public type FieldType string|int|float|decimal|boolean|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
 ```
 
 The `functionName` refers to the Remote Function Module name. The `parameters.importParameters` map holds scalar, structure, and table values keyed by SAP parameter name. The `parameters.tableParameters` map holds table input parameters, where each key is a SAP table parameter name and the value is an array of `RfcRecord` rows.
@@ -263,6 +263,7 @@ The following table maps Ballerina data types to their corresponding SAP JCo typ
 | int                                   | long           | INT4                  |
 | float                                 | float          | FLOAT                 |
 | decimal                               | double         | DEC, QUAN, CURR, PREC |
+| boolean                               | Boolean        | CHAR (X/space)        |
 | byte                                  | byte           | INT1                  |
 | byte[]                                | byte[]         | RAW, LRAW, BYTE       |
 | decimal                               | BigDecimal     | DEC, QUAN, CURR       |
@@ -281,6 +282,8 @@ The Listener supports two types of configurations, `ServerConfig` and `AdvancedC
 The `ServerConfig` type represents the configuration details needed to create an IDoc connection.
 
 ```ballerina
+public type RepositoryDestination string|DestinationConfig;
+
 public type ServerConfig record {|
     # The gateway host (jco.server.gwhost)
     string gwhost;
@@ -290,12 +293,17 @@ public type ServerConfig record {|
     string progid;
     # Maximum number of concurrent RFC connections (jco.server.connection_count)
     int connectionCount = 2;
-    # RFC destination used to look up IDoc and RFC metadata; must match the `destinationId` of an already-initialised `Client` (jco.server.repository_destination)
-    string repositoryDestination;
+    # RFC destination used to look up IDoc and RFC metadata (jco.server.repository_destination)
+    RepositoryDestination repositoryDestination;
 |};
 ```
 
-**Example configuration:**
+`repositoryDestination` is required and accepts two forms:
+
+- **String** — the `destinationId` of an already-initialised `Client`. The listener reuses that client's connection to look up IDoc segment metadata and RFC function module metadata from SAP.
+- **`DestinationConfig`** — SAP credentials supplied directly. The listener registers an internal JCo destination automatically, so no separate `Client` is required.
+
+**Example configuration (string form):**
 
 ```ballerina
 configurable jco:ServerConfig configs = ?;
@@ -313,7 +321,22 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-`repositoryDestination` is required and must match the `destinationId` of an already-initialised `Client`. The listener uses this connection to look up IDoc segment metadata and RFC function module metadata from SAP.
+**Example configuration (inline DestinationConfig form):**
+
+```toml
+[configs]
+gwhost = "gwhost"
+gwserv = "sapgw00"
+progid = "progid"
+connectionCount = 2
+
+[configs.repositoryDestination]
+ashost = "sap.example.com"
+sysnr = "00"
+jcoClient = "100"
+user = "SAP_USER"
+passwd = "SAP_PASSWORD"
+```
 
 ##### 2.2.1.2 Advanced configurations
 

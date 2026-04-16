@@ -112,9 +112,9 @@ ReadTableResponse result = check sapClient->execute("RFC_READ_TABLE",
 );
 ```
 
-**Case 4 — XML or JSON response (unchanged behavior, now includes table data)**
+**Case 4 — XML response (JSON support removed, now includes table data)**
 
-The return format is unchanged; only the input wrapping is required:
+JSON return type support has been removed in 2.0.0 (`typedesc<RfcRecord|xml>`). If you were using `json` as the return type, switch to `xml` or a typed `RfcRecord`. The input wrapping is required:
 
 ```ballerina
 // Before
@@ -142,6 +142,9 @@ type MaterialListResponse record {|
 |---|---|
 | `RfcRecord` | Named alias for `record {\| FieldType?...; \|}` — the base type for parameter values |
 | `RfcParameters` | Wrapper with `importParameters` and `tableParameters` sections |
+| `RepositoryDestination` | Union type `string\|DestinationConfig` for listener repository destination |
+
+`boolean` has been added to `FieldType`, enabling boolean values in RFC parameters. This is not a breaking change — existing code continues to work.
 
 ---
 
@@ -274,19 +277,22 @@ public type ServerConfig record {|
 |};
 
 // 2.0.0 — connectionCount defaulted; repositoryDestination is now required
+public type RepositoryDestination string|DestinationConfig;
+
 public type ServerConfig record {|
     string gwhost;
     string gwserv;
     string progid;
-    int connectionCount = 2;       // new — defaults to 2, no action required
-    string repositoryDestination;  // required — must match a Client's destinationId
+    int connectionCount = 2;                      // new — defaults to 2, no action required
+    RepositoryDestination repositoryDestination;   // required
 |};
 ```
 
-`repositoryDestination` is a **required** field. All `ServerConfig` literals and `Config.toml` files must include it. The value must match the `destinationId` of a `Client` that is initialised **before** the `Listener`.
+`repositoryDestination` is a **required** field. All `ServerConfig` literals and `Config.toml` files must include it. It accepts two forms:
+
+**Option 1 — Reference an existing Client destination** (value must match the `destinationId` of a `Client` initialised before the `Listener`):
 
 ```ballerina
-// Required: initialise the client before the listener
 jco:Client sapClient = check new (destConfig, destinationId = "MY_DEST");
 
 jco:Listener sapListener = check new ({
@@ -294,6 +300,23 @@ jco:Listener sapListener = check new ({
     gwserv: "3300",
     progid: "BALLERINA_PROG",
     repositoryDestination: "MY_DEST"   // must match destinationId above
+});
+```
+
+**Option 2 — Supply SAP credentials directly** (the listener registers an internal JCo destination automatically, so no separate `Client` is required):
+
+```ballerina
+jco:Listener sapListener = check new ({
+    gwhost: "sap-gw.example.com",
+    gwserv: "3300",
+    progid: "BALLERINA_PROG",
+    repositoryDestination: {
+        ashost: "sap.example.com",
+        sysnr: "00",
+        jcoClient: "100",
+        user: "SAP_USER",
+        passwd: "SAP_PASSWORD"
+    }
 });
 ```
 
@@ -366,7 +389,7 @@ Work through each item in order:
 - [ ] **`execute()` — response types:** add table-parameter fields to response record types if you need tabular data that was previously unavailable
 - [ ] **`Client.init()` named args:** rename `configurations =` to `config =` at any named call sites
 - [ ] **`Client.init()` destinationId:** supply an explicit `destinationId` for any client referenced by a listener's `repositoryDestination`
-- [ ] **`ServerConfig`:** add `repositoryDestination` (now required) and ensure the value matches the `destinationId` of an already-initialised `Client`
+- [ ] **`ServerConfig`:** add `repositoryDestination` (now required) — either a `string` matching the `destinationId` of an already-initialised `Client`, or an inline `DestinationConfig`
 - [ ] **`Service` → `IDocService`:** rename all `service jco:Service` declarations to `service jco:IDocService`
 - [ ] **`onError` parameter:** rename `error 'error` to `error err` in all `onError` remote function signatures
 - [ ] **Error handling:** review `on fail` / `is` checks — `is sap:Error` continues to work; add specific error types where finer handling is needed
