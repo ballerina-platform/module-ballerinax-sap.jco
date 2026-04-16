@@ -25,12 +25,14 @@ import com.sap.conn.jco.server.JCoServerContext;
 import com.sap.conn.jco.server.JCoServerFunctionHandler;
 import io.ballerina.lib.sap.ModuleUtils;
 import io.ballerina.lib.sap.SAPConstants;
+import io.ballerina.lib.sap.SAPErrorCreator;
 import io.ballerina.lib.sap.parameterprocessor.ExportParameterProcessor;
 import io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor;
 import io.ballerina.runtime.api.Runtime;
 import io.ballerina.runtime.api.concurrent.StrandMetadata;
 import io.ballerina.runtime.api.creators.TypeCreator;
 import io.ballerina.runtime.api.creators.ValueCreator;
+import io.ballerina.runtime.api.types.MethodType;
 import io.ballerina.runtime.api.types.ObjectType;
 import io.ballerina.runtime.api.types.PredefinedTypes;
 import io.ballerina.runtime.api.types.RecordType;
@@ -96,7 +98,10 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
             Object result = invokeOnCall(args);
 
             if (result instanceof BError bError) {
-                throw new AbapException("BALLERINA_ERROR", bError.getMessage());
+                if (!handleError(SAPErrorCreator.fromExecutionThrowable(
+                        "onCall() returned an error for function '" + functionName + "'.", bError))) {
+                    throw new AbapException("BALLERINA_ERROR", bError.getMessage());
+                }
             } else if (result instanceof BMap) {
                 @SuppressWarnings("unchecked")
                 BMap<BString, Object> responseRecord = (BMap<BString, Object>) result;
@@ -107,9 +112,19 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
             // null / nil return: leave export/table lists empty (valid for fire-and-forget RFCs)
         } catch (AbapException e) {
             throw e;
+        } catch (BError e) {
+            // Ballerina-level error (e.g. type mismatch in response record writing)
+            BError paramError = SAPErrorCreator.createParameterError(
+                    "Failed to write RFC response for function '" + functionName + "': " + e.getMessage());
+            if (!handleError(paramError)) {
+                throw new AbapException("BALLERINA_PARAMETER_ERROR", e.getMessage());
+            }
         } catch (Throwable e) {
-            logger.error("Unexpected error in RFC handler for function {}: {}", functionName, e.getMessage());
-            throw new AbapException("BALLERINA_INTERNAL_ERROR", e.getMessage());
+            BError execError = SAPErrorCreator.fromExecutionThrowable(
+                    "RFC handler failed for function '" + functionName + "'.", e);
+            if (!handleError(execError)) {
+                throw new AbapException("BALLERINA_INTERNAL_ERROR", e.getMessage());
+            }
         }
     }
 
@@ -213,5 +228,46 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_CALL);
         StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
         return runtime.callMethod(service, SAPConstants.ON_CALL, metadata, args);
+    }
+
+    /**
+     * Dispatches an error to the Ballerina {@code onError} remote method on the attached service.
+     * <p>
+     * If {@code onError} exists and returns {@code nil}, the error is considered handled and
+     * this method returns {@code true} — the caller should not throw an {@code AbapException}.
+     * If {@code onError} does not exist, or returns an error itself, this method returns
+     * {@code false} — the caller should propagate the error back to SAP.
+     *
+     * @param error the Ballerina error to deliver to the service
+     * @return {@code true} if the error was handled by {@code onError}; {@code false} otherwise
+     */
+    private boolean handleError(BError error) {
+        MethodType onErrorMethod = null;
+        MethodType[] methods = ((ObjectType) TypeUtils.getImpliedType(service.getOriginalType()))
+                .getMethods();
+        for (MethodType method : methods) {
+            if (SAPConstants.ON_ERROR.equals(method.getName())) {
+                onErrorMethod = method;
+                break;
+            }
+        }
+        if (onErrorMethod == null) {
+            return false;
+        }
+        ObjectType serviceType = (ObjectType) TypeUtils.getImpliedType(service.getOriginalType());
+        boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
+        StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
+        try {
+            Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata,
+                    new Object[]{error, true});
+            if (result instanceof BError onErrorResult) {
+                logger.error("onError handler returned an error", onErrorResult);
+                return false;
+            }
+            return true;
+        } catch (Throwable thr) {
+            logger.error("onError handler threw an unexpected error; suppressing to avoid re-entry.", thr);
+            return false;
+        }
     }
 }
