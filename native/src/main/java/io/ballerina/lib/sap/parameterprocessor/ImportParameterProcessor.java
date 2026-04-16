@@ -76,6 +76,9 @@ public class ImportParameterProcessor {
                 case TypeTags.DECIMAL_TAG:
                     jcoParamList.setValue(key, new BigDecimal(value.toString()));
                     break;
+                case TypeTags.BOOLEAN_TAG:
+                    jcoParamList.setValue(key, Boolean.TRUE.equals(value));
+                    break;
                 case TypeTags.BYTE_ARRAY_TAG:
                     jcoParamList.setValue(key, (byte[]) value);
                     break;
@@ -147,6 +150,9 @@ public class ImportParameterProcessor {
                     case TypeTags.DECIMAL_TAG:
                         table.setValue(fieldName, new BigDecimal(fieldValue.toString()));
                         break;
+                    case TypeTags.BOOLEAN_TAG:
+                        table.setValue(fieldName, Boolean.TRUE.equals(fieldValue));
+                        break;
                     case TypeTags.BYTE_ARRAY_TAG:
                         table.setValue(fieldName, (byte[]) fieldValue);
                         break;
@@ -198,6 +204,9 @@ public class ImportParameterProcessor {
                     break;
                 case TypeTags.DECIMAL_TAG:
                     structure.setValue(key, new BigDecimal(value.toString()));
+                    break;
+                case TypeTags.BOOLEAN_TAG:
+                    structure.setValue(key, Boolean.TRUE.equals(value));
                     break;
                 case TypeTags.BYTE_ARRAY_TAG:
                     structure.setValue(key, (byte[]) value);
@@ -266,8 +275,9 @@ public class ImportParameterProcessor {
 
     private static void throwUnsupportedUnionTypeError(Object key, String type) {
         throw SAPErrorCreator.createParameterError(
-                "Unsupported parameter type for '" + key + "': '" + type + "'. " +
-                "Supported types are: string, int, float, decimal, byte[], Date, TimeOfDay, record, and array.");
+                "Unsupported parameter type for '" + key + "': '" + type + "'. "
+                + "Supported types are: string, int, float, decimal, boolean, "
+                + "byte[], Date, TimeOfDay, record, and array.");
     }
 
 }

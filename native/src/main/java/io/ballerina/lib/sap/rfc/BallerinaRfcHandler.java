@@ -92,7 +92,7 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
         String functionName = function.getName();
         try {
             BMap<BString, Object> rfcParameters = buildRfcParameters(function);
-            Object[] args = {StringUtils.fromString(functionName), true, rfcParameters, true};
+            Object[] args = {StringUtils.fromString(functionName), rfcParameters};
             Object result = invokeOnCall(args);
 
             if (result instanceof BError bError) {
@@ -205,7 +205,7 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
      * Invokes the Ballerina {@code onCall()} remote method on the attached service.
      * Uses concurrent dispatch when both the service and the method are declared {@code isolated}.
      *
-     * @param args the arguments to pass: {@code {functionName, true, rfcParameters, true}}
+     * @param args the arguments to pass: {@code {functionName, rfcParameters}}
      * @return the return value from the Ballerina method (may be a {@link BError} or {@code null})
      */
     private Object invokeOnCall(Object... args) {

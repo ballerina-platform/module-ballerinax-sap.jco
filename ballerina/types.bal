@@ -36,6 +36,12 @@ public type DestinationConfig record {|
 # Advanced configuration using raw JCo property key-value pairs, for settings not covered by DestinationConfig or ServerConfig.
 public type AdvancedConfig map<string>;
 
+# Identifies the repository destination used by the listener to look up RFC and IDoc metadata.
+# Use a plain string to reference the destination ID of an already-initialised client.
+# Supply SAP credentials directly; the listener will register an internal JCo destination from 
+# those credentials automatically, so no separate client is required.
+public type RepositoryDestination string|DestinationConfig;
+
 # Connection parameters for a JCo IDoc server.
 public type ServerConfig record {|
     # SAP gateway host to register the server with
@@ -46,8 +52,10 @@ public type ServerConfig record {|
     string progid;
     # Maximum number of concurrent RFC connections
     int connectionCount = 2;
-    # RFC destination used to look up IDoc and RFC metadata; must match the destinationId of an already-initialised Client
-    string repositoryDestination;
+    # RFC destination used to look up IDoc and RFC metadata.
+    # Either the destination ID of an already-initialised client, or the credentials the 
+    # listener registers as an internal JCo destination automatically.
+    RepositoryDestination repositoryDestination;
 |};
 
 # IDoc protocol version used when sending IDocs to the SAP system.
@@ -65,7 +73,7 @@ public enum IDocType {
 };
 
 # Any value that can appear as an RFC import/export parameter or a field inside a JCo structure or table.
-public type FieldType string|int|float|decimal|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
+public type FieldType string|int|float|decimal|boolean|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
 
 # Represents a single RFC parameter set — scalar values, structures, or table row data.
 public type RfcRecord record {|

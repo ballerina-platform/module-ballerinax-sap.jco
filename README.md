@@ -131,7 +131,11 @@ jco:Client jcoClient = check new (configurations, destinationId = "MY_DESTINATIO
 
 #### Initialize a new JCo listener instance
 
-Configure the necessary SAP connection parameters in `Config.toml` in the project directory:
+Configure the necessary SAP connection parameters in `Config.toml` in the project directory.
+
+`repositoryDestination` is required — the listener uses it to look up IDoc segment metadata and RFC function module metadata from SAP. It accepts two forms:
+
+**Option 1: Reference an existing Client destination** — provide the `destinationId` of an already-initialized `Client`:
 
 ```toml
 [configurations]
@@ -142,7 +146,22 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-`repositoryDestination` is required and must match the `destinationId` of an already-initialized `Client`. The listener uses this connection to look up IDoc segment metadata and RFC function module metadata from SAP.
+**Option 2: Supply SAP credentials directly** — the listener registers an internal JCo destination automatically, so no separate `Client` is required:
+
+```toml
+[configurations]
+gwhost = "sapgw.example.com"
+gwserv = "sapgw00"
+progid = "JCO_PROGRAM_ID"
+connectionCount = 2
+
+[configurations.repositoryDestination]
+ashost = "sap.example.com"
+sysnr = "00"
+jcoClient = "100"
+user = "SAP_USER"
+passwd = "SAP_PASSWORD"
+```
 
 Then, create a new JCo listener instance for IDoc listener operations.
 

@@ -27,6 +27,7 @@ import io.ballerina.lib.sap.dataproviders.SAPServerDataProvider;
 import io.ballerina.lib.sap.idoc.BallerinaIDocHandlerFactory;
 import io.ballerina.lib.sap.idoc.BallerinaThrowableListener;
 import io.ballerina.lib.sap.idoc.BallerinaTidHandler;
+import io.ballerina.lib.sap.idoc.NoOpIDocHandlerFactory;
 import io.ballerina.lib.sap.rfc.BallerinaRfcHandlerFactory;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.Runtime;
@@ -101,20 +102,29 @@ public final class Listener {
                 String progid = advancedServerConfig.getOrDefault("jco.server.progid", "");
                 String serverKey = gwhost + "|" + gwserv + "|" + progid;
                 repositoryDestination = advancedServerConfig.get(SAPServerDataProvider.JCO_REP_DEST);
+                // Register inline destination config before the server registry check so that
+                // it is available even when the server object is reused for the same (gwhost, gwserv, progid).
+                if (!advancedDestinationConfig.isEmpty()) {
+                    String destinationName = (repositoryDestination != null)
+                            ? repositoryDestination : serverName.getValue();
+                    SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
+                    if (!dp.hasDestination(destinationName)) {
+                        dp.addAdvancedDestinationConfig(advancedDestinationConfig, destinationName);
+                    }
+                    SAPDestinationDataProvider.registerIfAbsent();
+                }
                 if (serverRegistry.containsKey(serverKey)) {
                     server = serverRegistry.get(serverKey);
                 } else {
-                    if (!advancedDestinationConfig.isEmpty()) {
-                        String destinationName = (repositoryDestination != null)
-                                ? repositoryDestination : serverName.getValue();
-                        SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
-                        dp.addAdvancedDestinationConfig(advancedDestinationConfig, destinationName);
-                        SAPDestinationDataProvider.registerIfAbsent();
-                    }
                     SAPServerDataProvider sp = SAPServerDataProvider.getInstance();
                     sp.addAdvancedServerConfig(advancedServerConfig, serverName.getValue());
                     SAPServerDataProvider.registerIfAbsent();
                     server = JCoIDoc.getServer(serverName.getValue());
+                    // JCoIDocServer requires an IDocHandlerFactory before start() is called,
+                    // even when only an RfcService is attached. Install a no-op factory now;
+                    // Listener.attach() replaces it with BallerinaIDocHandlerFactory when an
+                    // IDocService is attached.
+                    server.setIDocHandlerFactory(new NoOpIDocHandlerFactory());
                     serverRegistry.put(serverKey, server);
                 }
             } else {
@@ -132,7 +142,7 @@ public final class Listener {
             return SAPErrorCreator.fromJCoException(e);
         } catch (Throwable e) {
             logger.error("Server initialization failed.");
-            return SAPErrorCreator.createConfigError("Server initialization failed.", e);
+            return SAPErrorCreator.createConfigError("Server initialization failed. " + e.getMessage(), e);
         }
     }
 
@@ -146,9 +156,10 @@ public final class Listener {
      * the throwable listener with the newly added service.
      * <p>
      * Attaching either service type requires {@code repositoryDestination} to be set in the
-     * {@code ServerConfig} and that a {@code Client} with the matching destination ID has
-     * already been created. {@code IDocService} uses it for IDoc metadata look-ups;
-     * {@code RfcService} uses it for RFC function module metadata look-ups.
+     * {@code ServerConfig}. The destination must already be registered — either by creating a
+     * {@code Client} with a matching {@code destinationId}, or by supplying a
+     * {@code DestinationConfig} directly as {@code repositoryDestination} in {@code ServerConfig}
+     * (which registers the destination automatically at listener init time).
      *
      * @param environment     the Ballerina runtime environment
      * @param listenerBObject the Ballerina {@code Listener} object
@@ -191,8 +202,8 @@ public final class Listener {
                 if (!SAPDestinationDataProvider.getInstance().hasDestination(repDestIdoc)) {
                     return SAPErrorCreator.createConfigError(
                             "The repositoryDestination '" + repDestIdoc + "' has not been registered. "
-                            + "Create a Client with destinationId = \"" + repDestIdoc
-                            + "\" before attaching an IDocService.");
+                            + "Either create a Client with destinationId = \"" + repDestIdoc
+                            + "\", or use a DestinationConfig as repositoryDestination in ServerConfig.");
                 }
                 server.setIDocHandlerFactory(new BallerinaIDocHandlerFactory(service, runtime));
                 listenerBObject.addNativeData(NATIVE_IDOC_SERVICE, service);
@@ -213,8 +224,8 @@ public final class Listener {
                 if (!SAPDestinationDataProvider.getInstance().hasDestination(repDest)) {
                     return SAPErrorCreator.createConfigError(
                             "The repositoryDestination '" + repDest + "' has not been registered. "
-                            + "Create a Client with destinationId = \"" + repDest
-                            + "\" before attaching an RfcService.");
+                            + "Either create a Client with destinationId = \"" + repDest
+                            + "\", or use a DestinationConfig as repositoryDestination in ServerConfig.");
                 }
                 // JCoIDocServer extends JCoServer; JCoServerFunctionHandlerFactory extends
                 // JCoServerCallHandlerFactory, so setCallHandlerFactory() accepts it directly.
@@ -242,7 +253,7 @@ public final class Listener {
             return null;
         } catch (Throwable e) {
             logger.error("Server attach failed.");
-            return SAPErrorCreator.createConfigError("Server attach failed.", e);
+            return SAPErrorCreator.createConfigError("Server attach failed. " + e.getMessage(), e);
         }
     }
 
@@ -287,7 +298,7 @@ public final class Listener {
             client.addNativeData(SAPConstants.IS_STARTED, true);
         } catch (Throwable e) {
             logger.error("Server start failed.");
-            return SAPErrorCreator.createConfigError("Server start failed.", e);
+            return SAPErrorCreator.createConfigError("Server start failed. " + e.getMessage(), e);
         }
         return null;
     }
@@ -335,7 +346,7 @@ public final class Listener {
                 logger.debug("Server was already stopped.");
             } else {
                 logger.error("Server stop failed.");
-                return SAPErrorCreator.createConfigError("Server stop failed.", e);
+                return SAPErrorCreator.createConfigError("Server stop failed. " + e.getMessage(), e);
             }
         }
         long deadline = System.currentTimeMillis() + 15_000;
@@ -394,7 +405,7 @@ public final class Listener {
             }
         } catch (Throwable e) {
             logger.error("Server detach failed.");
-            return SAPErrorCreator.createConfigError("Server detach failed.", e);
+            return SAPErrorCreator.createConfigError("Server detach failed. " + e.getMessage(), e);
         }
         return null;
     }

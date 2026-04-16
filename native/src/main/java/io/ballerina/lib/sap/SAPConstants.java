@@ -59,6 +59,7 @@ public class SAPConstants {
     public static final String JCO_STRUCTURE = "com.sap.conn.jco.JCoStructure";
     public static final String JCO_TABLE = "com.sap.conn.jco.JCoTable";
     public static final String JCO_LONG = "java.lang.Long";
+    public static final String JCO_BOOLEAN = "java.lang.Boolean";
 
     // Sub date types
     public static final String JCO_DATE_TYPE_DATE = "DATE";

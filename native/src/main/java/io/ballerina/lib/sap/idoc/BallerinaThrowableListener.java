@@ -150,7 +150,7 @@ public class BallerinaThrowableListener implements JCoServerErrorListener, JCoSe
         StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
         try {
             Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata,
-                    new Object[]{bError, true});
+                    new Object[]{bError});
             if (result instanceof BError onErrorResult) {
                 logger.error("onError handler on {} returned an error; suppressing.",
                         serviceType.getName(), onErrorResult);

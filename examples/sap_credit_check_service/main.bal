@@ -22,10 +22,6 @@ configurable jco:DestinationConfig clientConfig = ?;
 configurable jco:ServerConfig sapConfig = ?;
 configurable string creditBureauApiEndpoint = ?;
 
-// The client must be initialized before the listener so that the repositoryDestination
-// is registered and available for RFC function module metadata lookups.
-final jco:Client sapClient = check new (clientConfig, sapConfig.repositoryDestination);
-
 listener jco:Listener creditCheckListener = new (sapConfig);
 
 // RFC service that handles inbound Z_CHECK_CUSTOMER_CREDIT calls from SAP.

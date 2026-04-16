@@ -79,11 +79,11 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
                     IDocXMLProcessor.RENDER_WITH_TABS_AND_CRLF);
             String xmlContent = stringWriter.toString();
             BXml xmlContentValue = XmlUtils.parse(xmlContent);
-            Object[] args = {xmlContentValue, true};
+            Object[] args = {xmlContentValue};
             Object result = invokeOnReceive(args);
             if (result instanceof BError returnedError) {
                 BError bError = SAPErrorCreator.createIDocError("IDoc processing failed.", returnedError);
-                invokeOnError(new Object[]{bError, true});
+                invokeOnError(new Object[]{bError});
             }
         } catch (Throwable thr) {
             BError error = (thr instanceof BError)
@@ -104,7 +104,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
      * Uses concurrent or sequential dispatch based on whether the service and the method
      * are both declared {@code isolated}.
      *
-     * @param args the arguments to pass to the resource function (IDoc XML value + a {@code true} sentinel)
+     * @param args the arguments to pass to the resource function (IDoc XML value)
      * @return the return value from the Ballerina method (may be a {@link BError})
      */
     public Object invokeOnReceive(Object... args) {
@@ -120,7 +120,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
      * <p>
      * If the service does not declare an {@code onError} method the call is skipped.
      *
-     * @param args the arguments to pass (Ballerina {@code Error} value + a {@code true} sentinel)
+     * @param args the arguments to pass (Ballerina {@code Error} value)
      */
     public void invokeOnError(Object... args) {
         MethodType onErrorFunction = null;

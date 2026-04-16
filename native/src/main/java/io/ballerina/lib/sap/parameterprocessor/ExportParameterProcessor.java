@@ -120,6 +120,10 @@ public class ExportParameterProcessor {
                     long longValue = paramList.getLong(i);
                     outputMap.put(StringUtils.fromString(fieldName), longValue);
                     break;
+                case SAPConstants.JCO_BOOLEAN:
+                    boolean boolValue = (boolean) paramList.getValue(i);
+                    outputMap.put(StringUtils.fromString(fieldName), boolValue);
+                    break;
                 case SAPConstants.JCO_OBJECT:
                     Object objectValue = paramList.getValue(i);
                     if (objectValue == null) {
@@ -234,6 +238,10 @@ public class ExportParameterProcessor {
                     long longValue = exportStructure.getLong(i);
                     outputMap.put(StringUtils.fromString(fieldName), longValue);
                     break;
+                case SAPConstants.JCO_BOOLEAN:
+                    boolean structBoolValue = (boolean) exportStructure.getValue(i);
+                    outputMap.put(StringUtils.fromString(fieldName), structBoolValue);
+                    break;
                 case SAPConstants.JCO_OBJECT:
                     Object objectValue = exportStructure.getValue(i);
                     if (objectValue == null) {
@@ -322,6 +330,10 @@ public class ExportParameterProcessor {
                         long longValue = table.getLong(j);
                         record.put(StringUtils.fromString(fieldName), longValue);
                         break;
+                    case SAPConstants.JCO_BOOLEAN:
+                        boolean tableBoolValue = (boolean) table.getValue(j);
+                        record.put(StringUtils.fromString(fieldName), tableBoolValue);
+                        break;
                     case SAPConstants.JCO_OBJECT:
                         Object objectValue = table.getValue(j);
                         if (objectValue == null) {
@@ -387,6 +399,9 @@ public class ExportParameterProcessor {
                 case SAPConstants.JCO_LONG:
                     fields.put(fieldName, TypeCreator.createField(PredefinedTypes.TYPE_INT, fieldName, 0));
                     break;
+                case SAPConstants.JCO_BOOLEAN:
+                    fields.put(fieldName, TypeCreator.createField(PredefinedTypes.TYPE_BOOLEAN, fieldName, 0));
+                    break;
                 case SAPConstants.JCO_DOUBLE:
                     fields.put(fieldName, TypeCreator.createField(PredefinedTypes.TYPE_FLOAT, fieldName, 0));
                     break;
@@ -445,6 +460,10 @@ public class ExportParameterProcessor {
                 case SAPConstants.JCO_INTEGER:
                 case SAPConstants.JCO_LONG:
                     tableElementType.put(tableFieldName, TypeCreator.createField(PredefinedTypes.TYPE_INT,
+                            tableFieldName, 0));
+                    break;
+                case SAPConstants.JCO_BOOLEAN:
+                    tableElementType.put(tableFieldName, TypeCreator.createField(PredefinedTypes.TYPE_BOOLEAN,
                             tableFieldName, 0));
                     break;
                 case SAPConstants.JCO_DOUBLE:

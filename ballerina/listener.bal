@@ -31,13 +31,33 @@ public isolated class Listener {
                                   string serverName = uuid:createType4AsString()) returns Error? {
         AdvancedConfig listenerConfig;
         if serverConfig is ServerConfig {
-            listenerConfig = {
-                "jco.server.gwhost": serverConfig.gwhost,
-                "jco.server.gwserv": serverConfig.gwserv,
-                "jco.server.progid": serverConfig.progid,
-                "jco.server.connection_count": serverConfig.connectionCount.toString(),
-                "jco.server.repository_destination": serverConfig.repositoryDestination
-            };
+            RepositoryDestination repoDest = serverConfig.repositoryDestination;
+            if repoDest is string {
+                listenerConfig = {
+                    "jco.server.gwhost": serverConfig.gwhost,
+                    "jco.server.gwserv": serverConfig.gwserv,
+                    "jco.server.progid": serverConfig.progid,
+                    "jco.server.connection_count": serverConfig.connectionCount.toString(),
+                    "jco.server.repository_destination": repoDest
+                };
+            } else {
+                // DestinationConfig: register an internal JCo destination using the serverName UUID.
+                // Non-jco.server.* keys are routed to advancedDestinationConfig by the Java init().
+                listenerConfig = {
+                    "jco.server.gwhost": serverConfig.gwhost,
+                    "jco.server.gwserv": serverConfig.gwserv,
+                    "jco.server.progid": serverConfig.progid,
+                    "jco.server.connection_count": serverConfig.connectionCount.toString(),
+                    "jco.server.repository_destination": serverName,
+                    "jco.client.ashost": repoDest.ashost,
+                    "jco.client.sysnr": repoDest.sysnr,
+                    "jco.client.client": repoDest.jcoClient,
+                    "jco.client.user": repoDest.user,
+                    "jco.client.passwd": repoDest.passwd,
+                    "jco.client.lang": repoDest.lang,
+                    "jco.client.group": repoDest.group
+                };
+            }
         } else {
             // Type narrowing doesn't work here hence casting to AdvancedConfig directly
             listenerConfig = <AdvancedConfig> serverConfig;
@@ -47,7 +67,8 @@ public isolated class Listener {
 
     # Attaches a service to the listener. At most one IDocService and one RfcService may be
     # attached at the same time. Both service types require repositoryDestination to be set in
-    # ServerConfig and a Client with that destinationId to have been created first.
+    # ServerConfig — either as a string referencing an existing Client's destinationId, or as
+    # a DestinationConfig whose credentials are registered automatically at init time.
     #
     # + s - The service to attach; must be an IDocService or an RfcService
     # + name - Optional service name (unused at runtime)

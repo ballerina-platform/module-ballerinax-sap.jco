@@ -58,9 +58,14 @@ final boolean testsEnabled = ashost != "" && sysnr != "" && jcoClient != ""
     && sapUser != "" && passwd != "";
 
 // Listener tests additionally require the SAP gateway configuration and a repository
-// destination (repositoryDestination is a required field in ServerConfig).
+// destination string (repositoryDestination is a required field in ServerConfig).
 final boolean listenerTestsEnabled = testsEnabled && gwhost != "" && gwserv != ""
     && progid != "" && repoDestination != "";
+
+// Listener inline tests require gateway config and client credentials but not a separate
+// repoDestination string — the DestinationConfig is supplied directly to ServerConfig.
+final boolean listenerInlineTestsEnabled = testsEnabled && gwhost != "" && gwserv != ""
+    && progid != "";
 
 final DestinationConfig destinationConfig = {
     ashost,
@@ -72,3 +77,11 @@ final DestinationConfig destinationConfig = {
 };
 
 final ServerConfig serverConfig = {gwhost, gwserv, progid, repositoryDestination: repoDestination};
+
+// ServerConfig that supplies credentials inline (no separate Client required).
+final ServerConfig serverConfigWithInlineRepoDest = {
+    gwhost,
+    gwserv,
+    progid,
+    repositoryDestination: {ashost, sysnr, jcoClient, user: sapUser, passwd, lang}
+};

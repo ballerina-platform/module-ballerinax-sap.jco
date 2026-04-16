@@ -549,3 +549,48 @@ function testListenerReceivesRfcCall() returns error? {
             "onCall() should have captured a non-empty function name");
     }
 }
+
+// ---------------------------------------------------------------------------
+// Inline RepositoryDestination tests (listener-inline group)
+//
+// These tests use serverConfigWithInlineRepoDest, which supplies a DestinationConfig
+// directly as repositoryDestination. No Client creation is required beforehand —
+// the listener registers the destination internally using the provided credentials.
+// ---------------------------------------------------------------------------
+
+@test:Config {
+    enable: listenerInlineTestsEnabled,
+    groups: ["listener-inline"]
+}
+function testListenerInitWithInlineRepoConfig() returns error? {
+    Listener _ = check new (serverConfigWithInlineRepoDest);
+}
+
+@test:Config {
+    enable: listenerInlineTestsEnabled,
+    groups: ["listener-inline"]
+}
+function testListenerAttachIDocServiceWithInlineRepoConfig() returns error? {
+    Listener sapListener = check new (serverConfigWithInlineRepoDest);
+    check sapListener.attach(dummyService);
+}
+
+@test:Config {
+    enable: listenerInlineTestsEnabled,
+    groups: ["listener-inline"]
+}
+function testListenerAttachRfcServiceWithInlineRepoConfig() returns error? {
+    Listener sapListener = check new (serverConfigWithInlineRepoDest);
+    check sapListener.attach(nilReturnRfcService);
+}
+
+@test:Config {
+    enable: listenerInlineTestsEnabled,
+    groups: ["listener-inline"]
+}
+function testListenerStartGracefulStopWithInlineRepoConfig() returns error? {
+    Listener sapListener = check new (serverConfigWithInlineRepoDest);
+    check sapListener.attach(dummyService);
+    check sapListener.'start();
+    check sapListener.gracefulStop();
+}
