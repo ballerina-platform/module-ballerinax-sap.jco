@@ -36,7 +36,6 @@ import io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor;
 import io.ballerina.runtime.api.creators.ValueCreator;
 import io.ballerina.runtime.api.types.RecordType;
 import io.ballerina.runtime.api.types.TypeTags;
-import io.ballerina.runtime.api.utils.JsonUtils;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
@@ -60,8 +59,7 @@ public class Client {
      * a destination-manager lookup.
      *
      * @param client            the Ballerina {@code Client} object being initialized
-     * @param destinationConfig a Ballerina record ({@code DestinationConfig} or advanced map) holding
-     *                          JCo connection properties
+     * @param destinationConfig a map holding JCo connection properties
      * @param destinationId     a unique name used to register the destination with the JCo framework
      * @return {@code null} on success, or a Ballerina {@code Error} on failure
      */
@@ -156,8 +154,6 @@ public class Client {
             int tag = returnType.getDescribingType().getTag();
             if (tag == TypeTags.XML_TAG) {
                 return buildXmlResponse(exportList, tableOutputList);
-            } else if (tag == TypeTags.JSON_TAG) {
-                return buildJsonResponse(exportList, tableOutputList);
             } else if (tag == TypeTags.RECORD_TYPE_TAG) {
                 RecordType outputRecordType = (RecordType) returnType.getDescribingType();
                 boolean isRestFieldsAllowed = outputRecordType.getRestFieldType() != null;
@@ -189,30 +185,6 @@ public class Client {
             return ValueCreator.createXmlValue(tableList.toXML());
         }
         return ValueCreator.createXmlValue("<result>" + exportList.toXML() + tableList.toXML() + "</result>");
-    }
-
-    private static Object buildJsonResponse(JCoParameterList exportList, JCoParameterList tableList) {
-        if (exportList == null && tableList == null) {
-            return JsonUtils.parse("{}");
-        }
-        if (tableList == null) {
-            return JsonUtils.parse(exportList.toJSON());
-        }
-        if (exportList == null) {
-            return JsonUtils.parse(tableList.toJSON());
-        }
-        String exportJson = exportList.toJSON().trim();
-        String tableJson = tableList.toJSON().trim();
-        String merged;
-        if (exportJson.equals("{}")) {
-            merged = tableJson;
-        } else if (tableJson.equals("{}")) {
-            merged = exportJson;
-        } else {
-            merged = exportJson.substring(0, exportJson.lastIndexOf('}'))
-                    + "," + tableJson.substring(tableJson.indexOf('{') + 1);
-        }
-        return JsonUtils.parse(merged);
     }
 
     /**

@@ -21,7 +21,6 @@ package io.ballerina.lib.sap.dataproviders;
 import com.sap.conn.jco.ext.DestinationDataEventListener;
 import com.sap.conn.jco.ext.DestinationDataProvider;
 import com.sap.conn.jco.ext.Environment;
-import io.ballerina.lib.sap.SAPConstants;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
@@ -161,36 +160,19 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     public void addDestinationConfig(BMap<BString, Object> jcoDestinationConfig, BString destinationName) {
         Properties properties = new Properties();
         try {
-            if (jcoDestinationConfig.getType().getName().equals(SAPConstants.JCO_DESTINATION_CONFIG)) {
-                properties.setProperty(DestinationDataProvider.JCO_CLIENT,
-                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_CLIENT).toString());
-                properties.setProperty(DestinationDataProvider.JCO_USER,
-                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_USER).toString());
-                properties.setProperty(DestinationDataProvider.JCO_PASSWD,
-                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_PASSWD).toString());
-                properties.setProperty(DestinationDataProvider.JCO_LANG,
-                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_LANG).toString());
-                properties.setProperty(DestinationDataProvider.JCO_ASHOST,
-                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_ASHOST).toString());
-                properties.setProperty(DestinationDataProvider.JCO_SYSNR,
-                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_SYSNR).toString());
-                properties.setProperty(DestinationDataProvider.JCO_GROUP,
-                        jcoDestinationConfig.getStringValue(SAPConstants.JCO_GROUP).toString());
+            if (!jcoDestinationConfig.isEmpty()) {
+                jcoDestinationConfig.entrySet().forEach(entry -> {
+                    BString key = entry.getKey();
+                    BString value = (BString) entry.getValue();
+                    try {
+                        properties.setProperty(key.toString(), value.toString());
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error while adding destination property " + key.toString()
+                                + " : " + e.getMessage());
+                    }
+                });
             } else {
-                if (!jcoDestinationConfig.isEmpty()) {
-                    jcoDestinationConfig.entrySet().forEach(entry -> {
-                        BString key = entry.getKey();
-                        BString value = (BString) entry.getValue();
-                        try {
-                            properties.setProperty(key.toString(), value.toString());
-                        } catch (Exception e) {
-                            throw new RuntimeException("Error while adding destination property " + key.toString()
-                                    + " : " + e.getMessage());
-                        }
-                    });
-                } else {
-                    throw new RuntimeException("Provided a empty advanced configuration for destination");
-                }
+                throw new RuntimeException("Provided a empty advanced configuration for destination");
             }
             if (destinationProperties.putIfAbsent(destinationName.toString(), properties) != null) {
                 throw new RuntimeException("Destination '" + destinationName

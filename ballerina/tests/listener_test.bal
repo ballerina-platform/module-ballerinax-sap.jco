@@ -275,7 +275,7 @@ isolated string receivedFunctionName = "";
 
 // A minimal RfcService that returns nil for all calls (models fire-and-forget RFCs).
 RfcService nilReturnRfcService = service object {
-    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|json|error? {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error? {
         return ();
     }
 
@@ -284,7 +284,7 @@ RfcService nilReturnRfcService = service object {
 
 // An RfcService that echoes back the import parameters as the export response.
 RfcService echoRfcService = service object {
-    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|json|error? {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error? {
         RfcRecord result = parameters.importParameters ?: {};
         return result;
     }
@@ -294,7 +294,7 @@ RfcService echoRfcService = service object {
 
 // An RfcService that captures call metadata for the integration test.
 RfcService captureRfcService = service object {
-    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|json|error? {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error? {
         lock {
             rfcCallReceived = true;
         }

@@ -21,9 +21,6 @@ package io.ballerina.lib.sap.dataproviders;
 import com.sap.conn.jco.ext.Environment;
 import com.sap.conn.jco.ext.ServerDataEventListener;
 import com.sap.conn.jco.ext.ServerDataProvider;
-import io.ballerina.lib.sap.SAPConstants;
-import io.ballerina.runtime.api.values.BMap;
-import io.ballerina.runtime.api.values.BString;
 
 import java.util.Map;
 import java.util.Properties;
@@ -103,39 +100,6 @@ public class SAPServerDataProvider implements ServerDataProvider {
     @Override
     public boolean supportsEvents() {
         return false;
-    }
-
-    /**
-     * Registers server properties derived from a structured {@code ServerConfig} Ballerina record.
-     * Maps {@code gwhost}, {@code gwserv}, {@code progid}, and {@code connectionCount} to the
-     * corresponding {@link ServerDataProvider} constants. If a repository destination is provided,
-     * it is also stored so that JCo can look up RFC metadata.
-     *
-     * @param jcoServerConfig       the Ballerina {@code ServerConfig} record
-     * @param serverName            the name under which the properties are stored
-     * @param repositoryDestination destination name used for IDoc and RFC metadata look-ups;
-     *                              should not be {@code null} when called from the {@code ServerConfig} path
-     * @throws RuntimeException if a required property cannot be applied
-     */
-    public void addServerConfig(BMap<BString, Object> jcoServerConfig, String serverName,
-                                String repositoryDestination) {
-        Properties properties = new Properties();
-        try {
-            properties.setProperty(ServerDataProvider.JCO_GWHOST,
-                    jcoServerConfig.getStringValue(SAPConstants.JCO_GWHOST).toString());
-            properties.setProperty(ServerDataProvider.JCO_GWSERV,
-                    jcoServerConfig.getStringValue(SAPConstants.JCO_GWSERV).toString());
-            properties.setProperty(ServerDataProvider.JCO_PROGID,
-                    jcoServerConfig.getStringValue(SAPConstants.JCO_PROGID).toString());
-            properties.setProperty(ServerDataProvider.JCO_CONNECTION_COUNT,
-                    jcoServerConfig.getIntValue(SAPConstants.JCO_CONNECTION_COUNT).toString());
-            if (repositoryDestination != null) {
-                properties.setProperty(ServerDataProvider.JCO_REP_DEST, repositoryDestination);
-            }
-            serverProperties.put(serverName, properties);
-        } catch (Exception e) {
-            throw new RuntimeException("Error while adding server config: " + e.getMessage());
-        }
     }
 
     /**

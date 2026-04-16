@@ -69,16 +69,14 @@ public final class Listener {
     private static final Map<String, JCoIDocServer> serverRegistry = new ConcurrentHashMap<>();
 
     /**
-     * Initializes the JCo server from either a structured {@code ServerConfig} record or
-     * an advanced key-value configuration map.
+     * Initializes the JCo server from a flat string map of JCo properties.
      * <p>
      * JCo restricts each JVM to a single server per {@code (gwhost, gwserv, progid)} triplet.
      * To honour that constraint this method checks an in-process {@link #serverRegistry} and
      * reuses an existing {@link JCoIDocServer} when one for the same triplet was already created.
      *
      * @param listenerBObject the Ballerina {@code Listener} object being initialized
-     * @param serverConfig    a Ballerina record ({@code ServerConfig}) or a flat string map of
-     *                        JCo properties
+     * @param serverConfig    a map holding JCo connection properties
      * @param serverName      a unique name registered with the {@link SAPServerDataProvider}
      * @return {@code null} on success, or a Ballerina {@code Error} on failure
      */
@@ -86,58 +84,41 @@ public final class Listener {
         try {
             JCoIDocServer server;
             String repositoryDestination = null;
-            if (serverConfig.getType().getName().equals(SAPConstants.JCO_SERVER_CONFIG)) {
-                String gwhost = serverConfig.getStringValue(SAPConstants.JCO_GWHOST).toString();
-                String gwserv = serverConfig.getStringValue(SAPConstants.JCO_GWSERV).toString();
-                String progid = serverConfig.getStringValue(SAPConstants.JCO_PROGID).toString();
+            if (!serverConfig.isEmpty()) {
+                Map<String, String> advancedServerConfig = new HashMap<>();
+                Map<String, String> advancedDestinationConfig = new HashMap<>();
+                serverConfig.entrySet().forEach(entry -> {
+                    String key = entry.getKey().toString();
+                    String value = entry.getValue().toString();
+                    if (key.startsWith(SAPConstants.JCO_SERVER_PREFIX)) {
+                        advancedServerConfig.put(key, value);
+                    } else {
+                        advancedDestinationConfig.put(key, value);
+                    }
+                });
+                String gwhost = advancedServerConfig.getOrDefault("jco.server.gwhost", "");
+                String gwserv = advancedServerConfig.getOrDefault("jco.server.gwserv", "");
+                String progid = advancedServerConfig.getOrDefault("jco.server.progid", "");
                 String serverKey = gwhost + "|" + gwserv + "|" + progid;
-                repositoryDestination = serverConfig.getStringValue(SAPConstants.JCO_REPOSITORY_DESTINATION).toString();
+                repositoryDestination = advancedServerConfig.get(SAPServerDataProvider.JCO_REP_DEST);
                 if (serverRegistry.containsKey(serverKey)) {
                     server = serverRegistry.get(serverKey);
                 } else {
+                    if (!advancedDestinationConfig.isEmpty()) {
+                        String destinationName = (repositoryDestination != null)
+                                ? repositoryDestination : serverName.getValue();
+                        SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
+                        dp.addAdvancedDestinationConfig(advancedDestinationConfig, destinationName);
+                        SAPDestinationDataProvider.registerIfAbsent();
+                    }
                     SAPServerDataProvider sp = SAPServerDataProvider.getInstance();
-                    sp.addServerConfig(serverConfig, serverName.getValue(), repositoryDestination);
+                    sp.addAdvancedServerConfig(advancedServerConfig, serverName.getValue());
                     SAPServerDataProvider.registerIfAbsent();
                     server = JCoIDoc.getServer(serverName.getValue());
                     serverRegistry.put(serverKey, server);
                 }
             } else {
-                if (!serverConfig.isEmpty()) {
-                    Map<String, String> advancedServerConfig = new HashMap<>();
-                    Map<String, String> advancedDestinationConfig = new HashMap<>();
-                    serverConfig.entrySet().forEach(entry -> {
-                        String key = entry.getKey().toString();
-                        String value = entry.getValue().toString();
-                        if (key.startsWith(SAPConstants.JCO_SERVER_PREFIX)) {
-                            advancedServerConfig.put(key, value);
-                        } else {
-                            advancedDestinationConfig.put(key, value);
-                        }
-                    });
-                    String gwhost = advancedServerConfig.getOrDefault("jco.server.gwhost", "");
-                    String gwserv = advancedServerConfig.getOrDefault("jco.server.gwserv", "");
-                    String progid = advancedServerConfig.getOrDefault("jco.server.progid", "");
-                    String serverKey = gwhost + "|" + gwserv + "|" + progid;
-                    repositoryDestination = advancedServerConfig.get(SAPServerDataProvider.JCO_REP_DEST);
-                    if (serverRegistry.containsKey(serverKey)) {
-                        server = serverRegistry.get(serverKey);
-                    } else {
-                        if (!advancedDestinationConfig.isEmpty()) {
-                            String destinationName = (repositoryDestination != null)
-                                    ? repositoryDestination : serverName.getValue();
-                            SAPDestinationDataProvider dp = SAPDestinationDataProvider.getInstance();
-                            dp.addAdvancedDestinationConfig(advancedDestinationConfig, destinationName);
-                            SAPDestinationDataProvider.registerIfAbsent();
-                        }
-                        SAPServerDataProvider sp = SAPServerDataProvider.getInstance();
-                        sp.addAdvancedServerConfig(advancedServerConfig, serverName.getValue());
-                        SAPServerDataProvider.registerIfAbsent();
-                        server = JCoIDoc.getServer(serverName.getValue());
-                        serverRegistry.put(serverKey, server);
-                    }
-                } else {
-                    throw new RuntimeException("Provided a empty advanced configuration for server");
-                }
+                throw new RuntimeException("Provided a empty advanced configuration for server");
             }
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(NATIVE_REPO_DEST, repositoryDestination);

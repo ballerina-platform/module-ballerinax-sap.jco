@@ -45,7 +45,7 @@ public type RfcService distinct service object {
     # + return       - The RFC response to send back to SAP, or an error.
     #                  An empty response is valid for fire-and-forget RFCs.
     #                  An error response causes an AbapException to be raised back to the SAP caller.
-    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|json|error?;
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error?;
 
     # Called when a server-level error occurs, including gateway connectivity failures.
     #

@@ -27,8 +27,22 @@ public isolated class Listener {
     # + serverConfig - Connection configuration for the JCo server
     # + serverName - Unique name used to register the server with the JCo framework
     # + return - An error if the server cannot be registered
-    public isolated function init(ServerConfig|AdvancedConfig serverConfig, string serverName = uuid:createType4AsString()) returns Error? {
-        return externInit(self, serverConfig, serverName);
+    public isolated function init(ServerConfig|AdvancedConfig serverConfig, 
+                                  string serverName = uuid:createType4AsString()) returns Error? {
+        AdvancedConfig listenerConfig;
+        if serverConfig is ServerConfig {
+            listenerConfig = {
+                "jco.server.gwhost": serverConfig.gwhost,
+                "jco.server.gwserv": serverConfig.gwserv,
+                "jco.server.progid": serverConfig.progid,
+                "jco.server.connection_count": serverConfig.connectionCount.toString(),
+                "jco.server.repository_destination": serverConfig.repositoryDestination
+            };
+        } else {
+            // Type narrowing doesn't work here hence casting to AdvancedConfig directly
+            listenerConfig = <AdvancedConfig> serverConfig;
+        }
+        return externInit(self, listenerConfig, serverName);
     }
 
     # Attaches a service to the listener. At most one IDocService and one RfcService may be

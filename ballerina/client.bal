@@ -27,7 +27,21 @@ public isolated client class Client {
     # + return - An error if the connection cannot be established
     public isolated function init(DestinationConfig|AdvancedConfig config,
                                   string destinationId = uuid:createType4AsString()) returns Error? {
-        check initializeClient(self, config, destinationId);
+        AdvancedConfig clientConfig;
+        if config is DestinationConfig {
+            clientConfig = {
+                "jco.client.ashost": config.ashost,
+                "jco.client.sysnr": config.sysnr,
+                "jco.client.client": config.jcoClient,
+                "jco.client.user": config.user,
+                "jco.client.passwd": config.passwd,
+                "jco.client.group": config.group,
+                "jco.client.lang": config.lang
+            };
+        } else {
+            clientConfig = config;
+        }
+        check initializeClient(self, clientConfig, destinationId);
     }
 
     # Calls an RFC-enabled function module on the SAP system and returns the response.
@@ -37,7 +51,7 @@ public isolated client class Client {
     # + returnType   - Expected response type. The response is populated from both the SAP export parameter list and the table parameter list.
     # + return - The RFC response, or an error on failure
     isolated remote function execute(string functionName, RfcParameters parameters = {},
-            typedesc<RfcRecord|xml|json> returnType = <>) returns returnType|Error = @java:Method {
+            typedesc<RfcRecord|xml> returnType = <>) returns returnType|Error = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
@@ -61,6 +75,6 @@ public isolated client class Client {
 
 }
 
-isolated function initializeClient(Client jcoClient, DestinationConfig|AdvancedConfig config, string destinationId) returns Error? = @java:Method {
+isolated function initializeClient(Client jcoClient, AdvancedConfig config, string destinationId) returns Error? = @java:Method {
     'class: "io.ballerina.lib.sap.Client"
 } external;

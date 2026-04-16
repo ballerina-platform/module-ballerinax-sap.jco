@@ -90,10 +90,10 @@ function testExecuteReturningXml() returns error? {
     enable: testsEnabled,
     groups: ["rfc-execute"]
 }
-function testExecuteReturningJson() returns error? {
+function testExecuteReturningRfcRecord() returns error? {
     Client sapClient = check new (destinationConfig);
-    json result = check sapClient->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "Test"}});
-    test:assertNotEquals(result, (), "JSON result should not be null");
+    RfcRecord result = check sapClient->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "Test"}});
+    test:assertNotEquals(result, {}, "RfcRecord result should not be empty");
 }
 
 @test:Config {
@@ -168,7 +168,7 @@ function testExecuteWithDateAndTimeParams() returns error? {
 }
 function testExecuteWithEmptyFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
-    json|error result = sapClient->execute("");
+    RfcRecord|error result = sapClient->execute("");
     test:assertTrue(result is Error, "Expected an Error for an empty function name");
     test:assertTrue(result is ParameterError, "Expected a ParameterError for an empty function name");
 }
@@ -179,7 +179,7 @@ function testExecuteWithEmptyFunctionName() returns error? {
 }
 function testExecuteWithInvalidFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
-    json|error result = sapClient->execute("NONEXISTENT_RFC_FUNCTION_XYZ");
+    RfcRecord|error result = sapClient->execute("NONEXISTENT_RFC_FUNCTION_XYZ");
     test:assertTrue(result is Error, "Expected an Error for a non-existent RFC function name");
     test:assertTrue(result is ParameterError, "Expected a ParameterError for a non-existent RFC function");
 }
@@ -268,12 +268,12 @@ function testExecuteReturningXmlWithTableData() returns error? {
     enable: testsEnabled,
     groups: ["rfc-execute"]
 }
-function testExecuteReturningJsonWithTableData() returns error? {
-    // Verify JSON serialization includes table parameter rows in the response.
+function testExecuteReturningRfcRecordWithTableData() returns error? {
+    // Verify RfcRecord response includes table parameter rows in the merged output.
     Client sapClient = check new (destinationConfig);
-    json result = check sapClient->execute("STFC_STRUCTURE", {
+    RfcRecord result = check sapClient->execute("STFC_STRUCTURE", {
         importParameters: {"IMPORTSTRUCT": {"RFCCHAR1": "Z"}},
         tableParameters: {"RFCTABLE": [{"RFCCHAR1": "E", "RFCINT1": 5}]}
     });
-    test:assertNotEquals(result, (), "JSON result should not be null when table data is present");
+    test:assertNotEquals(result, {}, "RfcRecord result should not be empty when table data is present");
 }

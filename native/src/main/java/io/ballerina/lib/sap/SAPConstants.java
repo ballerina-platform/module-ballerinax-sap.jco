@@ -30,25 +30,7 @@ public class SAPConstants {
     public static final String TIME_OF_DAY = "TimeOfDay";
 
     // Config Types
-    public static final String JCO_SERVER_CONFIG = "ServerConfig";
-    public static final String JCO_DESTINATION_CONFIG = "DestinationConfig";
     public static final String JCO_SERVER_PREFIX = "jco.server.";
-
-    // Server Configs
-    public static final BString JCO_GWHOST = StringUtils.fromString("gwhost");
-    public static final BString JCO_GWSERV = StringUtils.fromString("gwserv");
-    public static final BString JCO_PROGID = StringUtils.fromString("progid");
-
-
-    // Destination Configs
-    public static final BString JCO_CLIENT = StringUtils.fromString("jcoClient");
-    public static final BString JCO_USER = StringUtils.fromString("user");
-    public static final BString JCO_PASSWD = StringUtils.fromString("passwd");
-    public static final BString JCO_LANG = StringUtils.fromString("lang");
-    public static final BString JCO_ASHOST = StringUtils.fromString("ashost");
-    public static final BString JCO_SYSNR = StringUtils.fromString("sysnr");
-    public static final BString JCO_GROUP = StringUtils.fromString("group");
-
 
     // Constants for SAP Listener
     public static final String JCO_SERVER = "JCO_SERVER";
@@ -60,10 +42,6 @@ public class SAPConstants {
     public static final String IS_TID_HANDLER_SET = "isTidHandlerSet";
     public static final String THROWABLE_LISTENER = "throwableListener";
     public static final String IS_STARTED = "isStarted";
-
-    // Server Config field names
-    public static final BString JCO_REPOSITORY_DESTINATION = StringUtils.fromString("repositoryDestination");
-    public static final BString JCO_CONNECTION_COUNT = StringUtils.fromString("connectionCount");
 
     // RfcParameters field names
     public static final BString RFC_IMPORT_PARAMETERS = StringUtils.fromString("importParameters");
