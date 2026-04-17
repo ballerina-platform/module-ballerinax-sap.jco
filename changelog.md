@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** Renamed `Service` type to `IDocService`. Update all `service jco:Service` declarations to `service jco:IDocService`.
 - **Breaking:** `repositoryDestination` in `ServerConfig` is a required field. All listener configurations must supply a `repositoryDestination` matching the `destinationId` of an already-initialised `Client`.
 - Renamed `onError` parameter from `'error` to `err` in both `IDocService` and `RfcService`.
-- `Listener.'start()` now returns immediately; gateway connectivity is established asynchronously by JCo's internal connection threads. Pre-flight failures (listener not initialised, already started) are still returned synchronously.
+- Gateway and JCo server errors are now dispatched to the attached service's `onError` handler as `ExecutionError`. Previously `BallerinaThrowableListener` only logged these failures and `onError` was never invoked for them. `Listener.'start()` remains non-blocking (JCo's internal connection threads do the gateway handshake); pre-flight failures (listener not initialised, already started) are still returned synchronously.
 
 ### Fixed
 

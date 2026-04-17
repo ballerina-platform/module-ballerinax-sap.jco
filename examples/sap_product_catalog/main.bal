@@ -44,7 +44,7 @@ public function main() returns error? {
                 {"FIELDNAME": "MEINS"}
             ]
         }
-    }, ReadTableResponse);
+    });
 
     // DATA is a table parameter returned by the RFC. It is merged alongside export
     // parameters into the flat ReadTableResponse record.
