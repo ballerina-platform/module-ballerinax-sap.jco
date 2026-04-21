@@ -46,9 +46,12 @@ public isolated client class Client {
 
     # Calls an RFC-enabled function module on the SAP system and returns the response.
     #
-    # + functionName - Name of the RFC function module to call (e.g., STFC_CONNECTION).
-    # + parameters   - Input parameters organized by category. Import parameters are scalar or structure values. Table parameters are named tables containing rows of data. Defaults to an empty parameter set for parameter-free RFCs.
-    # + returnType   - Expected response type. The response is populated from both the SAP export parameter list and the table parameter list.
+    # + functionName - Name of the RFC function module to call (for example, STFC_CONNECTION)
+    # + parameters - Input parameters organised by category. Import parameters carry scalar
+    #                or structure values. Table parameters carry named tables of row data.
+    #                Defaults to an empty parameter set for parameter-free RFCs.
+    # + returnType - Expected response shape. The response is populated from both the SAP
+    #                export parameter list and the table parameter list.
     # + return - The RFC response, or an error on failure
     isolated remote function execute(string functionName, RfcParameters parameters = {},
             typedesc<RfcRecord|xml> returnType = <>) returns returnType|Error = @java:Method {
@@ -57,17 +60,19 @@ public isolated client class Client {
 
     # Sends an IDoc to the SAP system over tRFC, including TID creation and confirmation.
     #
-    # + iDoc - IDoc payload as XML
+    # + iDoc - IDoc payload in XML format
     # + iDocType - IDoc protocol version
     # + return - An error if the IDoc cannot be delivered or the TID cannot be confirmed
     isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
-    # Releases the JCo destination registered for this client. Call this when the client is no
-    # longer needed to free the destination ID for reuse. Calling this more than once is safe.
+    # Releases the JCo destination registered for this client. Call this when the client is
+    # no longer needed to free the destination ID for reuse. Calling this more than once is
+    # safe.
     #
-    # + return - An error if the JCo destination could not be fully released; the client is marked closed regardless
+    # + return - An error if the JCo destination could not be fully released; the client is
+    #            marked closed regardless
     public isolated function close() returns Error? = @java:Method {
         name: "closeClient",
         'class: "io.ballerina.lib.sap.Client"

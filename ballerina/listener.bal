@@ -17,17 +17,17 @@
 import ballerina/jballerina.java as java;
 import ballerina/uuid;
 
-# SAP JCo listener that registers as a JCo server with the SAP gateway and forwards incoming
-# IDocs and inbound RFC calls to the attached service handlers.
+# SAP JCo listener that registers as a JCo server with the SAP gateway and forwards
+# incoming IDocs and inbound RFC calls to the attached handlers.
 public isolated class Listener {
 
     # Registers a JCo server with the SAP gateway. Reuses an existing server for the same
-    # gateway host, gateway service, and program ID combination.
+    # combination of gateway host, gateway service, and program ID.
     #
     # + serverConfig - Connection configuration for the JCo server
     # + serverName - Unique name used to register the server with the JCo framework
     # + return - An error if the server cannot be registered
-    public isolated function init(ServerConfig|AdvancedConfig serverConfig, 
+    public isolated function init(ServerConfig|AdvancedConfig serverConfig,
                                   string serverName = uuid:createType4AsString()) returns Error? {
         AdvancedConfig listenerConfig;
         if serverConfig is ServerConfig {
@@ -65,39 +65,37 @@ public isolated class Listener {
         return externInit(self, listenerConfig, serverName);
     }
 
-    # Attaches a service to the listener. At most one IDocService and one RfcService may be
-    # attached at the same time. Both service types require repositoryDestination to be set in
-    # ServerConfig — either as a string referencing an existing Client's destinationId, or as
-    # a DestinationConfig whose credentials are registered automatically at init time.
+    # Attaches a service to the listener. At most one IDoc handler and one RFC handler may
+    # be attached at the same time. The listener's repository destination must either
+    # reference the ID of an already-initialised client, or supply SAP credentials that are
+    # registered as an internal JCo destination automatically at initialization time.
     #
-    # + s - The service to attach; must be an IDocService or an RfcService
+    # + s - The service to attach; must be an IDoc or RFC service
     # + name - Optional service name (unused at runtime)
-    # + return - An error if the repositoryDestination is not registered, the service type is already attached, or attachment fails
+    # + return - An error if the repository destination is not registered, a handler of the
+    #            same kind is already attached, or attachment fails
     public isolated function attach(IDocService|RfcService s, string[]|string? name = ()) returns Error? =
     @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
-    # Starts the JCo server and returns immediately.
+    # Starts the JCo server and returns immediately. Gateway connectivity is established
+    # asynchronously by JCo's internal connection threads — a successful return only means
+    # the server has been submitted to JCo's scheduler, not that the gateway handshake is
+    # complete. If the gateway is unreachable, JCo retries automatically and delivers each
+    # failure to the attached handler's error callback as an execution error. When the
+    # gateway becomes reachable again, JCo reconnects silently and the errors stop; no
+    # listener restart is needed.
     #
-    # Gateway connectivity is established asynchronously by JCo's internal connection threads.
-    # A successful return means the server has been submitted to JCo's scheduler — it does
-    # **not** mean the gateway handshake is complete.
-    #
-    # If the gateway is unreachable, JCo retries automatically and delivers each failure to
-    # the attached service's `onError` handler as an `ExecutionError`. When the gateway
-    # becomes reachable again, JCo reconnects silently and the errors stop. There is no need
-    # to restart the listener. `onError` also fires for pre- and post-dispatch framework
-    # faults, but not for errors returned or thrown by `onCall`/`onReceive`.
-    #
-    # + return - An error only for pre-flight failures: listener not initialised or already started
+    # + return - An error only for pre-flight failures such as an uninitialised or
+    #            already-started listener
     public isolated function 'start() returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
-    # Unregisters a service from the listener without stopping the JCo server.
-    # The other service type, if attached, continues to operate. Services may be
-    # re-attached to the same listener after being detached.
+    # Unregisters a service from the listener without stopping the JCo server. A handler of
+    # the other kind, if attached, continues to operate. Services may be re-attached to the
+    # same listener after being detached.
     #
     # + s - The service to detach
     # + return - An error if the detach operation fails
@@ -105,8 +103,8 @@ public isolated class Listener {
         'class: "io.ballerina.lib.sap.Listener"
     } external;
 
-    # Stops the JCo server and blocks until it fully leaves the stopping state (up to 15 seconds).
-    # In-flight requests are allowed to complete before the server stops.
+    # Stops the JCo server and blocks until it fully leaves the stopping state (up to
+    # 15 seconds). In-flight requests are allowed to complete before the server stops.
     #
     # + return - An error if the server cannot be stopped
     public isolated function gracefulStop() returns Error? = @java:Method {

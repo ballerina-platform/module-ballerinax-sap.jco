@@ -33,13 +33,15 @@ public type DestinationConfig record {|
     string group = "PUBLIC";
 |};
 
-# Advanced configuration using raw JCo property key-value pairs, for settings not covered by DestinationConfig or ServerConfig.
+# Advanced configuration expressed as raw JCo property key-value pairs, for settings not
+# covered by the standard destination or server configuration.
 public type AdvancedConfig map<string>;
 
-# Identifies the repository destination used by the listener to look up RFC and IDoc metadata.
-# Use a plain string to reference the destination ID of an already-initialised client.
-# Supply SAP credentials directly; the listener will register an internal JCo destination from 
-# those credentials automatically, so no separate client is required.
+# Identifies the repository destination used by the listener to look up RFC and IDoc
+# metadata. Either reference the ID of an already-initialised client to reuse its
+# destination, or supply SAP credentials directly — the listener registers those
+# credentials as an internal JCo destination automatically, so no separate client is
+# required.
 public type RepositoryDestination string|DestinationConfig;
 
 # Connection parameters for a JCo IDoc server.
@@ -52,9 +54,9 @@ public type ServerConfig record {|
     string progid;
     # Maximum number of concurrent RFC connections
     int connectionCount = 2;
-    # RFC destination used to look up IDoc and RFC metadata.
-    # Either the destination ID of an already-initialised client, or the credentials the 
-    # listener registers as an internal JCo destination automatically.
+    # RFC destination used to look up IDoc and RFC metadata. Either the ID of an
+    # already-initialised client, or SAP credentials that the listener registers as an
+    # internal JCo destination automatically
     RepositoryDestination repositoryDestination;
 |};
 
