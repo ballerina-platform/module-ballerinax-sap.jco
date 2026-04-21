@@ -64,9 +64,13 @@ import java.util.Map;
  *       the Ballerina method returns its final value.</li>
  *   <li>Writes the return value back to the JCo function object's export and table parameter
  *       lists so that JCo can serialize them back to the SAP caller.</li>
- *   <li>If {@code onCall()} returns an {@code error}, throws an {@link AbapException} to
- *       signal the failure back to SAP.</li>
  * </ol>
+ * <p>
+ * Errors returned or thrown from {@code onCall()} are raised to SAP as {@link AbapException}
+ * directly and are <em>not</em> routed to the service's {@code onError} handler.
+ * {@code onError} is reserved for framework faults: pre-dispatch failures during parameter
+ * construction and post-dispatch failures while writing the response. Gateway and JCo
+ * server-level faults are dispatched separately by {@code BallerinaThrowableListener}.
  */
 public class BallerinaRfcHandler implements JCoServerFunctionHandler {
 
@@ -84,25 +88,50 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
      * Entry point called by JCo for every inbound RFC call.
      * Blocks until the Ballerina {@code onCall()} method returns, then writes the response
      * back to the JCo function object.
+     * <p>
+     * Errors returned or thrown from {@code onCall()} propagate to SAP as an
+     * {@link AbapException} without invoking {@code onError}. {@code onError} is invoked only
+     * for pre-dispatch parameter-build failures and post-dispatch response-write failures.
      *
      * @param serverCtx the JCo server context for this call
      * @param function  the JCo function object carrying import/table/export parameter lists
-     * @throws AbapException if {@code onCall()} returns an {@code error} or throws unexpectedly
+     * @throws AbapException if {@code onCall()} returns an {@code error}, throws unexpectedly,
+     *                       or if a framework fault prevents the call from being dispatched or
+     *                       its response from being written
      */
     @Override
     public void handleRequest(JCoServerContext serverCtx, JCoFunction function) throws AbapException {
         String functionName = function.getName();
-        try {
-            BMap<BString, Object> rfcParameters = buildRfcParameters(function);
-            Object[] args = {StringUtils.fromString(functionName), rfcParameters};
-            Object result = invokeOnCall(args);
 
-            if (result instanceof BError bError) {
-                if (!handleError(SAPErrorCreator.fromExecutionThrowable(
-                        "onCall() returned an error for function '" + functionName + "'.", bError))) {
-                    throw new AbapException("BALLERINA_ERROR", bError.getMessage());
-                }
-            } else if (result instanceof BMap) {
+        // (1) Pre-dispatch: build RFC parameters. Framework fault — route to onError.
+        BMap<BString, Object> rfcParameters;
+        Object[] args;
+        try {
+            rfcParameters = buildRfcParameters(function);
+            args = new Object[]{StringUtils.fromString(functionName), rfcParameters};
+        } catch (Throwable t) {
+            BError err = SAPErrorCreator.createParameterError(
+                    "Failed to build RFC parameters for function '" + functionName + "': " + t.getMessage());
+            invokeOnError(err);
+            throw new AbapException("BALLERINA_PARAMETER_ERROR",
+                    t.getMessage() == null ? "parameter build failed" : t.getMessage());
+        }
+
+        // (2) Dispatch: invoke onCall. User-method errors are NOT routed to onError.
+        Object result;
+        try {
+            result = invokeOnCall(args);
+        } catch (Throwable t) {
+            throw new AbapException("BALLERINA_INTERNAL_ERROR",
+                    t.getMessage() == null ? "onCall() panicked" : t.getMessage());
+        }
+        if (result instanceof BError bError) {
+            throw new AbapException("BALLERINA_ERROR", bError.getMessage());
+        }
+
+        // (3) Post-dispatch: write response. Framework fault — route to onError.
+        try {
+            if (result instanceof BMap) {
                 @SuppressWarnings("unchecked")
                 BMap<BString, Object> responseRecord = (BMap<BString, Object>) result;
                 writeRfcResponse(function, responseRecord);
@@ -110,21 +139,12 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
                 writeXmlResponse(function, (BXml) result);
             }
             // null / nil return: leave export/table lists empty (valid for fire-and-forget RFCs)
-        } catch (AbapException e) {
-            throw e;
-        } catch (BError e) {
-            // Ballerina-level error (e.g. type mismatch in response record writing)
-            BError paramError = SAPErrorCreator.createParameterError(
-                    "Failed to write RFC response for function '" + functionName + "': " + e.getMessage());
-            if (!handleError(paramError)) {
-                throw new AbapException("BALLERINA_PARAMETER_ERROR", e.getMessage());
-            }
-        } catch (Throwable e) {
-            BError execError = SAPErrorCreator.fromExecutionThrowable(
-                    "RFC handler failed for function '" + functionName + "'.", e);
-            if (!handleError(execError)) {
-                throw new AbapException("BALLERINA_INTERNAL_ERROR", e.getMessage());
-            }
+        } catch (Throwable t) {
+            BError err = SAPErrorCreator.createParameterError(
+                    "Failed to write RFC response for function '" + functionName + "': " + t.getMessage());
+            invokeOnError(err);
+            throw new AbapException("BALLERINA_PARAMETER_ERROR",
+                    t.getMessage() == null ? "response write failed" : t.getMessage());
         }
     }
 
@@ -231,30 +251,26 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
     }
 
     /**
-     * Dispatches an error to the Ballerina {@code onError} remote method on the attached service.
-     * <p>
-     * If {@code onError} exists and returns {@code nil}, the error is considered handled and
-     * this method returns {@code true} — the caller should not throw an {@code AbapException}.
-     * If {@code onError} does not exist, or returns an error itself, this method returns
-     * {@code false} — the caller should propagate the error back to SAP.
+     * Dispatches a framework fault to the Ballerina {@code onError} remote method on the
+     * attached service. Best-effort: any error returned or thrown from {@code onError} is
+     * logged and suppressed. The caller is responsible for propagating the original fault
+     * to SAP after this method returns.
      *
      * @param error the Ballerina error to deliver to the service
-     * @return {@code true} if the error was handled by {@code onError}; {@code false} otherwise
      */
-    private boolean handleError(BError error) {
+    private void invokeOnError(BError error) {
+        ObjectType serviceType = (ObjectType) TypeUtils.getImpliedType(service.getOriginalType());
         MethodType onErrorMethod = null;
-        MethodType[] methods = ((ObjectType) TypeUtils.getImpliedType(service.getOriginalType()))
-                .getMethods();
-        for (MethodType method : methods) {
+        for (MethodType method : serviceType.getMethods()) {
             if (SAPConstants.ON_ERROR.equals(method.getName())) {
                 onErrorMethod = method;
                 break;
             }
         }
         if (onErrorMethod == null) {
-            return false;
+            logger.error("No onError method found on service; dropping error", error);
+            return;
         }
-        ObjectType serviceType = (ObjectType) TypeUtils.getImpliedType(service.getOriginalType());
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
         StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
         try {
@@ -262,12 +278,9 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
                     new Object[]{error, true});
             if (result instanceof BError onErrorResult) {
                 logger.error("onError handler returned an error", onErrorResult);
-                return false;
             }
-            return true;
         } catch (Throwable thr) {
             logger.error("onError handler threw an unexpected error; suppressing to avoid re-entry.", thr);
-            return false;
         }
     }
 }

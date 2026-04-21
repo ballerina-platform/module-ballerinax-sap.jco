@@ -87,7 +87,8 @@ public isolated class Listener {
     # If the gateway is unreachable, JCo retries automatically and delivers each failure to
     # the attached service's `onError` handler as an `ExecutionError`. When the gateway
     # becomes reachable again, JCo reconnects silently and the errors stop. There is no need
-    # to restart the listener.
+    # to restart the listener. `onError` also fires for pre- and post-dispatch framework
+    # faults, but not for errors returned or thrown by `onCall`/`onReceive`.
     #
     # + return - An error only for pre-flight failures: listener not initialised or already started
     public isolated function 'start() returns Error? = @java:Method {

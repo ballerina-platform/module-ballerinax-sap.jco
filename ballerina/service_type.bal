@@ -22,7 +22,12 @@ public type IDocService distinct service object {
     # + return - An error if processing fails
     remote function onReceive(xml iDoc) returns error?;
 
-    # Called when a server-level error occurs, including gateway connectivity failures.
+    # Called when a framework-level error occurs while the listener is handling a request.
+    #
+    # This covers JCo gateway and server errors surfaced asynchronously by the JCo runtime
+    # (connection retries, registration failures) and pre-dispatch failures such as IDoc XML
+    # rendering or parsing. It is NOT called when `onReceive` itself returns or throws an
+    # error — IDoc delivery is fire-and-forget and per-call errors are logged instead.
     #
     # Because the listener starts before the gateway handshake completes, this handler is
     # the primary signal for connectivity problems. JCo retries the connection automatically
@@ -47,7 +52,13 @@ public type RfcService distinct service object {
     #                  An error response causes an AbapException to be raised back to the SAP caller.
     remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error?;
 
-    # Called when a server-level error occurs, including gateway connectivity failures.
+    # Called when a framework-level error occurs while the listener is handling a request.
+    #
+    # This covers JCo gateway and server errors surfaced asynchronously by the JCo runtime
+    # (connection retries, registration failures), pre-dispatch failures such as RFC parameter
+    # construction, and post-dispatch failures such as RFC response serialization. It is NOT
+    # called when `onCall` itself returns or throws an error — those errors are raised to
+    # the SAP caller as an `AbapException` directly.
     #
     # Because the listener starts before the gateway handshake completes, this handler is
     # the primary signal for connectivity problems. JCo retries the connection automatically
