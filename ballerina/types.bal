@@ -54,9 +54,8 @@ public type ServerConfig record {|
     string progid;
     # Maximum number of concurrent RFC connections
     int connectionCount = 2;
-    # RFC destination used to look up IDoc and RFC metadata. Either the ID of an
-    # already-initialised client, or SAP credentials that the listener registers as an
-    # internal JCo destination automatically
+    # RFC destination used to look up IDoc and RFC metadata. Provide the ID of an
+    # already-initialised client or SAP credentials to register an internal destination automatically.
     RepositoryDestination repositoryDestination;
 |};
 

@@ -61,11 +61,10 @@ public isolated client class Client {
     # Sends an IDoc to the SAP system over tRFC or qRFC, including TID creation and confirmation.
     #
     # + iDoc - IDoc payload in XML format
-    # + iDocType - IDoc protocol version. Use `VERSION_3_IN_QUEUE` or `VERSION_3_IN_QUEUE_VIA_QRFC` for qRFC.
+    # + iDocType - IDoc protocol version. Use VERSION_3_IN_QUEUE or VERSION_3_IN_QUEUE_VIA_QRFC for qRFC delivery.
     # + tid - Optional Transaction ID (TID). If not provided, a new TID is created via the JCo destination.
-    #         Supply your own TID for end-to-end idempotency when the caller persists outbound intent.
-    # + queueName - Required when `iDocType` is a qRFC version (`VERSION_3_IN_QUEUE` or
-    #               `VERSION_3_IN_QUEUE_VIA_QRFC`). Ignored with a warning for tRFC versions.
+    #         Supply your own TID for end-to-end idempotency when the application persists outbound intent.
+    # + queueName - Required for qRFC versions (VERSION_3_IN_QUEUE or VERSION_3_IN_QUEUE_VIA_QRFC). Ignored with a warning for tRFC versions.
     # + return - An error if the IDoc cannot be delivered or the TID cannot be confirmed
     isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT, string? tid = (),
                                       string? queueName = ()) returns Error? = @java:Method {
