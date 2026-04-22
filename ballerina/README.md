@@ -38,49 +38,36 @@ administrator for the complete list of parameters needed for your setup.
 
 ### Download and Add Middleware Libraries
 
-To use the SAP JCo connector, you need to download the `sapidoc3.jar` and `sapjco3.jar` middleware libraries from the
-SAP
-support portal and add the dependencies to your Ballerina project.
-
-#### Step 1: Download Middleware Libraries
-
-1. Go to the [SAP Support Portal](https://support.sap.com/en/index.html).
-2. Search for and download the following files:
-   - sapjco3.jar
-   - sapidoc3.jar
-
-#### Step 2: Setting Up Environment
-
-1. **Install JRE**: Ensure you have Java Runtime Environment (JRE) version 21 installed on your system.
-
-2. **Set CLASSPATH**: Configure the CLASSPATH environment variable to include the JAR files and the following native SAP JCo libraries based on your operating system:
-
-   | Operating System | Native SAP JCo Library  |
-   |------------------|-------------------------|
-   | Linux            | `libsapjco3.so`         |
-   | Windows          | `sapjco3.dll`           |
-   | MacOS            | `libsapjco3.dylib`      |
-
-#### Step 3: Add Dependencies to Ballerina.toml
-
-After downloading the libraries, add them to your `Ballerina.toml` file in the Ballerina project by specifying the
-paths and relevant details.
+Download SAP JCo JARs and native libraries from the [SAP Service Marketplace](https://support.sap.com/en/index.html). You need both the `sapjco3.jar` and the platform-specific native library (`sapjco3.dll` on Windows, `libsapjco3.so` on Linux, `libsapjco3.jnilib` on Mac). Add the relevant paths in the **Ballerina.toml** with `provided` scope so they're on the compile-time classpath but not bundled into the final artifact.
 
 ```toml
 [[platform.java21.dependency]]
-path = "../sapidoc3.jar"
+path = "<path-to-sapidoc3.jar>"
 groupId = "com.sap"
 artifactId = "com.sap.conn.idoc"
 version = "3.1.*"
+scope = "provided"
 
 [[platform.java21.dependency]]
-path = "../sapjco3.jar"
+path = "<path-to-sapjco3.jar>"
 groupId = "com.sap"
 artifactId = "com.sap.conn.jco"
 version = "3.1.*"
+scope = "provided"
 ```
 
-Ensure that the paths to the JAR files are correct and relative to your project directory.
+The native library needs to be on the system `PATH` (Windows) or `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (Mac) at runtime so the JVM can find it.
+
+### Configure Minimum Version (Optional)
+
+Configure the required minimum version of the SAP JCo connector in your **Ballerina.toml** to avoid accidentally using an incompatible version of JCo:
+
+```toml
+[[dependency]]
+org = "ballerinax"
+name = "sap.jco"
+version = "2.0.0"
+```
 
 ## Quickstart
 
@@ -137,7 +124,10 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-`repositoryDestination` is required and must match the `destinationId` of an already-initialized `Client`. The listener uses this connection to look up IDoc segment metadata and RFC function module metadata from SAP.
+`repositoryDestination` is required. It can be provided in two ways:
+
+- **Option 1 — string destinationId**: supply the `destinationId` of an already-initialized `jco:Client`. The listener reuses that client's connection to look up metadata from SAP.
+- **Option 2 — inline `DestinationConfig`**: supply a `DestinationConfig` record directly under `repositoryDestination`. The connector initialises the destination automatically; no separate `jco:Client` is required.
 
 Then, create a new JCo listener instance for IDoc listener operations.
 
