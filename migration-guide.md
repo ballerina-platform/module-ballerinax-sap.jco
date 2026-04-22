@@ -348,6 +348,8 @@ service jco:IDocService on iDocListener {
 
 Note also that the `onError` parameter was renamed from `'error` to `err`.
 
+**`onError` scope:** `onError` now fires only for framework faults — JCo gateway/server errors, pre-dispatch failures (RFC parameter construction, IDoc XML rendering), and post-dispatch failures (RFC response serialization). Errors returned or thrown from `onCall`/`onReceive` are **not** routed through `onError`: `onCall` errors surface to SAP as `AbapException`, and `onReceive` errors are logged.
+
 ### Using the new `RfcService` type
 
 Attach an `RfcService` to handle inbound RFC calls from SAP. At most one `IDocService` and one `RfcService` may be attached to the same listener simultaneously.
@@ -366,7 +368,54 @@ service jco:RfcService on rfcListener {
 
 ---
 
-## 6. `Client.close()` — new lifecycle method
+## 6. `Client.sendIDoc()` — new optional parameters; qRFC now functional
+
+This is not a breaking change — existing `sendIDoc` calls continue to work. Two optional parameters have been added and a pre-existing qRFC bug has been fixed.
+
+### New parameters
+
+```ballerina
+// 1.0.0 / 2.0.0 before this fix
+isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error?
+
+// 2.0.0 with qRFC fix
+isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT,
+                                  string? tid = (), string? queueName = ()) returns Error?
+```
+
+| Parameter | Default | Purpose |
+|---|---|---|
+| `tid` | auto-generated | Supply your own 24-hex Transaction ID for end-to-end idempotency. Useful when you persist the outbound intent (outbox pattern) and need SAP to recognise the TID as already processed on retry. |
+| `queueName` | `()` | Required for qRFC types (`VERSION_3_IN_QUEUE`, `VERSION_3_IN_QUEUE_VIA_QRFC`). Names the SAP inbound queue. Ignored (with a warning) for tRFC types. |
+
+### qRFC bug fix
+
+In earlier builds, `VERSION_3_IN_QUEUE` ("Q") and `VERSION_3_IN_QUEUE_VIA_QRFC` ("I") were declared in the `IDocType` enum but not actually supported. The Java implementation always called the 4-arg `JCoIDoc.send` with no queue name, which fails at the SAP JCo layer for qRFC versions. These types now work correctly.
+
+### Migrating existing `sendIDoc` calls
+
+No migration required for existing calls. The new parameters are optional with backward-compatible defaults.
+
+**To send via qRFC (ordered delivery):**
+
+```ballerina
+// Ordered send into a named inbound queue.
+// All IDocs in this queue are processed by SAP in FIFO order.
+check sapClient->sendIDoc(iDoc, iDocType = jco:VERSION_3_IN_QUEUE_VIA_QRFC,
+                          queueName = "MATMAS_SENDER_CLNT100");
+```
+
+**To supply your own TID for idempotency:**
+
+```ballerina
+// Persist outboxRowId before this call.
+// On retry, SAP recognises the TID as already processed via ARFCRSTATE.
+check sapClient->sendIDoc(iDoc, tid = outboxRowId);
+```
+
+---
+
+## 7. `Client.close()` — new lifecycle method
 
 `close()` is a new addition, not a breaking change. It releases the JCo destination registration. After `close()`, calls to `execute()` or `sendIDoc()` return a `ConfigurationError`. Calling `close()` more than once is safe.
 
@@ -394,4 +443,5 @@ Work through each item in order:
 - [ ] **`onError` parameter:** rename `error 'error` to `error err` in all `onError` remote function signatures
 - [ ] **Error handling:** review `on fail` / `is` checks — `is sap:Error` continues to work; add specific error types where finer handling is needed
 - [ ] **`Client.close()`:** add `close()` calls in cleanup paths where clients are no longer needed
+- [ ] **`sendIDoc` qRFC:** if you were using `VERSION_3_IN_QUEUE` or `VERSION_3_IN_QUEUE_VIA_QRFC`, add the required `queueName` argument — previously these calls failed at runtime; they now require a queue name
 - [ ] Run the integration test suite against your SAP sandbox to confirm correct behavior

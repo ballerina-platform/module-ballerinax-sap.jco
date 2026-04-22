@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added optional `tid` and `queueName` parameters to `Client.sendIDoc`.
+  - `queueName` enables qRFC sends — required for `VERSION_3_IN_QUEUE` and
+    `VERSION_3_IN_QUEUE_VIA_QRFC`; previously these enum values would fail at runtime
+    because the 4-arg `JCoIDoc.send` was always used with no queue.
+  - `tid` lets callers supply their own Transaction ID for end-to-end idempotency
+    when an outbox row ID or other persistent identifier is available; otherwise
+    a TID is generated via the JCo destination as before.
+  - Passing `queueName` with a tRFC `iDocType` (`DEFAULT`, `VERSION_2`, `VERSION_3`)
+    logs a warning and proceeds as tRFC, ignoring the queue name.
 - Added `destinationId` parameter to the `Client.init` function, allowing an explicit name to be assigned to the RFC destination. This is required when a `Listener` references the client as its `repositoryDestination`.
 - Added `close()` method to `Client` to release the JCo destination registration. After `close`, calls to `execute` or `sendIDoc` return a `ConfigurationError`. Calling `close` more than once is safe.
 - Added `connectionCount` field to `ServerConfig` to control the maximum number of concurrent JCo server connections (maps to `jco.server.connection_count`, default `2`).
@@ -35,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed `Client.sendIDoc` to honour qRFC `IDocType` values. `VERSION_3_IN_QUEUE` and
+  `VERSION_3_IN_QUEUE_VIA_QRFC` now route through `JCoIDoc.send(..., tid, queueName)`;
+  previously the queue-less 4-arg variant was always called, causing qRFC sends to fail at runtime.
 - Fixed a `NullPointerException` in `ExportParameterProcessor` when an SAP export parameter was absent from the response. Null-checks are now applied before accessing parameter values.
 - Fixed `IDoc listener configuration missing required repository configuration` ([ballerina-library#8722](https://github.com/ballerina-platform/ballerina-library/issues/8722)): `repositoryDestination` is now propagated from `ServerConfig` through the `Listener` to `SAPServerDataProvider`.
 - Fixed `IDoc listener cascading stop error` ([ballerina-library#8723](https://github.com/ballerina-platform/ballerina-library/issues/8723)): Refactored `Listener` lifecycle to correctly sequence graceful and immediate JCo server shutdown, preventing cascading errors on stop.

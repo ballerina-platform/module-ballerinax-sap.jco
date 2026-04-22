@@ -219,18 +219,24 @@ public class Client {
     }
 
     /**
-     * Sends an IDoc to SAP using the Transactional RFC (tRFC) protocol.
+     * Sends an IDoc to SAP using the Transactional RFC (tRFC) or Queued RFC (qRFC) protocol.
      * <p>
-     * A TID (Transaction ID) is created on the destination, the IDoc XML is parsed and sent
-     * via {@link com.sap.conn.idoc.jco.JCoIDoc#send}, and the TID is then confirmed so that
+     * A TID (Transaction ID) is used, either provided as an argument or created on the destination.
+     * The IDoc XML is parsed and sent via {@link com.sap.conn.idoc.jco.JCoIDoc#send}.
+     * If a queue name is provided alongside a qRFC {@code iDocType} ({@code 'Q'} or {@code 'I'}),
+     * the 5-arg qRFC variant is used. If a queue name is provided with a tRFC type, a warning is
+     * logged and the queue name is ignored (tRFC send proceeds). The TID is then confirmed so that
      * SAP does not re-deliver the document on a subsequent connection.
      *
-     * @param client   the Ballerina {@code Client} object holding the JCo destination
-     * @param iDoc     the IDoc payload as an XML value
-     * @param iDocType a single-character IDoc version identifier (e.g. {@code '3'} for IDoc type 3)
+     * @param client    the Ballerina {@code Client} object holding the JCo destination
+     * @param iDoc      the IDoc payload as an XML value
+     * @param iDocType  a single-character IDoc version identifier (e.g. {@code '3'} for IDoc type 3)
+     * @param tid       optional Transaction ID (TID); auto-generated if not supplied
+     * @param queueName optional queue name; required for qRFC versions ({@code 'Q'}, {@code 'I'}),
+     *                  ignored with a warning for tRFC versions
      * @return {@code null} on success, or a Ballerina {@code Error} on failure
      */
-    public static Object sendIDoc(BObject client, BXml iDoc, BString iDocType) {
+    public static Object sendIDoc(BObject client, BXml iDoc, BString iDocType, Object tid, Object queueName) {
         try {
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
             if (destination == null) {
@@ -244,17 +250,38 @@ public class Client {
             }
             char version = iDocTypeStr.charAt(0);
 
-            String tid = destination.createTID();
-            logger.debug("TID created: {}", tid);
+            if (isQrfcVersion(version) && !(queueName instanceof BString)) {
+                return SAPErrorCreator.createParameterError(
+                        "Queue name is required for qRFC IDoc version: " + version);
+            }
+
+            String tidStr;
+            if (tid instanceof BString) {
+                tidStr = ((BString) tid).getValue();
+            } else {
+                tidStr = destination.createTID();
+                logger.debug("TID created: {}", tidStr);
+            }
 
             IDocFactory iDocFactory = JCoIDoc.getIDocFactory();
             IDocRepository iDocRepository = JCoIDoc.getIDocRepository(destination);
             IDocXMLProcessor processor = iDocFactory.getIDocXMLProcessor();
             IDocDocumentList iDocList = processor.parse(iDocRepository, iDocXML);
 
-            JCoIDoc.send(iDocList, version, destination, tid);
-            destination.confirmTID(tid);
-            logger.debug("IDoc sent successfully with TID: {}", tid);
+            if (isQrfcVersion(version)) {
+                String qName = ((BString) queueName).getValue();
+                JCoIDoc.send(iDocList, version, destination, tidStr, qName);
+                logger.debug("IDoc sent via qRFC (queue: {}) with TID: {}", qName, tidStr);
+            } else {
+                if (queueName instanceof BString) {
+                    logger.warn("queueName '{}' is ignored for tRFC iDocType '{}'; "
+                            + "use VERSION_3_IN_QUEUE or VERSION_3_IN_QUEUE_VIA_QRFC for qRFC sends.",
+                            ((BString) queueName).getValue(), version);
+                }
+                JCoIDoc.send(iDocList, version, destination, tidStr);
+                logger.debug("IDoc sent via tRFC with TID: {}", tidStr);
+            }
+            destination.confirmTID(tidStr);
             return null;
         } catch (JCoException e) {
             logger.error("IDoc send failed.");
@@ -263,6 +290,10 @@ public class Client {
             logger.error("IDoc send failed.");
             return SAPErrorCreator.fromIDocException(e);
         }
+    }
+
+    private static boolean isQrfcVersion(char version) {
+        return version == 'Q' || version == 'I';
     }
 
     private static void rollbackDestinationConfig(SAPDestinationDataProvider dp, String destId,

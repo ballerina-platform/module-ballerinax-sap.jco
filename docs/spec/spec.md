@@ -228,23 +228,39 @@ The RFC Client also supports sending IDocs to an SAP system, allowing you to aut
 An IDoc can be sent using the following function:
 
 ```ballerina
-# Sends an IDoc to the SAP system over tRFC, including TID creation and confirmation.
+# Sends an IDoc to the SAP system over tRFC or qRFC, including TID creation and confirmation.
 #
-# + iDoc - IDoc payload as XML.
-# + iDocType - IDoc version/protocol variant.
-# + return - An error if the IDoc cannot be delivered or the TID cannot be confirmed.
-isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error?
+# + iDoc - IDoc payload in XML format
+# + iDocType - IDoc protocol version. Use `VERSION_3_IN_QUEUE` or `VERSION_3_IN_QUEUE_VIA_QRFC` for qRFC.
+# + tid - Optional Transaction ID (TID). If not provided, a new TID is created via the JCo destination.
+#         Supply your own TID for end-to-end idempotency when the caller persists outbound intent.
+# + queueName - Required when `iDocType` is a qRFC version (`VERSION_3_IN_QUEUE` or
+#               `VERSION_3_IN_QUEUE_VIA_QRFC`). Ignored with a warning for tRFC versions.
+# + return - An error if the IDoc cannot be delivered or the TID cannot be confirmed
+isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT,
+                                  string? tid = (), string? queueName = ()) returns Error?
 ```
 
-The input parameters require `iDoc`, with an optional `iDocType`. The `iDoc` represents the content of the IDoc in XML format. The `iDocType` specifies the version of the IDoc being sent and can be set to `DEFAULT`, `VERSION_2`, `VERSION_3`, `VERSION_3_IN_QUEUE`, or `VERSION_3_IN_QUEUE_VIA_QRFC`. If no `iDocType` is provided, the `DEFAULT` type will be applied.
+The required parameter is `iDoc` (the IDoc payload in XML format). Optional parameters:
+
+- `iDocType` — the IDoc version/protocol variant. `DEFAULT`, `VERSION_2`, and `VERSION_3` use **tRFC** (unordered, exactly-once). `VERSION_3_IN_QUEUE` and `VERSION_3_IN_QUEUE_VIA_QRFC` use **qRFC** (ordered delivery via a named queue).
+- `tid` — a caller-supplied Transaction ID for end-to-end idempotency. If omitted, the JCo destination generates one automatically. Useful when the caller persists the outbound intent (outbox pattern) and needs SAP to recognise the TID as already processed on retry.
+- `queueName` — the SAP inbound queue name. Required for qRFC `iDocType` values; ignored (with a warning) for tRFC values.
 
 Users can invoke it as shown below:
 
 ```ballerina
 public function main() returns error? {
     xml iDoc = check io:fileReadXml("resources/sample.xml");
+
+    // tRFC send (unordered, auto-generated TID)
     check jcoClient->sendIDoc(iDoc);
-    io:println("IDoc sent successfully.");
+
+    // qRFC send (ordered delivery into a named queue)
+    check jcoClient->sendIDoc(iDoc, iDocType = VERSION_3_IN_QUEUE_VIA_QRFC,
+                              queueName = "MATMAS_SENDER_CLNT100");
+
+    io:println("IDocs sent successfully.");
 }
 ```
 
