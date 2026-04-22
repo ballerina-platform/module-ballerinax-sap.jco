@@ -277,3 +277,150 @@ function testExecuteReturningRfcRecordWithTableData() returns error? {
     });
     test:assertNotEquals(result, {}, "RfcRecord result should not be empty when table data is present");
 }
+
+// --- Type mismatch and field-presence validation ---
+//
+// These tests verify that ExportParameterProcessor produces a ParameterError
+// whenever the caller's declared return type is incompatible with the actual
+// JCo-typed value returned by SAP, and that optional/nilable/required field
+// semantics are honoured when a declared field is absent from the SAP response.
+
+// Declares ECHOTEXT as int, but STFC_CONNECTION always returns it as a string.
+type ScalarTypeMismatchOutput record {|
+    int ECHOTEXT;
+    string RESPTEXT?;
+|};
+
+// Declares ECHOSTRUCT as int, but STFC_STRUCTURE returns it as a JCo structure.
+type StructureTypeMismatchOutput record {|
+    int ECHOSTRUCT;
+    string RESPTEXT?;
+|};
+
+// Declares RFCTABLE as a plain string, but STFC_STRUCTURE returns it as a JCo table.
+type TableNonArrayTypeMismatchOutput record {|
+    string RFCTABLE;
+    string RESPTEXT?;
+|};
+
+// Declares RFCTABLE as byte[], but STFC_STRUCTURE returns a table of RFCTEST records.
+// byte[] is a valid FieldType (accepted by the compiler), but its element type (byte)
+// is not a RecordType, so the connector throws a ParameterError at runtime.
+type TableWrongElementTypeMismatchOutput record {|
+    byte[] RFCTABLE;
+    string RESPTEXT?;
+|};
+
+// NONEXISTENT_SAP_FIELD does not exist in STFC_CONNECTION's export parameter list.
+// Declared optional (field?) — should be silently absent with no error.
+type EchoWithOptionalUnknownField record {|
+    string ECHOTEXT?;
+    string RESPTEXT?;
+    string NONEXISTENT_SAP_FIELD?;
+|};
+
+// NONEXISTENT_SAP_FIELD does not exist in STFC_CONNECTION's export parameter list.
+// Declared nilable (type?) — should be nil with no error.
+type EchoWithNilableUnknownField record {|
+    string? ECHOTEXT;
+    string? RESPTEXT;
+    string? NONEXISTENT_SAP_FIELD;
+|};
+
+// NONEXISTENT_SAP_FIELD does not exist in STFC_CONNECTION's export parameter list.
+// Declared required (no ? suffix) — should produce a ParameterError.
+type EchoWithRequiredUnknownField record {|
+    string ECHOTEXT?;
+    string RESPTEXT?;
+    string NONEXISTENT_SAP_FIELD;
+|};
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteScalarTypeMismatchReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    ScalarTypeMismatchOutput|error result = sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": "Test"}});
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when ECHOTEXT is declared as int but SAP returns a string");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteStructureTypeMismatchReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    StructureTypeMismatchOutput|error result = sapClient->execute("STFC_STRUCTURE",
+            {importParameters: {"IMPORTSTRUCT": {}}});
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when ECHOSTRUCT is declared as int but SAP returns a structure");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteTableNonArrayTypeMismatchReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    TableNonArrayTypeMismatchOutput|error result = sapClient->execute("STFC_STRUCTURE", {
+        importParameters: {"IMPORTSTRUCT": {}},
+        tableParameters: {"RFCTABLE": [{"RFCCHAR1": "A"}]}
+    });
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when RFCTABLE is declared as string but SAP returns a table");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteTableWrongElementTypeMismatchReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    TableWrongElementTypeMismatchOutput|error result = sapClient->execute("STFC_STRUCTURE", {
+        importParameters: {"IMPORTSTRUCT": {}},
+        tableParameters: {"RFCTABLE": [{"RFCCHAR1": "A"}]}
+    });
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when RFCTABLE is declared as string[] but SAP returns a table of records");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteOptionalFieldAbsentFromSapIsSkipped() returns error? {
+    Client sapClient = check new (destinationConfig);
+    EchoWithOptionalUnknownField result = check sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": "Test"}});
+    test:assertEquals(result.ECHOTEXT, "Test", "ECHOTEXT should be present from SAP response");
+    test:assertEquals(result.NONEXISTENT_SAP_FIELD, (),
+            "Optional field absent from SAP response should be absent in the result");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteNilableFieldAbsentFromSapIsNil() returns error? {
+    Client sapClient = check new (destinationConfig);
+    EchoWithNilableUnknownField result = check sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": "Test"}});
+    test:assertNotEquals(result.ECHOTEXT, (), "ECHOTEXT should be set from SAP response");
+    test:assertEquals(result.NONEXISTENT_SAP_FIELD, (),
+            "Nilable field absent from SAP response should be nil in the result");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteRequiredFieldAbsentFromSapReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    EchoWithRequiredUnknownField|error result = sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": "Test"}});
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when a required declared field is not present in the SAP response");
+}

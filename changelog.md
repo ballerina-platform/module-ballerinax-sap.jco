@@ -44,6 +44,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed type mismatch in `execute` response binding: when the JCo type of an SAP export or table
+  parameter does not match the declared Ballerina field type (e.g. `int FIELD` when SAP returns a
+  string, or `string FIELD` when SAP returns a nested structure), the connector now returns a
+  descriptive `ParameterError` such as `"Type mismatch for field 'FIELD': SAP returned string but
+  declared type is int"` instead of a runtime `ClassCastException` from the Ballerina lang library.
+  The fix also covers nested structures and table rows processed by `populateRecord` and
+  `populateRecordArray`, which previously had unguarded casts that propagated as an opaque
+  `ExecutionError`.
+- Fixed missing field validation in `execute` response binding: required fields declared in the
+  return type that are absent from the SAP export parameter list now produce a `ParameterError`
+  (`"Required field 'X' was not found in the SAP response"`); nilable fields (`string? FIELD`)
+  absent from the SAP response are set to `nil`; optional fields (`string FIELD?`) absent from the
+  SAP response are silently skipped. Previously, all three cases silently left the record field at
+  its Ballerina zero value.
 - Fixed `Client.sendIDoc` to honour qRFC `IDocType` values. `VERSION_3_IN_QUEUE` and
   `VERSION_3_IN_QUEUE_VIA_QRFC` now route through `JCoIDoc.send(..., tid, queueName)`;
   previously the queue-less 4-arg variant was always called, causing qRFC sends to fail at runtime.
