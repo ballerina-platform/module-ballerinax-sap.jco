@@ -138,24 +138,19 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
     }
 
     /**
-     * Registers destination properties derived from a structured {@code DestinationConfig} Ballerina record
-     * or an advanced flat key-value map.
-     * <p>
-     * When {@code jcoDestinationConfig} is a {@code DestinationConfig} record, the well-known fields
-     * ({@code jcoClient}, {@code user}, {@code passwd}, etc.) are mapped to the corresponding
-     * {@link DestinationDataProvider} constants. For any other record/map type, all entries are
-     * copied verbatim as JCo property key-value pairs, enabling advanced configuration not covered
-     * by the structured type.
+     * Registers destination properties from a {@code BMap} of JCo property key-value pairs.
+     * All entries are copied verbatim; structured-field mapping is performed upstream in
+     * {@code ballerina/client.bal} before this method is called.
      * <p>
      * The registration is performed atomically via {@link ConcurrentHashMap#putIfAbsent} so that
      * concurrent calls with the same {@code destinationName} cannot silently overwrite each other.
      * A {@link RuntimeException} is thrown if the destination is already registered.
      *
-     * @param jcoDestinationConfig the Ballerina configuration record or advanced map
+     * @param jcoDestinationConfig the Ballerina configuration map with JCo property key-value pairs
      * @param destinationName      the name under which the properties are stored and later retrieved
      *                             by {@link #getDestinationProperties(String)}
-     * @throws RuntimeException if the destination is already registered, any property cannot be
-     *                          applied, or the advanced map is empty
+     * @throws RuntimeException if the destination is already registered, any property value is null
+     *                          or cannot be applied, or the map is empty
      */
     public void addDestinationConfig(BMap<BString, Object> jcoDestinationConfig, BString destinationName) {
         Properties properties = new Properties();
@@ -163,9 +158,13 @@ public class SAPDestinationDataProvider implements DestinationDataProvider {
             if (!jcoDestinationConfig.isEmpty()) {
                 jcoDestinationConfig.entrySet().forEach(entry -> {
                     BString key = entry.getKey();
-                    BString value = (BString) entry.getValue();
+                    Object rawValue = entry.getValue();
+                    if (rawValue == null) {
+                        throw new RuntimeException("Null value for destination property " + key);
+                    }
+                    String value = (rawValue instanceof BString bStr) ? bStr.getValue() : rawValue.toString();
                     try {
-                        properties.setProperty(key.toString(), value.toString());
+                        properties.setProperty(key.toString(), value);
                     } catch (Exception e) {
                         throw new RuntimeException("Error while adding destination property " + key.toString()
                                 + " : " + e.getMessage());

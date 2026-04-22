@@ -8,8 +8,7 @@ environment for businesses.
 
 The `ballerinax/sap.jco` package exposes the SAP JCo library as ballerina functions.
 
-
-### Key Features
+## Key Features
 
 - Connect to SAP systems via SAP JCo (Java Connector)
 - Execute BAPIs and Remote Function Calls (RFC)
@@ -113,7 +112,11 @@ jco:Client jcoClient = check new (configurations, destinationId = "MY_DESTINATIO
 
 #### Initialize a new JCo listener instance
 
-Configure the necessary SAP connection parameters in `Config.toml` in the project directory:
+Configure the necessary SAP connection parameters in `Config.toml` in the project directory.
+
+`repositoryDestination` is required — the listener uses it to look up IDoc segment metadata and RFC function module metadata from SAP. It accepts two forms:
+
+**Option 1: Reference an existing Client destination** — provide the `destinationId` of an already-initialized `Client`:
 
 ```toml
 [configurations]
@@ -124,10 +127,22 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-`repositoryDestination` is required. It can be provided in two ways:
+**Option 2: Supply SAP credentials directly** — the listener registers an internal JCo destination automatically, so no separate `Client` is required:
 
-- **Option 1 — string destinationId**: supply the `destinationId` of an already-initialized `jco:Client`. The listener reuses that client's connection to look up metadata from SAP.
-- **Option 2 — inline `DestinationConfig`**: supply a `DestinationConfig` record directly under `repositoryDestination`. The connector initialises the destination automatically; no separate `jco:Client` is required.
+```toml
+[configurations]
+gwhost = "sapgw.example.com"
+gwserv = "sapgw00"
+progid = "JCO_PROGRAM_ID"
+connectionCount = 2
+
+[configurations.repositoryDestination]
+ashost = "sap.example.com"
+sysnr = "00"
+jcoClient = "100"
+user = "SAP_USER"
+passwd = "SAP_PASSWORD"
+```
 
 Then, create a new JCo listener instance for IDoc listener operations.
 

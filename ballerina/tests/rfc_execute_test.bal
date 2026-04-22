@@ -93,7 +93,8 @@ function testExecuteReturningXml() returns error? {
 function testExecuteReturningRfcRecord() returns error? {
     Client sapClient = check new (destinationConfig);
     RfcRecord result = check sapClient->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "Test"}});
-    test:assertNotEquals(result, {}, "RfcRecord result should not be empty");
+    test:assertTrue(result.hasKey("ECHOTEXT") || result.hasKey("RESPTEXT"),
+            "RfcRecord result should contain ECHOTEXT or RESPTEXT from STFC_CONNECTION");
 }
 
 @test:Config {

@@ -247,6 +247,8 @@ public final class Listener {
                 listenerBObject.addNativeData(SAPConstants.IS_TID_HANDLER_SET, true);
             }
 
+            // Store runtime so detach() can refresh the throwable listener without a parameter change.
+            listenerBObject.addNativeData("nativeRuntime", runtime);
             // Rebuild the throwable listener with all currently attached services so that
             // server-level errors reach every service's onError() handler.
             refreshThrowableListener(listenerBObject, server, runtime);
@@ -358,6 +360,11 @@ public final class Listener {
                 break;
             }
         }
+        if (server.getState() == JCoServerState.STOPPING) {
+            logger.warn("Server did not finish stopping within the deadline; server may still be active.");
+            return SAPErrorCreator.createConfigError(
+                    "Server stop timed out: the server is still in STOPPING state after 15 seconds.");
+        }
         client.addNativeData(SAPConstants.IS_STARTED, false);
         return null;
     }
@@ -395,13 +402,11 @@ public final class Listener {
                 listener.addNativeData(NATIVE_RFC_SERVICE, null);
             }
 
-            // Reset the started flag when both services have been detached so that a
-            // subsequent start() call is accepted. The server object itself is kept alive
-            // because it is also held by serverRegistry and may be reused.
-            boolean idocAttached = (boolean) listener.getNativeData(SAPConstants.IS_IDOC_SERVICE_ATTACHED);
-            boolean rfcAttached = (boolean) listener.getNativeData(SAPConstants.IS_RFC_SERVICE_ATTACHED);
-            if (!idocAttached && !rfcAttached) {
-                listener.addNativeData(SAPConstants.IS_STARTED, false);
+            // Refresh the throwable listener so it no longer dispatches to the detached service.
+            JCoIDocServer server = (JCoIDocServer) listener.getNativeData(SAPConstants.JCO_SERVER);
+            Runtime runtime = (Runtime) listener.getNativeData("nativeRuntime");
+            if (server != null && runtime != null) {
+                refreshThrowableListener(listener, server, runtime);
             }
         } catch (Throwable e) {
             logger.error("Server detach failed.");
@@ -419,9 +424,14 @@ public final class Listener {
      * set of attached services without accumulating stale listener registrations.
      */
     private static void refreshThrowableListener(BObject listenerBObject, JCoIDocServer server, Runtime runtime) {
+        BallerinaThrowableListener oldListener =
+                (BallerinaThrowableListener) listenerBObject.getNativeData(SAPConstants.THROWABLE_LISTENER);
+        if (oldListener != null) {
+            server.removeServerErrorListener(oldListener);
+            server.removeServerExceptionListener(oldListener);
+        }
         BObject idocService = (BObject) listenerBObject.getNativeData(NATIVE_IDOC_SERVICE);
         BObject rfcService = (BObject) listenerBObject.getNativeData(NATIVE_RFC_SERVICE);
-
         BallerinaThrowableListener throwableListener = new BallerinaThrowableListener(
                 runtime, idocService, rfcService);
         listenerBObject.addNativeData(SAPConstants.THROWABLE_LISTENER, throwableListener);

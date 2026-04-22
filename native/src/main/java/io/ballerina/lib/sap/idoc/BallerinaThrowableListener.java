@@ -152,8 +152,8 @@ public class BallerinaThrowableListener implements JCoServerErrorListener, JCoSe
             Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata,
                     new Object[]{bError});
             if (result instanceof BError onErrorResult) {
-                logger.error("onError handler on {} returned an error; suppressing.",
-                        serviceType.getName(), onErrorResult);
+                logger.error("onError handler on {} returned an error; suppressing: {}",
+                        serviceType.getName(), onErrorResult.getMessage(), onErrorResult);
             }
         } catch (Throwable thr) {
             logger.error("onError handler on {} threw an unexpected error; suppressing.",

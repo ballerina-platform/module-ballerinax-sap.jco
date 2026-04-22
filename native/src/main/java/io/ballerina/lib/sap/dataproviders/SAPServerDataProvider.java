@@ -69,7 +69,7 @@ public class SAPServerDataProvider implements ServerDataProvider {
      * Returns the JCo server properties for the named server.
      *
      * @param serverName the server name previously registered via
-     *                   {@link #addServerConfig} or {@link #addAdvancedServerConfig}
+     *                   {@link #addAdvancedServerConfig}
      * @return the {@link Properties} for the server
      * @throws DataProviderException if no properties have been registered for {@code serverName}
      */
@@ -109,7 +109,7 @@ public class SAPServerDataProvider implements ServerDataProvider {
      *
      * @param jcoAdvancedServerConfig the raw JCo server property map
      * @param serverName              the name under which the properties are stored
-     * @throws RuntimeException if a property cannot be applied
+     * @throws DataProviderException if a property cannot be applied
      */
     public void addAdvancedServerConfig(Map<String, String> jcoAdvancedServerConfig, String serverName) {
         Properties properties = new Properties();
@@ -117,7 +117,7 @@ public class SAPServerDataProvider implements ServerDataProvider {
             try {
                 properties.setProperty(key, value);
             } catch (Exception e) {
-                throw new RuntimeException("Error while adding server property " + key + " : " + e.getMessage());
+                throw new DataProviderException("Error while adding server property " + key + " : " + e.getMessage());
             }
         });
         serverProperties.put(serverName, properties);

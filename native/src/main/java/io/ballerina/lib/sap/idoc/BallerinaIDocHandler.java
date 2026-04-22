@@ -88,7 +88,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
                 BError err = (thr instanceof BError bErr)
                         ? SAPErrorCreator.createIDocError("IDoc rendering failed.", bErr)
                         : SAPErrorCreator.createIDocError("IDoc rendering failed.", thr);
-                invokeOnError(new Object[]{err, true});
+                invokeOnError(new Object[]{err});
                 return;
             }
 
@@ -101,7 +101,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
                 return;
             }
             if (result instanceof BError returnedError) {
-                logger.error("onReceive() returned an error", returnedError);
+                logger.error("onReceive() returned an error: {}", returnedError.getMessage());
             }
         } finally {
             try {

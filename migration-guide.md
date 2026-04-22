@@ -407,10 +407,19 @@ check sapClient->sendIDoc(iDoc, iDocType = jco:VERSION_3_IN_QUEUE_VIA_QRFC,
 
 **To supply your own TID for idempotency:**
 
+SAP TIDs must be exactly 24 uppercase hexadecimal characters. Derive a stable TID from your
+database row ID (e.g. by hashing) and **persist `sapTid` before calling `sendIDoc`** so that
+retries reuse the identical TID. SAP uses ARFCRSTATE to detect already-processed TIDs.
+
 ```ballerina
-// Persist outboxRowId before this call.
-// On retry, SAP recognises the TID as already processed via ARFCRSTATE.
-check sapClient->sendIDoc(iDoc, tid = outboxRowId);
+import ballerina/crypto;
+
+// Derive a 24-char hex TID from the database row ID.
+// Persist sapTid alongside outboxRowId before calling sendIDoc so retries use the same TID.
+byte[] hash = crypto:hashSha256(outboxRowId.toBytes());
+string sapTid = array:toBase16(hash).toUpperAscii().substring(0, 24);
+
+check sapClient->sendIDoc(iDoc, tid = sapTid);
 ```
 
 ---

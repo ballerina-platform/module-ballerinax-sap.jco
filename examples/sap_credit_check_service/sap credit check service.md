@@ -44,6 +44,7 @@ connection to look up RFC function module metadata from SAP:
 creditBureauApiEndpoint = "https://api.creditbureau.example.com"
 
 [clientConfig]
+destinationId = "CREDIT_CHECK_DEST"
 ashost = "sap.example.com"
 sysnr = "00"
 jcoClient = "000"

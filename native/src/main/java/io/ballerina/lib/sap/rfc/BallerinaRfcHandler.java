@@ -110,8 +110,9 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
             rfcParameters = buildRfcParameters(function);
             args = new Object[]{StringUtils.fromString(functionName), rfcParameters};
         } catch (Throwable t) {
+            String causeMsg = t.getMessage() != null ? t.getMessage() : t.getClass().getName();
             BError err = SAPErrorCreator.createParameterError(
-                    "Failed to build RFC parameters for function '" + functionName + "': " + t.getMessage());
+                    "Failed to build RFC parameters for function '" + functionName + "': " + causeMsg);
             invokeOnError(err);
             throw new AbapException("BALLERINA_PARAMETER_ERROR",
                     t.getMessage() == null ? "parameter build failed" : t.getMessage());
@@ -161,7 +162,7 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
      */
     private static BMap<BString, Object> buildRfcParameters(JCoFunction function) {
         RecordType openRecord = TypeCreator.createRecordType(
-                "RfcRecord", ModuleUtils.getModule(), 0, new HashMap<>(), null, true, 0);
+                "RfcRecord", ModuleUtils.getModule(), 0, new HashMap<>(), PredefinedTypes.TYPE_ANYDATA, false, 0);
 
         JCoParameterList importList = function.getImportParameterList();
         JCoParameterList tableList = function.getTableParameterList();
@@ -275,7 +276,7 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
         StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
         try {
             Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata,
-                    new Object[]{error, true});
+                    new Object[]{error});
             if (result instanceof BError onErrorResult) {
                 logger.error("onError handler returned an error", onErrorResult);
             }

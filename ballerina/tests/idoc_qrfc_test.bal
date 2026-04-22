@@ -15,6 +15,7 @@
 // under the License.
 
 import ballerina/test;
+import ballerina/time;
 
 // Tests for qRFC and tRFC send paths in Client.sendIDoc().
 //
@@ -22,8 +23,15 @@ import ballerina/test;
 // All tests require a live SAP system and are disabled by default.
 // Set the required environment variables (see config.bal) to enable them.
 
-// A fixed 24-character hex TID in the format SAP expects for tRFC/qRFC bookkeeping.
-final string validTestTid = "AABBCCDDEEFF001122334455";
+// Generates a fresh 24-character uppercase hex TID from the current UTC time.
+// Each call returns a unique value so that confirmed TIDs from previous runs are not reused.
+function generateTestTid() returns string {
+    time:Utc now = time:utcNow();
+    string secHex = string:padStart(now[0].toHexString(), 16, "0");
+    int nanoFraction = <int>(now[1] * 100000000.0d);
+    string nanoHex = string:padStart(nanoFraction.toHexString(), 8, "0");
+    return (secHex + nanoHex).substring(0, 24).toUpperAscii();
+}
 
 @test:Config {
     groups: ["idoc-send", "qrfc"],
@@ -56,9 +64,10 @@ function testSendIDocViaQrfcInboundWithAutoTid() returns error? {
     enable: testsEnabled
 }
 function testSendIDocViaQrfcWithCustomTid() returns error? {
+    string testTid = generateTestTid();
     Client jcoClient = check new (destinationConfig);
     Error? result = jcoClient->sendIDoc(validTestIDoc, VERSION_3_IN_QUEUE_VIA_QRFC,
-                                        tid = validTestTid, queueName = "TEST_QUEUE_I");
+                                        tid = testTid, queueName = "TEST_QUEUE_I");
     if result is Error {
         test:assertFail("Failed to send IDoc via qRFC with custom TID: " + result.message());
     }
@@ -70,8 +79,9 @@ function testSendIDocViaQrfcWithCustomTid() returns error? {
     enable: testsEnabled
 }
 function testSendIDocViaTrfcWithCustomTid() returns error? {
+    string testTid = generateTestTid();
     Client jcoClient = check new (destinationConfig);
-    Error? result = jcoClient->sendIDoc(validTestIDoc, VERSION_3, tid = validTestTid);
+    Error? result = jcoClient->sendIDoc(validTestIDoc, VERSION_3, tid = testTid);
     if result is Error {
         test:assertFail("Failed to send IDoc via tRFC with custom TID: " + result.message());
     }

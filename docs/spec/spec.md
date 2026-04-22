@@ -172,7 +172,7 @@ public type RfcRecord record {| FieldType?...; |};
 public type FieldType string|int|float|decimal|boolean|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
 ```
 
-The `functionName` refers to the Remote Function Module name. The `parameters.importParameters` map holds scalar, structure, and table values keyed by SAP parameter name. The `parameters.tableParameters` map holds table input parameters, where each key is a SAP table parameter name and the value is an array of `RfcRecord` rows.
+The `functionName` refers to the Remote Function Module name. The `parameters.importParameters` map holds scalar and structure values keyed by SAP parameter name. The `parameters.tableParameters` map holds table input parameters, where each key is a SAP table parameter name and the value is an array of `RfcRecord` rows.
 
 For the return type, the type descriptor of the user's `returnType` is extracted. The response merges both export parameters and table parameters returned by the SAP function module. Use a `RfcRecord`-compatible record to receive typed results, or `xml` for untyped access.
 
@@ -375,6 +375,7 @@ Config.toml file:
 [configs]
 "jco.server.gwhost" = "gwhost"
 "jco.server.gwserv" = "sapgw00"
+"jco.server.progid" = "progID"
 "jco.server.repository_destination" = "SAMPLE_DESTINATION"
 "jco.client.ashost" = "host"
 "jco.client.sysnr" = "00"
@@ -403,7 +404,9 @@ public isolated function init(ServerConfig|AdvancedConfig serverConfig, string s
 ```ballerina
 # Attaches a service to the listener. At most one IDocService and one RfcService may be
 # attached at the same time. Both service types require repositoryDestination to be set in
-# ServerConfig and a Client with that destinationId to have been created first.
+# ServerConfig. When repositoryDestination is a string destinationId, a Client with that
+# destinationId must have been created first. When repositoryDestination is an inline
+# DestinationConfig, no separate Client creation is required.
 #
 # + s - The service to attach; must be an IDocService or an RfcService.
 # + name - Optional service name (unused at runtime).

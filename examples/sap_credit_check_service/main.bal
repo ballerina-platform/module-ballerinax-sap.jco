@@ -22,6 +22,8 @@ configurable jco:DestinationConfig clientConfig = ?;
 configurable jco:ServerConfig sapConfig = ?;
 configurable string creditBureauApiEndpoint = ?;
 
+// Create and register the Client so the listener can resolve repositoryDestination for metadata lookup.
+final jco:Client jcoClient = check new (clientConfig);
 listener jco:Listener creditCheckListener = new (sapConfig);
 
 // RFC service that handles inbound Z_CHECK_CUSTOMER_CREDIT calls from SAP.
@@ -56,7 +58,14 @@ service jco:RfcService on creditCheckListener {
 function evaluateCredit(jco:RfcParameters parameters) returns jco:RfcRecord|error {
     jco:RfcRecord importParams = parameters.importParameters ?: {};
     string customerId = (importParams["CUSTOMER_ID"] ?: "").toString();
-    decimal orderAmount = check decimal:fromString((importParams["ORDER_AMOUNT"] ?: "0").toString());
+    if customerId == "" {
+        return error("Missing required parameter: CUSTOMER_ID");
+    }
+    string orderAmountStr = (importParams["ORDER_AMOUNT"] ?: "").toString();
+    if orderAmountStr == "" {
+        return error("Missing required parameter: ORDER_AMOUNT");
+    }
+    decimal orderAmount = check decimal:fromString(orderAmountStr);
 
     http:Client creditApi = check new (creditBureauApiEndpoint);
     CreditBureauResponse bureauResponse = check creditApi->get("/credit/" + customerId);
@@ -70,7 +79,7 @@ function evaluateCredit(jco:RfcParameters parameters) returns jco:RfcRecord|erro
         ? string `Credit approved: score ${bureauResponse.creditScore}, limit ${bureauResponse.creditLimit}`
         : string `Credit rejected: score ${bureauResponse.creditScore}, limit ${bureauResponse.creditLimit}, status ${bureauResponse.accountStatus}`;
 
-    io:println(string `Credit check for customer ${customerId}: ${message}`);
+    io:println("Credit check completed for customer");
 
     return {
         "CREDIT_STATUS": statusCode,
