@@ -12,6 +12,9 @@ scenarios to understand how to automate processes involving SAP systems and exte
 3. [Automated Supplier Order Processing via iDoc Listener](./order_idoc_listener/) - Set up an iDoc listener to automate
    supplier order processing.
 
+4. [SAP Product Catalog Sync](./sap_product_catalog/) - Query SAP material master data using RFC table parameters
+   (filter criteria and field selection) and sync the results to an external product catalog API.
+
 ## Prerequisites
 
 1. Refer to the [Setup Guide](../../README.md) to configure the Ballerina SAP JCo Connector.

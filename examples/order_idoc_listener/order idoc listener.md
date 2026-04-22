@@ -43,8 +43,9 @@ Configure the necessary SAP connection parameters in `Config.toml` in the exampl
 ```toml
 [sapConfig]
 gwhost = "sapgw.example.com"
-gwserv = "3300"
+gwserv = "sapgw00"
 progid = "JCO_PROGRAM_ID"
+connectionCount = 2
 ```
 
 ## Run the Example

@@ -170,19 +170,15 @@ Now you can use the operations available within the connector.
 
 ```ballerina
 public function main() returns error? {
-    ImportParams importParams = {
-        importParam1: "Hello",
-        importParam2: 123,
-        importParam3: 123.45,
-        importParam4: 123.456
-    };
-
-    ExportParams? result = check jcoClient->execute("TEST_FUNCTION", importParams);
-    if result is ExportParams {
-        io:println("Result: ", result);
-    } else {
-        io:println("Error: Function execution failed");
-    }
+    ExportParams result = check jcoClient->execute("TEST_FUNCTION", {
+        importParameters: {
+            importParam1: "Hello",
+            importParam2: 123,
+            importParam3: 123.45,
+            importParam4: 123.456
+        }
+    });
+    io:println("Result: ", result);
 }
 ```
 

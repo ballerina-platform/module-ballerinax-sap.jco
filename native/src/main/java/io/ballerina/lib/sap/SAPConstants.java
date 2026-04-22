@@ -61,6 +61,10 @@ public class SAPConstants {
     public static final BString JCO_REPOSITORY_DESTINATION = StringUtils.fromString("repositoryDestination");
     public static final BString JCO_CONNECTION_COUNT = StringUtils.fromString("connectionCount");
 
+    // RfcParameters field names
+    public static final BString RFC_IMPORT_PARAMETERS = StringUtils.fromString("importParameters");
+    public static final BString RFC_TABLE_PARAMETERS = StringUtils.fromString("tableParameters");
+
 
     // Class names
     public static final String JCO_STRING = "java.lang.String";

@@ -33,7 +33,8 @@ public function main() returns error? {
 
     // Update inventory data in SAP for each material in the inventory data
     foreach ApiInventoryData data in inventoryData {
-        SapUpdateResponse? result = check sapClient->execute("UPDATE_INVENTORY", transform(data));
+        SapUpdateResponse? result = check sapClient->execute("UPDATE_INVENTORY",
+                {importParameters: transform(data)});
         io:println("Update Status for Material ", data.widgetId, ": ", result?.status);
     }
 }

@@ -138,43 +138,68 @@ Config.toml file:
 
 ##### 2.1.2.1 Execute a function module via RFC
 
-An RFC function call is made using the following function;
+An RFC function call is made using the following function:
 
 ```ballerina
-# Calls an RFC-enabled function module on the SAP system and returns the export parameters.
+# Calls an RFC-enabled function module on the SAP system and returns the export and table parameters.
 #
 # + functionName - Name of the RFC function module to call (e.g. `"STFC_CONNECTION"`).
-# + importParams - Import parameter values keyed by parameter name.
-# + exportParams - Expected type of the RFC export parameters (`xml`, `json`, or a record type).
-# + return - The export parameters converted to the `exportParams` type, or an error on failure.
-isolated remote function execute(string functionName, record {|FieldType?...;|} importParams, typedesc<record {|FieldType?...;|}|xml|json> exportParams = <>) returns exportParams|Error
+# + parameters - Import and table parameter values wrapped in an `RfcParameters` record.
+# + returnType - Expected type of the RFC response (`xml`, `json`, or a record type).
+# + return - The export and table parameters merged and converted to the `returnType` type, or an error on failure.
+isolated remote function execute(string functionName, RfcParameters parameters = {}, typedesc<RfcRecord|xml|json> returnType = <>) returns returnType|Error
 ```
 
-The input parameters require functionName and importParams. The functionName refers to the Remote Function Module name and importParams accepts a FieldType value, which can be;
+The `RfcParameters` type wraps import parameters and optional table parameters:
+
+```ballerina
+public type RfcParameters record {|
+    RfcRecord importParameters?;
+    map<RfcRecord[]> tableParameters?;
+|};
+```
+
+`RfcRecord` is a type alias for an open record of `FieldType` values:
+
+```ballerina
+public type RfcRecord record {| FieldType?...; |};
+```
+
+`FieldType` covers all scalar, temporal, binary, structure, and table value types supported by SAP JCo:
 
 ```ballerina
 public type FieldType string|int|float|decimal|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
 ```
 
-For the export parameters, the type descriptor of the user's return type is extracted. It should be a closed record of `FieldType` as the rest fields or a closed record with the exact output parameter names from the SAP system. This initial record provided by the user will be considered the export parameter list, and within this closed record, the user can include nested records for `SAP structures` and record arrays for `SAP tables`.
+The `functionName` refers to the Remote Function Module name. The `parameters.importParameters` map holds scalar, structure, and table values keyed by SAP parameter name. The `parameters.tableParameters` map holds table input parameters, where each key is a SAP table parameter name and the value is an array of `RfcRecord` rows.
+
+For the return type, the type descriptor of the user's `returnType` is extracted. The response merges both export parameters and table parameters returned by the SAP function module. Use a `RfcRecord`-compatible record to receive typed results, or `json`/`xml` for untyped access.
 
 Users can invoke it as shown below:
 
 ```ballerina
 public function main() returns error? {
-    ImportParams importParams = {
-        importParam1: "Hello",
-        importParam2: 123,
-        importParam3: 123.45,
-        importParam4: 123.456
-    };
+    ExportParams result = check jcoClient->execute("TEST_FUNCTION", {
+        importParameters: {
+            importParam1: "Hello",
+            importParam2: 123,
+            importParam3: 123.45,
+            importParam4: 123.456
+        }
+    });
+    io:println("Result: ", result);
+}
+```
 
-    ExportParams? result = check jcoClient->execute("TEST_FUNCTION", importParams);
-    if result is ExportParams {
-        io:println("Result: ", result);
-    } else {
-        io:println("Error: Function execution failed");
-    }
+To pass table parameters (SAP table inputs):
+
+```ballerina
+public function main() returns error? {
+    ExportParams result = check jcoClient->execute("TABLE_FUNC", {
+        importParameters: {PARAM1: "val"},
+        tableParameters: {"TABLE_PARAM": [{COL1: "row1"}, {COL1: "row2"}]}
+    });
+    io:println("Result: ", result);
 }
 ```
 
