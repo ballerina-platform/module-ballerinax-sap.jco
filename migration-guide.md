@@ -417,7 +417,7 @@ import ballerina/crypto;
 // Derive a 24-char hex TID from the database row ID.
 // Persist sapTid alongside outboxRowId before calling sendIDoc so retries use the same TID.
 byte[] hash = crypto:hashSha256(outboxRowId.toBytes());
-string sapTid = array:toBase16(hash).toUpperAscii().substring(0, 24);
+string sapTid = hash.toBase16().toUpperAscii().substring(0, 24);
 
 check sapClient->sendIDoc(iDoc, tid = sapTid);
 ```

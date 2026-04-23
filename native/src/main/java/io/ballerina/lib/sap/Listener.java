@@ -62,6 +62,8 @@ public final class Listener {
     // Native data keys for the service objects used by the throwable listener.
     static final String NATIVE_IDOC_SERVICE = "nativeIDocService";
     static final String NATIVE_RFC_SERVICE = "nativeRfcService";
+    // Native data key for the runtime object stored at attach time.
+    static final String NATIVE_RUNTIME = "nativeRuntime";
 
     // JCo allows only one server per (gwhost|gwserv|progid) combination per JVM.
     // We reuse the same JCoIDocServer object for repeated Listener creations with
@@ -128,7 +130,7 @@ public final class Listener {
                     serverRegistry.put(serverKey, server);
                 }
             } else {
-                throw new RuntimeException("Provided a empty advanced configuration for server");
+                return SAPErrorCreator.createConfigError("Provided an empty advanced configuration for server");
             }
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(NATIVE_REPO_DEST, repositoryDestination);
@@ -248,7 +250,7 @@ public final class Listener {
             }
 
             // Store runtime so detach() can refresh the throwable listener without a parameter change.
-            listenerBObject.addNativeData("nativeRuntime", runtime);
+            listenerBObject.addNativeData(NATIVE_RUNTIME, runtime);
             // Rebuild the throwable listener with all currently attached services so that
             // server-level errors reach every service's onError() handler.
             refreshThrowableListener(listenerBObject, server, runtime);
@@ -404,7 +406,7 @@ public final class Listener {
 
             // Refresh the throwable listener so it no longer dispatches to the detached service.
             JCoIDocServer server = (JCoIDocServer) listener.getNativeData(SAPConstants.JCO_SERVER);
-            Runtime runtime = (Runtime) listener.getNativeData("nativeRuntime");
+            Runtime runtime = (Runtime) listener.getNativeData(NATIVE_RUNTIME);
             if (server != null && runtime != null) {
                 refreshThrowableListener(listener, server, runtime);
             }

@@ -131,13 +131,17 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
         }
 
         // (3) Post-dispatch: write response. Framework fault — route to onError.
+        if (result instanceof BXml) {
+            BError err = SAPErrorCreator.createParameterError(
+                    "xml return type not supported for function '" + functionName + "'");
+            invokeOnError(err);
+            throw new AbapException("XML_NOT_SUPPORTED", "xml return type not supported");
+        }
         try {
             if (result instanceof BMap) {
                 @SuppressWarnings("unchecked")
                 BMap<BString, Object> responseRecord = (BMap<BString, Object>) result;
                 writeRfcResponse(function, responseRecord);
-            } else if (result instanceof BXml) {
-                writeXmlResponse(function, (BXml) result);
             }
             // null / nil return: leave export/table lists empty (valid for fire-and-forget RFCs)
         } catch (Throwable t) {
@@ -219,22 +223,6 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
         if (tableList != null && !arrayFields.isEmpty()) {
             ImportParameterProcessor.setTableParams(tableList, arrayFields);
         }
-    }
-
-    /**
-     * Writes an {@code xml} return value back to the JCo function object.
-     * <p>
-     * Mapping RFC XML to JCo parameter lists requires knowledge of the function's metadata
-     * (which element names are export parameters vs table rows). A full implementation will be
-     * added in a future update when the required JCo function template lookup is integrated.
-     * For now, this method logs a warning and leaves the parameter lists unchanged.
-     *
-     * @param function the JCo function object to write to
-     * @param xmlValue the Ballerina XML value returned by {@code onCall()}
-     */
-    private static void writeXmlResponse(JCoFunction function, BXml xmlValue) {
-        logger.warn("XML return from onCall() for function '{}' is not yet written back to JCo. "
-                + "Use RfcRecord return type for fully supported response mapping.", function.getName());
     }
 
     /**

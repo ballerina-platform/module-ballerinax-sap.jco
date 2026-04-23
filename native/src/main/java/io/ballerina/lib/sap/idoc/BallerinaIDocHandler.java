@@ -88,7 +88,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
                 BError err = (thr instanceof BError bErr)
                         ? SAPErrorCreator.createIDocError("IDoc rendering failed.", bErr)
                         : SAPErrorCreator.createIDocError("IDoc rendering failed.", thr);
-                invokeOnError(new Object[]{err});
+                invokeOnError(err);
                 return;
             }
 
@@ -133,9 +133,9 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
      * <p>
      * If the service does not declare an {@code onError} method the call is skipped.
      *
-     * @param args the arguments to pass (Ballerina {@code Error} value)
+     * @param error the Ballerina {@code Error} to dispatch
      */
-    public void invokeOnError(Object... args) {
+    public void invokeOnError(BError error) {
         MethodType onErrorFunction = null;
         MethodType[] resourceFunctions = ((ObjectType) TypeUtils.getImpliedType(service.getOriginalType()))
                 .getMethods();
@@ -148,8 +148,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
         }
 
         if (onErrorFunction == null) {
-            BError bError = (BError) args[0];
-            logger.error("No onError method found on service; dropping error", bError);
+            logger.error("No onError method found on service; dropping error", error);
             return;
         }
 
@@ -157,7 +156,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
         StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
         try {
-            Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata, args);
+            Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata, new Object[]{error});
             if (result instanceof BError onErrorResult) {
                 logger.error("onError handler returned an error", onErrorResult);
             }

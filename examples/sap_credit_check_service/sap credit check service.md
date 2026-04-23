@@ -4,7 +4,7 @@ In this example, we demonstrate how to expose a Ballerina service as an inbound 
 synchronously during business processing. The scenario involves a fictional company, "TechFlow Inc.", a manufacturer
 using SAP SD (Sales & Distribution). Before confirming a sales order, TechFlow's ABAP code calls an external RFC
 function module `Z_CHECK_CUSTOMER_CREDIT` to validate customer creditworthiness in real time. The Ballerina service
-implements that function module, queries an external credit bureau HTTP API, and returns the credit decision back to SAP
+implements that function module, queries an external credit bureau HTTP API, and returns the credit decision to SAP
 as RFC export parameters.
 
 **Step-by-Step Process:**
@@ -37,8 +37,17 @@ configure below. This is the destination your ABAP code uses when calling `Z_CHE
 
 Configure the SAP connection parameters and the credit bureau API endpoint in `Config.toml` in the example directory.
 
-`repositoryDestination` must match the destination ID passed to the `jco:Client`. The listener uses this client
-connection to look up RFC function module metadata from SAP:
+`repositoryDestination` is required and accepts two forms (see
+[ballerina/README.md](../../ballerina/README.md) for details):
+
+- **Destination ID string** — reference the `destinationId` of an existing `jco:Client` (shown
+  below). The listener reuses the client's connection to look up RFC function module metadata
+  from SAP.
+- **Inline `DestinationConfig`** — supply SAP credentials directly; no separate `jco:Client` is
+  required. Use `[sapConfig.repositoryDestination]` with `ashost`, `sysnr`, `jcoClient`,
+  `user`, and `passwd` fields.
+
+The example below uses the destination-ID form:
 
 ```toml
 creditBureauApiEndpoint = "https://api.creditbureau.example.com"

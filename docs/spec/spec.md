@@ -485,7 +485,7 @@ When an IDoc is received, it will be in XML format, and the user can easily map 
 The Listener can also receive inbound RFC calls from the SAP system using the `RfcService` type. SAP invokes this service as if it were a registered RFC function module.
 
 ```ballerina
-service jco:RfcService on rfcListener {
+service jco:RfcService on iDocListener {
     remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
         io:println("RFC called: ", functionName);
         return ();
