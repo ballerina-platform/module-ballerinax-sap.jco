@@ -29,6 +29,7 @@ import io.ballerina.lib.sap.idoc.BallerinaThrowableListener;
 import io.ballerina.lib.sap.idoc.BallerinaTidHandler;
 import io.ballerina.lib.sap.idoc.NoOpIDocHandlerFactory;
 import io.ballerina.lib.sap.rfc.BallerinaRfcHandlerFactory;
+import io.ballerina.lib.sap.rfc.NoOpRfcHandlerFactory;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.Runtime;
 import io.ballerina.runtime.api.types.MethodType;
@@ -52,6 +53,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * A single listener supports attaching at most one {@code IDocService} and one {@code RfcService}
  * simultaneously. Both share the same underlying {@link JCoIDocServer} instance.
+ * <p>
+ * JCo restricts each JVM to one server per {@code (gwhost, gwserv, progid)} triplet. All
+ * {@code Listener} objects with the same triplet share a single {@link ServerEntry} that holds
+ * the {@link JCoIDocServer} and all mutable attachment state. Modifications to attachment state
+ * are guarded by {@code synchronized(ServerEntry)} to prevent concurrent listeners from
+ * overwriting each other's handler factories or service references.
  */
 public final class Listener {
 
@@ -59,24 +66,42 @@ public final class Listener {
 
     // Native data key for the repository destination name stored at init time.
     static final String NATIVE_REPO_DEST = "nativeRepoDest";
-    // Native data keys for the service objects used by the throwable listener.
-    static final String NATIVE_IDOC_SERVICE = "nativeIDocService";
-    static final String NATIVE_RFC_SERVICE = "nativeRfcService";
-    // Native data key for the runtime object stored at attach time.
-    static final String NATIVE_RUNTIME = "nativeRuntime";
+    // Native data key for the server-registry lookup key stored at init time.
+    private static final String NATIVE_SERVER_KEY = "nativeServerKey";
+
+    /**
+     * Holds the shared state for all {@link Listener} instances that resolve to the same
+     * {@code (gwhost, gwserv, progid)} triplet. All mutable fields are guarded by
+     * {@code synchronized(this)}.
+     */
+    private static final class ServerEntry {
+        final JCoIDocServer server;
+        // Guarded by synchronized(this):
+        boolean isIDocServiceAttached = false;
+        boolean isRfcServiceAttached = false;
+        boolean isTidHandlerSet = false;
+        BObject idocService = null;
+        BObject rfcService = null;
+        BallerinaThrowableListener throwableListener = null;
+        Runtime runtime = null;
+
+        ServerEntry(JCoIDocServer server) {
+            this.server = server;
+        }
+    }
 
     // JCo allows only one server per (gwhost|gwserv|progid) combination per JVM.
     // We reuse the same JCoIDocServer object for repeated Listener creations with
     // the same connection configuration so that subsequent JCoIDoc.getServer() calls
     // with a new UUID name do not fail with "already used for a running server".
-    private static final Map<String, JCoIDocServer> serverRegistry = new ConcurrentHashMap<>();
+    private static final Map<String, ServerEntry> serverRegistry = new ConcurrentHashMap<>();
 
     /**
      * Initializes the JCo server from a flat string map of JCo properties.
      * <p>
      * JCo restricts each JVM to a single server per {@code (gwhost, gwserv, progid)} triplet.
      * To honour that constraint this method checks an in-process {@link #serverRegistry} and
-     * reuses an existing {@link JCoIDocServer} when one for the same triplet was already created.
+     * reuses an existing {@link ServerEntry} when one for the same triplet was already created.
      *
      * @param listenerBObject the Ballerina {@code Listener} object being initialized
      * @param serverConfig    a map holding JCo connection properties
@@ -115,8 +140,9 @@ public final class Listener {
                     }
                     SAPDestinationDataProvider.registerIfAbsent();
                 }
-                if (serverRegistry.containsKey(serverKey)) {
-                    server = serverRegistry.get(serverKey);
+                ServerEntry entry = serverRegistry.get(serverKey);
+                if (entry != null) {
+                    server = entry.server;
                 } else {
                     SAPServerDataProvider sp = SAPServerDataProvider.getInstance();
                     sp.addAdvancedServerConfig(advancedServerConfig, serverName.getValue());
@@ -124,19 +150,18 @@ public final class Listener {
                     server = JCoIDoc.getServer(serverName.getValue());
                     // JCoIDocServer requires an IDocHandlerFactory before start() is called,
                     // even when only an RfcService is attached. Install a no-op factory now;
-                    // Listener.attach() replaces it with BallerinaIDocHandlerFactory when an
-                    // IDocService is attached.
+                    // attach() replaces it with BallerinaIDocHandlerFactory when an IDocService
+                    // is attached.
                     server.setIDocHandlerFactory(new NoOpIDocHandlerFactory());
-                    serverRegistry.put(serverKey, server);
+                    entry = new ServerEntry(server);
+                    serverRegistry.put(serverKey, entry);
                 }
+                listenerBObject.addNativeData(NATIVE_SERVER_KEY, serverKey);
             } else {
                 return SAPErrorCreator.createConfigError("Provided an empty advanced configuration for server");
             }
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(NATIVE_REPO_DEST, repositoryDestination);
-            listenerBObject.addNativeData(SAPConstants.IS_IDOC_SERVICE_ATTACHED, false);
-            listenerBObject.addNativeData(SAPConstants.IS_RFC_SERVICE_ATTACHED, false);
-            listenerBObject.addNativeData(SAPConstants.IS_TID_HANDLER_SET, false);
             listenerBObject.addNativeData(SAPConstants.IS_STARTED, false);
             return null;
         } catch (JCoException e) {
@@ -151,11 +176,15 @@ public final class Listener {
     /**
      * Attaches a Ballerina service to the listener.
      * <p>
-     * At most one {@code IDocService} and one {@code RfcService} may be attached at a time.
-     * The service type is resolved from the Ballerina object type name. On the first
-     * {@code attach()} call the {@link BallerinaTidHandler} and a new
-     * {@link BallerinaThrowableListener} are registered on the server. Subsequent calls update
-     * the throwable listener with the newly added service.
+     * At most one {@code IDocService} and one {@code RfcService} may be attached at a time across
+     * all listeners that share the same {@link JCoIDocServer}. The service type is resolved from
+     * the Ballerina object type name. On the first {@code attach()} call the
+     * {@link BallerinaTidHandler} and a new {@link BallerinaThrowableListener} are registered on
+     * the server. Subsequent calls update the throwable listener with the newly added service.
+     * <p>
+     * Attachment state is guarded by {@code synchronized(ServerEntry)} so that two listeners
+     * initialised with the same {@code (gwhost, gwserv, progid)} cannot overwrite each other's
+     * handler factories or service references.
      * <p>
      * Attaching either service type requires {@code repositoryDestination} to be set in the
      * {@code ServerConfig}. The destination must already be registered — either by creating a
@@ -173,6 +202,8 @@ public final class Listener {
     public static Object attach(Environment environment, BObject listenerBObject, BObject service, Object name) {
         Runtime runtime = environment.getRuntime();
         JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
+        String serverKey = (String) listenerBObject.getNativeData(NATIVE_SERVER_KEY);
+        ServerEntry entry = serverRegistry.get(serverKey);
         ServiceType serviceType = (ServiceType) TypeUtils.getImpliedType(service.getOriginalType());
         boolean hasOnReceive = false;
         boolean hasOnCall = false;
@@ -189,71 +220,63 @@ public final class Listener {
                 return SAPErrorCreator.createConfigError(
                         "Ambiguous service type: service declares both 'onReceive' (IDocService) and 'onCall'"
                         + " (RfcService) methods. Implement either IDocService or RfcService, not both.");
-            } else if (hasOnReceive) {
-                boolean isAttached = (boolean) listenerBObject.getNativeData(
-                        SAPConstants.IS_IDOC_SERVICE_ATTACHED);
-                if (isAttached) {
-                    return SAPErrorCreator.createConfigError(
-                            "An IDocService is already attached to the listener.");
-                }
-                String repDestIdoc = (String) listenerBObject.getNativeData(NATIVE_REPO_DEST);
-                if (repDestIdoc == null || repDestIdoc.isEmpty()) {
-                    return SAPErrorCreator.createConfigError(
-                            "repositoryDestination is required in ServerConfig when attaching an IDocService.");
-                }
-                if (!SAPDestinationDataProvider.getInstance().hasDestination(repDestIdoc)) {
-                    return SAPErrorCreator.createConfigError(
-                            "The repositoryDestination '" + repDestIdoc + "' has not been registered. "
-                            + "Either create a Client with destinationId = \"" + repDestIdoc
-                            + "\", or use a DestinationConfig as repositoryDestination in ServerConfig.");
-                }
-                server.setIDocHandlerFactory(new BallerinaIDocHandlerFactory(service, runtime));
-                listenerBObject.addNativeData(NATIVE_IDOC_SERVICE, service);
-                listenerBObject.addNativeData(SAPConstants.IS_IDOC_SERVICE_ATTACHED, true);
-
-            } else if (hasOnCall) {
-                boolean isAttached = (boolean) listenerBObject.getNativeData(
-                        SAPConstants.IS_RFC_SERVICE_ATTACHED);
-                if (isAttached) {
-                    return SAPErrorCreator.createConfigError(
-                            "An RfcService is already attached to the listener.");
-                }
-                String repDest = (String) listenerBObject.getNativeData(NATIVE_REPO_DEST);
-                if (repDest == null || repDest.isEmpty()) {
-                    return SAPErrorCreator.createConfigError(
-                            "repositoryDestination is required in ServerConfig when attaching an RfcService.");
-                }
-                if (!SAPDestinationDataProvider.getInstance().hasDestination(repDest)) {
-                    return SAPErrorCreator.createConfigError(
-                            "The repositoryDestination '" + repDest + "' has not been registered. "
-                            + "Either create a Client with destinationId = \"" + repDest
-                            + "\", or use a DestinationConfig as repositoryDestination in ServerConfig.");
-                }
-                // JCoIDocServer extends JCoServer; JCoServerFunctionHandlerFactory extends
-                // JCoServerCallHandlerFactory, so setCallHandlerFactory() accepts it directly.
-                server.setCallHandlerFactory(new BallerinaRfcHandlerFactory(service, runtime));
-                listenerBObject.addNativeData(NATIVE_RFC_SERVICE, service);
-                listenerBObject.addNativeData(SAPConstants.IS_RFC_SERVICE_ATTACHED, true);
-
-            } else {
+            } else if (!hasOnReceive && !hasOnCall) {
                 return SAPErrorCreator.createConfigError(
                         "Unsupported service type: must declare either 'onReceive' (IDocService)"
                         + " or 'onCall' (RfcService) as a remote method.");
             }
-
-            // Register TID handler once on the first attach(); shared by both service types.
-            boolean isTidHandlerSet = (boolean) listenerBObject.getNativeData(
-                    SAPConstants.IS_TID_HANDLER_SET);
-            if (!isTidHandlerSet) {
-                server.setTIDHandler(new BallerinaTidHandler());
-                listenerBObject.addNativeData(SAPConstants.IS_TID_HANDLER_SET, true);
+            synchronized (entry) {
+                if (hasOnReceive) {
+                    if (entry.isIDocServiceAttached) {
+                        return SAPErrorCreator.createConfigError(
+                                "An IDocService is already attached to this server.");
+                    }
+                    String repDestIdoc = (String) listenerBObject.getNativeData(NATIVE_REPO_DEST);
+                    if (repDestIdoc == null || repDestIdoc.isEmpty()) {
+                        return SAPErrorCreator.createConfigError(
+                                "repositoryDestination is required in ServerConfig when attaching an IDocService.");
+                    }
+                    if (!SAPDestinationDataProvider.getInstance().hasDestination(repDestIdoc)) {
+                        return SAPErrorCreator.createConfigError(
+                                "The repositoryDestination '" + repDestIdoc + "' has not been registered. "
+                                + "Either create a Client with destinationId = \"" + repDestIdoc
+                                + "\", or use a DestinationConfig as repositoryDestination in ServerConfig.");
+                    }
+                    server.setIDocHandlerFactory(new BallerinaIDocHandlerFactory(service, runtime));
+                    entry.idocService = service;
+                    entry.isIDocServiceAttached = true;
+                } else {
+                    if (entry.isRfcServiceAttached) {
+                        return SAPErrorCreator.createConfigError(
+                                "An RfcService is already attached to this server.");
+                    }
+                    String repDest = (String) listenerBObject.getNativeData(NATIVE_REPO_DEST);
+                    if (repDest == null || repDest.isEmpty()) {
+                        return SAPErrorCreator.createConfigError(
+                                "repositoryDestination is required in ServerConfig when attaching an RfcService.");
+                    }
+                    if (!SAPDestinationDataProvider.getInstance().hasDestination(repDest)) {
+                        return SAPErrorCreator.createConfigError(
+                                "The repositoryDestination '" + repDest + "' has not been registered. "
+                                + "Either create a Client with destinationId = \"" + repDest
+                                + "\", or use a DestinationConfig as repositoryDestination in ServerConfig.");
+                    }
+                    // JCoIDocServer extends JCoServer; JCoServerFunctionHandlerFactory extends
+                    // JCoServerCallHandlerFactory, so setCallHandlerFactory() accepts it directly.
+                    server.setCallHandlerFactory(new BallerinaRfcHandlerFactory(service, runtime));
+                    entry.rfcService = service;
+                    entry.isRfcServiceAttached = true;
+                }
+                // Register TID handler once on the first attach(); shared by both service types.
+                if (!entry.isTidHandlerSet) {
+                    server.setTIDHandler(new BallerinaTidHandler());
+                    entry.isTidHandlerSet = true;
+                }
+                // Update the shared runtime and rebuild the throwable listener with all currently
+                // attached services so that server-level errors reach every service's onError() handler.
+                entry.runtime = runtime;
+                refreshThrowableListener(entry, server);
             }
-
-            // Store runtime so detach() can refresh the throwable listener without a parameter change.
-            listenerBObject.addNativeData(NATIVE_RUNTIME, runtime);
-            // Rebuild the throwable listener with all currently attached services so that
-            // server-level errors reach every service's onError() handler.
-            refreshThrowableListener(listenerBObject, server, runtime);
             return null;
         } catch (Throwable e) {
             logger.error("Server attach failed.");
@@ -373,11 +396,11 @@ public final class Listener {
 
     /**
      * Detaches a service from the listener by clearing the corresponding attachment flag and
-     * stored service reference.
+     * stored service reference in the shared {@link ServerEntry}.
      * <p>
      * The other service type, if attached, continues to operate. The server object is always
-     * retained on the listener so that services can be re-attached after a detach. Does not
-     * stop the underlying server.
+     * retained so that services can be re-attached after a detach. Does not stop the underlying
+     * server.
      *
      * @param listener the Ballerina {@code Listener} object
      * @param service  the Ballerina service object to detach
@@ -396,19 +419,29 @@ public final class Listener {
                     hasOnCall = true;
                 }
             }
-            if (hasOnReceive) {
-                listener.addNativeData(SAPConstants.IS_IDOC_SERVICE_ATTACHED, false);
-                listener.addNativeData(NATIVE_IDOC_SERVICE, null);
-            } else if (hasOnCall) {
-                listener.addNativeData(SAPConstants.IS_RFC_SERVICE_ATTACHED, false);
-                listener.addNativeData(NATIVE_RFC_SERVICE, null);
-            }
-
-            // Refresh the throwable listener so it no longer dispatches to the detached service.
+            String serverKey = (String) listener.getNativeData(NATIVE_SERVER_KEY);
+            ServerEntry entry = serverRegistry.get(serverKey);
             JCoIDocServer server = (JCoIDocServer) listener.getNativeData(SAPConstants.JCO_SERVER);
-            Runtime runtime = (Runtime) listener.getNativeData(NATIVE_RUNTIME);
-            if (server != null && runtime != null) {
-                refreshThrowableListener(listener, server, runtime);
+            if (entry != null && server != null) {
+                synchronized (entry) {
+                    if (hasOnReceive) {
+                        entry.isIDocServiceAttached = false;
+                        entry.idocService = null;
+                        // Reset to no-op so arriving IDocs are discarded rather than
+                        // dispatched to the now-detached service.
+                        server.setIDocHandlerFactory(new NoOpIDocHandlerFactory());
+                    } else if (hasOnCall) {
+                        entry.isRfcServiceAttached = false;
+                        entry.rfcService = null;
+                        // Reset to no-op so arriving RFC calls are discarded rather than
+                        // dispatched to the now-detached service.
+                        server.setCallHandlerFactory(new NoOpRfcHandlerFactory());
+                    }
+                    // Refresh the throwable listener so it no longer dispatches to the detached service.
+                    if (entry.runtime != null) {
+                        refreshThrowableListener(entry, server);
+                    }
+                }
             }
         } catch (Throwable e) {
             logger.error("Server detach failed.");
@@ -422,21 +455,18 @@ public final class Listener {
      * services and registers it on the JCo server so that server-level errors are dispatched to
      * every service's {@code onError()} handler.
      * <p>
-     * Called after each successful {@link #attach} so the listener always reflects the current
-     * set of attached services without accumulating stale listener registrations.
+     * <strong>Must be called while holding {@code synchronized(entry)}.</strong>
+     * Called after each successful {@link #attach} and {@link #detach} so the listener always
+     * reflects the current set of attached services without accumulating stale registrations.
      */
-    private static void refreshThrowableListener(BObject listenerBObject, JCoIDocServer server, Runtime runtime) {
-        BallerinaThrowableListener oldListener =
-                (BallerinaThrowableListener) listenerBObject.getNativeData(SAPConstants.THROWABLE_LISTENER);
-        if (oldListener != null) {
-            server.removeServerErrorListener(oldListener);
-            server.removeServerExceptionListener(oldListener);
+    private static void refreshThrowableListener(ServerEntry entry, JCoIDocServer server) {
+        if (entry.throwableListener != null) {
+            server.removeServerErrorListener(entry.throwableListener);
+            server.removeServerExceptionListener(entry.throwableListener);
         }
-        BObject idocService = (BObject) listenerBObject.getNativeData(NATIVE_IDOC_SERVICE);
-        BObject rfcService = (BObject) listenerBObject.getNativeData(NATIVE_RFC_SERVICE);
         BallerinaThrowableListener throwableListener = new BallerinaThrowableListener(
-                runtime, idocService, rfcService);
-        listenerBObject.addNativeData(SAPConstants.THROWABLE_LISTENER, throwableListener);
+                entry.runtime, entry.idocService, entry.rfcService);
+        entry.throwableListener = throwableListener;
         server.addServerErrorListener(throwableListener);
         server.addServerExceptionListener(throwableListener);
     }

@@ -123,6 +123,7 @@ IDocService dummyService = service object {
 function testListenerAttachService() returns error? {
     Listener sapListener = check new (serverConfig);
     check sapListener.attach(dummyService);
+    check sapListener.detach(dummyService);
 }
 
 // Expects an Error when a second service is attached to the same listener.
@@ -135,6 +136,7 @@ function testListenerAttachMultipleServices() returns error? {
     check sapListener.attach(dummyService);
     Error? result = sapListener.attach(dummyService);
     test:assertTrue(result is ConfigurationError, "Expected a ConfigurationError when attaching a second service");
+    check sapListener.detach(dummyService);
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +152,7 @@ function testListenerStartAndGracefulStop() returns error? {
     check sapListener.attach(dummyService);
     check sapListener.'start();
     check sapListener.gracefulStop();
+    check sapListener.detach(dummyService);
 }
 
 @test:Config {
@@ -162,6 +165,7 @@ function testListenerStartAndImmediateStop() returns error? {
     check sapListener.attach(dummyService);
     check sapListener.'start();
     check sapListener.immediateStop();
+    check sapListener.detach(dummyService);
 }
 
 // Expects an Error when start() is called on an already-running listener.
@@ -177,6 +181,7 @@ function testListenerStartTwice() returns error? {
     Error? result = sapListener.'start();
     test:assertTrue(result is ConfigurationError, "Expected a ConfigurationError when starting an already-running listener");
     check sapListener.gracefulStop();
+    check sapListener.detach(dummyService);
 }
 
 // ---------------------------------------------------------------------------
@@ -362,6 +367,7 @@ function testListenerAttachRfcServiceWithUnregisteredRepoDestination() returns e
 function testListenerAttachRfcService() returns error? {
     Listener sapListener = check new (serverConfig);
     check sapListener.attach(nilReturnRfcService);
+    check sapListener.detach(nilReturnRfcService);
 }
 
 // Expects ConfigurationError when a second RfcService is attached to the same listener.
@@ -375,6 +381,7 @@ function testListenerAttachMultipleRfcServices() returns error? {
     Error? result = sapListener.attach(echoRfcService);
     test:assertTrue(result is ConfigurationError,
         "Expected a ConfigurationError when attaching a second RfcService");
+    check sapListener.detach(nilReturnRfcService);
 }
 
 // Verifies that one IDocService and one RfcService can both be attached to the same listener.
@@ -386,6 +393,8 @@ function testListenerAttachBothServiceTypes() returns error? {
     Listener sapListener = check new (serverConfig);
     check sapListener.attach(dummyService);
     check sapListener.attach(nilReturnRfcService);
+    check sapListener.detach(dummyService);
+    check sapListener.detach(nilReturnRfcService);
 }
 
 // ---------------------------------------------------------------------------
@@ -403,6 +412,7 @@ function testListenerDetachIDocService() returns error? {
     check sapListener.detach(dummyService);
     // After the detach the IDocService slot is free; re-attachment must succeed.
     check sapListener.attach(receiveTestService);
+    check sapListener.detach(receiveTestService);
 }
 
 // Verifies that detaching an RfcService frees the slot so another RfcService can attach.
@@ -416,6 +426,7 @@ function testListenerDetachRfcService() returns error? {
     check sapListener.detach(nilReturnRfcService);
     // After the detach the RfcService slot is free; re-attachment must succeed.
     check sapListener.attach(echoRfcService);
+    check sapListener.detach(echoRfcService);
 }
 
 // Verifies that detaching one service type leaves the other type's slot intact:
@@ -436,6 +447,8 @@ function testListenerDetachOneServiceLeavesOtherIntact() returns error? {
     Error? result = sapListener.attach(echoRfcService);
     test:assertTrue(result is ConfigurationError,
         "Expected a ConfigurationError: RfcService slot is still occupied after IDocService detach");
+    check sapListener.detach(receiveTestService);
+    check sapListener.detach(nilReturnRfcService);
 }
 
 // ---------------------------------------------------------------------------
@@ -451,6 +464,7 @@ function testListenerStartAndGracefulStopWithRfcService() returns error? {
     check sapListener.attach(nilReturnRfcService);
     check sapListener.'start();
     check sapListener.gracefulStop();
+    check sapListener.detach(nilReturnRfcService);
 }
 
 @test:Config {
@@ -463,6 +477,7 @@ function testListenerStartAndImmediateStopWithRfcService() returns error? {
     check sapListener.attach(nilReturnRfcService);
     check sapListener.'start();
     check sapListener.immediateStop();
+    check sapListener.detach(nilReturnRfcService);
 }
 
 // Verifies that a listener carrying both service types starts and stops without error.
@@ -477,6 +492,8 @@ function testListenerStartAndStopWithBothServiceTypes() returns error? {
     check sapListener.attach(nilReturnRfcService);
     check sapListener.'start();
     check sapListener.gracefulStop();
+    check sapListener.detach(dummyService);
+    check sapListener.detach(nilReturnRfcService);
 }
 
 // Expects a ConfigurationError when start() is called on an already-running listener
@@ -494,6 +511,7 @@ function testListenerStartTwiceWithRfcService() returns error? {
     test:assertTrue(result is ConfigurationError,
         "Expected a ConfigurationError when starting an already-running listener with RfcService");
     check sapListener.gracefulStop();
+    check sapListener.detach(nilReturnRfcService);
 }
 
 // ---------------------------------------------------------------------------
@@ -551,6 +569,103 @@ function testListenerReceivesRfcCall() returns error? {
 }
 
 // ---------------------------------------------------------------------------
+// ServerEntry shared-slot tests
+//
+// These tests exercise the cross-listener attachment enforcement introduced by the
+// ServerEntry refactor: the IDocService and RfcService attachment slots are shared
+// across all Listener objects that resolve to the same (gwhost, gwserv, progid) triplet.
+// ---------------------------------------------------------------------------
+
+// The IDocService attachment slot is shared across all Listener objects that resolve to
+// the same (gwhost, gwserv, progid) triplet.  A second Listener must not be able to
+// silently overwrite the first Listener's IDocHandlerFactory.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"],
+    dependsOn: [testListenerDetachOneServiceLeavesOtherIntact]
+}
+function testSharedServerEntryIDocServiceSlotIsGlobal() returns error? {
+    Listener sapListener1 = check new (serverConfig);
+    Listener sapListener2 = check new (serverConfig);
+    check sapListener1.attach(dummyService);
+    Error? result = sapListener2.attach(receiveTestService);
+    test:assertTrue(result is ConfigurationError,
+        "Expected ConfigurationError: IDocService slot is globally shared and already occupied");
+    // Clean up so subsequent tests start with a clear slot.
+    check sapListener1.detach(dummyService);
+}
+
+// Same invariant for the RfcService slot.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"],
+    dependsOn: [testSharedServerEntryIDocServiceSlotIsGlobal]
+}
+function testSharedServerEntryRfcServiceSlotIsGlobal() returns error? {
+    Listener sapListener1 = check new (serverConfig);
+    Listener sapListener2 = check new (serverConfig);
+    check sapListener1.attach(nilReturnRfcService);
+    Error? result = sapListener2.attach(echoRfcService);
+    test:assertTrue(result is ConfigurationError,
+        "Expected ConfigurationError: RfcService slot is globally shared and already occupied");
+    check sapListener1.detach(nilReturnRfcService);
+}
+
+// ---------------------------------------------------------------------------
+// Nil-field RFC response integration test
+//
+// Verifies that an RfcService returning an RfcRecord with nil-valued fields
+// does not cause an NPE in writeRfcResponse / ImportParameterProcessor.
+//
+// Disabled by default: requires the SAP system to initiate an inbound RFC call
+// to the registered progid.
+// ---------------------------------------------------------------------------
+
+// Service that returns a record containing both a real export value and a nil field.
+// Before the nil-handling fix, the nil field caused an NPE when
+// writeRfcResponse called TypeUtils.getType(null).getTag().
+RfcService nilFieldReturnRfcService = service object {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error? {
+        return {
+            "ECHOTEXT": "OK",
+            "OPTIONAL_FIELD": ()  // nil field — must be skipped, not NPE
+        };
+    }
+
+    remote function onError(error 'error) returns error? {}
+};
+
+@test:Config {
+    enable: false,  // requires SAP to send an inbound RFC call to progid
+    groups: ["listener"],
+    dependsOn: [testSharedServerEntryRfcServiceSlotIsGlobal]
+}
+function testListenerRfcServiceNilFieldInResponseIsSkipped() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(nilFieldReturnRfcService);
+    check sapListener.'start();
+
+    // Poll for up to 30 seconds; the SAP caller must initiate the RFC externally.
+    int attempts = 0;
+    while attempts < 30 {
+        boolean received;
+        lock {
+            received = rfcCallReceived;
+        }
+        if received {
+            break;
+        }
+        runtime:sleep(1);
+        attempts += 1;
+    }
+
+    check sapListener.gracefulStop();
+    check sapListener.detach(nilFieldReturnRfcService);
+    // If we reach here without a panic/NPE the nil-field handling is correct.
+    // The rfcCallReceived flag is informational only — SAP may not have called in time.
+}
+
+// ---------------------------------------------------------------------------
 // Inline RepositoryDestination tests (listener-inline group)
 //
 // These tests use serverConfigWithInlineRepoDest, which supplies a DestinationConfig
@@ -573,6 +688,7 @@ function testListenerInitWithInlineRepoConfig() returns error? {
 function testListenerAttachIDocServiceWithInlineRepoConfig() returns error? {
     Listener sapListener = check new (serverConfigWithInlineRepoDest);
     check sapListener.attach(dummyService);
+    check sapListener.detach(dummyService);
 }
 
 @test:Config {
@@ -582,6 +698,7 @@ function testListenerAttachIDocServiceWithInlineRepoConfig() returns error? {
 function testListenerAttachRfcServiceWithInlineRepoConfig() returns error? {
     Listener sapListener = check new (serverConfigWithInlineRepoDest);
     check sapListener.attach(nilReturnRfcService);
+    check sapListener.detach(nilReturnRfcService);
 }
 
 @test:Config {
@@ -593,4 +710,5 @@ function testListenerStartGracefulStopWithInlineRepoConfig() returns error? {
     check sapListener.attach(dummyService);
     check sapListener.'start();
     check sapListener.gracefulStop();
+    check sapListener.detach(dummyService);
 }

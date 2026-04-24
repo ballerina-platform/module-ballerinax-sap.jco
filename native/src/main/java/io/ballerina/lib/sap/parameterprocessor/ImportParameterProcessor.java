@@ -62,8 +62,13 @@ public class ImportParameterProcessor {
         inputParams.entrySet().forEach(entry -> {
             Object value = entry.getValue();
             String key = entry.getKey().toString();
+            if (value == null) {
+                return; // nil field — leave JCo parameter at its SAP-default/initial value
+            }
             int type = TypeUtils.getType(value).getTag();
             switch (type) {
+                case TypeTags.NULL_TAG:
+                    return; // typed nil — same treatment as Java null
                 case TypeTags.STRING_TAG:
                     jcoParamList.setValue(key, value.toString());
                     break;
@@ -122,9 +127,13 @@ public class ImportParameterProcessor {
     @SuppressWarnings("unchecked")
     public static void setTableParams(JCoParameterList tableParamList, BMap<BString, Object> tableParameters) {
         tableParameters.entrySet().forEach(entry -> {
+            Object value = entry.getValue();
+            if (value == null) {
+                return; // nil table parameter — skip; leave JCo table empty
+            }
             String tableName = entry.getKey().toString();
             JCoTable table = tableParamList.getTable(tableName);
-            createTable(table, (BArray) entry.getValue());
+            createTable(table, (BArray) value);
         });
     }
 
@@ -136,8 +145,13 @@ public class ImportParameterProcessor {
             value.entrySet().forEach(entry -> {
                 Object fieldValue = entry.getValue();
                 String fieldName = entry.getKey().toString();
+                if (fieldValue == null) {
+                    return; // nil field — leave table row field at its SAP-default/initial value
+                }
                 int type = TypeUtils.getType(fieldValue).getTag();
                 switch (type) {
+                    case TypeTags.NULL_TAG:
+                        return; // typed nil — same treatment as Java null
                     case TypeTags.STRING_TAG:
                         table.setValue(fieldName, fieldValue.toString());
                         break;
@@ -191,8 +205,13 @@ public class ImportParameterProcessor {
         inputParams.entrySet().forEach(entry -> {
             Object value = entry.getValue();
             String key = entry.getKey().toString();
+            if (value == null) {
+                return; // nil field — leave structure field at its SAP-default/initial value
+            }
             int type = TypeUtils.getType(value).getTag();
             switch (type) {
+                case TypeTags.NULL_TAG:
+                    return; // typed nil — same treatment as Java null
                 case TypeTags.STRING_TAG:
                     structure.setValue(key, value.toString());
                     break;

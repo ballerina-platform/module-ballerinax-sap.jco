@@ -425,3 +425,24 @@ function testExecuteRequiredFieldAbsentFromSapReturnsParameterError() returns er
     test:assertTrue(result is ParameterError,
             "Expected ParameterError when a required declared field is not present in the SAP response");
 }
+
+// --- Nil import parameter ---
+//
+// Verifies that a nil (()) value in importParameters is silently skipped rather than
+// causing an NPE in ImportParameterProcessor.setImportParams. The nil field is omitted
+// from the JCo parameter list and SAP receives the SAP-default/initial value for that
+// parameter instead.
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteWithNilImportParameterIsSkipped() returns error? {
+    Client sapClient = check new (destinationConfig);
+    string? nilValue = ();
+    // REQUTEXT is nil — the processor must skip it rather than calling TypeUtils.getType(null).
+    // STFC_CONNECTION returns an empty ECHOTEXT when REQUTEXT is absent/initial.
+    StfcConnectionOutput result = check sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": nilValue}});
+    test:assertEquals(result.ECHOTEXT, "", "ECHOTEXT should be empty when REQUTEXT is nil/skipped");
+}

@@ -210,7 +210,14 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
 
         for (Map.Entry<BString, Object> entry : responseRecord.entrySet()) {
             Object value = entry.getValue();
-            if (TypeUtils.getType(value).getTag() == TypeTags.ARRAY_TAG) {
+            if (value == null) {
+                continue; // nil field — leave the JCo export parameter at its default
+            }
+            int tag = TypeUtils.getType(value).getTag();
+            if (tag == TypeTags.NULL_TAG) {
+                continue; // typed nil — same treatment as Java null
+            }
+            if (tag == TypeTags.ARRAY_TAG) {
                 arrayFields.put(entry.getKey(), value);
             } else {
                 scalarFields.put(entry.getKey(), value);
