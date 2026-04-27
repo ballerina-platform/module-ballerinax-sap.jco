@@ -19,11 +19,9 @@
 package io.ballerina.lib.sap.rfc;
 
 import com.sap.conn.jco.JCoFunction;
-import com.sap.conn.jco.server.JCoServer;
 import com.sap.conn.jco.server.JCoServerContext;
 import com.sap.conn.jco.server.JCoServerFunctionHandler;
 import com.sap.conn.jco.server.JCoServerFunctionHandlerFactory;
-import com.sap.conn.jco.server.JCoServerState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,9 +54,5 @@ public class NoOpRfcHandlerFactory implements JCoServerFunctionHandlerFactory {
     @Override
     public void sessionClosed(JCoServerContext serverCtx, String tid, boolean isCommit) {
         // No session state to clean up.
-    }
-
-    public void serverStateChanged(JCoServer jCoServer, JCoServerState oldState, JCoServerState newState) {
-        // No state-change handling required.
     }
 }

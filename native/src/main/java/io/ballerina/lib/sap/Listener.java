@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -77,6 +78,7 @@ public final class Listener {
     private static final class ServerEntry {
         final JCoIDocServer server;
         // Guarded by synchronized(this):
+        boolean isStarted = false;
         boolean isIDocServiceAttached = false;
         boolean isRfcServiceAttached = false;
         boolean isTidHandlerSet = false;
@@ -84,9 +86,11 @@ public final class Listener {
         BObject rfcService = null;
         BallerinaThrowableListener throwableListener = null;
         Runtime runtime = null;
+        final String repoDest;
 
-        ServerEntry(JCoIDocServer server) {
+        ServerEntry(JCoIDocServer server, String repoDest) {
             this.server = server;
+            this.repoDest = repoDest;
         }
     }
 
@@ -142,6 +146,13 @@ public final class Listener {
                 }
                 ServerEntry entry = serverRegistry.get(serverKey);
                 if (entry != null) {
+                    if (!Objects.equals(entry.repoDest, repositoryDestination)) {
+                        return SAPErrorCreator.createConfigError(
+                                "Server configuration mismatch: repositoryDestination '"
+                                + repositoryDestination + "' does not match the existing server's "
+                                + "repositoryDestination '" + entry.repoDest + "' for ("
+                                + gwhost + ", " + gwserv + ", " + progid + ").");
+                    }
                     server = entry.server;
                 } else {
                     SAPServerDataProvider sp = SAPServerDataProvider.getInstance();
@@ -153,7 +164,7 @@ public final class Listener {
                     // attach() replaces it with BallerinaIDocHandlerFactory when an IDocService
                     // is attached.
                     server.setIDocHandlerFactory(new NoOpIDocHandlerFactory());
-                    entry = new ServerEntry(server);
+                    entry = new ServerEntry(server, repositoryDestination);
                     serverRegistry.put(serverKey, entry);
                 }
                 listenerBObject.addNativeData(NATIVE_SERVER_KEY, serverKey);
@@ -162,7 +173,6 @@ public final class Listener {
             }
             listenerBObject.addNativeData(SAPConstants.JCO_SERVER, server);
             listenerBObject.addNativeData(NATIVE_REPO_DEST, repositoryDestination);
-            listenerBObject.addNativeData(SAPConstants.IS_STARTED, false);
             return null;
         } catch (JCoException e) {
             logger.error("Destination lookup failed.");
@@ -236,6 +246,11 @@ public final class Listener {
                         return SAPErrorCreator.createConfigError(
                                 "repositoryDestination is required in ServerConfig when attaching an IDocService.");
                     }
+                    if (!Objects.equals(repDestIdoc, entry.repoDest)) {
+                        return SAPErrorCreator.createConfigError(
+                                "repositoryDestination mismatch: listener has '" + repDestIdoc
+                                + "' but the shared server was configured with '" + entry.repoDest + "'.");
+                    }
                     if (!SAPDestinationDataProvider.getInstance().hasDestination(repDestIdoc)) {
                         return SAPErrorCreator.createConfigError(
                                 "The repositoryDestination '" + repDestIdoc + "' has not been registered. "
@@ -254,6 +269,11 @@ public final class Listener {
                     if (repDest == null || repDest.isEmpty()) {
                         return SAPErrorCreator.createConfigError(
                                 "repositoryDestination is required in ServerConfig when attaching an RfcService.");
+                    }
+                    if (!Objects.equals(repDest, entry.repoDest)) {
+                        return SAPErrorCreator.createConfigError(
+                                "repositoryDestination mismatch: listener has '" + repDest
+                                + "' but the shared server was configured with '" + entry.repoDest + "'.");
                     }
                     if (!SAPDestinationDataProvider.getInstance().hasDestination(repDest)) {
                         return SAPErrorCreator.createConfigError(
@@ -312,20 +332,25 @@ public final class Listener {
      *         initialised or is already running
      */
     public static Object start(BObject client) {
-        JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
-        if (server == null) {
+        String serverKey = (String) client.getNativeData(NATIVE_SERVER_KEY);
+        if (serverKey == null) {
             return SAPErrorCreator.createConfigError("Server start failed: listener is not initialized.");
         }
-        boolean isStarted = (boolean) client.getNativeData(SAPConstants.IS_STARTED);
-        if (isStarted) {
-            return SAPErrorCreator.createConfigError("Server start failed: listener is already started.");
+        ServerEntry entry = serverRegistry.get(serverKey);
+        if (entry == null) {
+            return SAPErrorCreator.createConfigError("Server start failed: listener is not initialized.");
         }
-        try {
-            server.start();
-            client.addNativeData(SAPConstants.IS_STARTED, true);
-        } catch (Throwable e) {
-            logger.error("Server start failed.");
-            return SAPErrorCreator.createConfigError("Server start failed. " + e.getMessage(), e);
+        synchronized (entry) {
+            if (entry.isStarted) {
+                return SAPErrorCreator.createConfigError("Server start failed: listener is already started.");
+            }
+            try {
+                entry.server.start();
+                entry.isStarted = true;
+            } catch (Throwable e) {
+                logger.error("Server start failed.");
+                return SAPErrorCreator.createConfigError("Server start failed. " + e.getMessage(), e);
+            }
         }
         return null;
     }
@@ -362,10 +387,20 @@ public final class Listener {
      * @return {@code null} on success, or a Ballerina {@code Error} if the stop fails
      */
     private static Object stopServer(BObject client) {
-        JCoIDocServer server = (JCoIDocServer) client.getNativeData(SAPConstants.JCO_SERVER);
-        if (server == null || !(boolean) client.getNativeData(SAPConstants.IS_STARTED)) {
+        String serverKey = (String) client.getNativeData(NATIVE_SERVER_KEY);
+        if (serverKey == null) {
             return null;
         }
+        ServerEntry entry = serverRegistry.get(serverKey);
+        if (entry == null) {
+            return null;
+        }
+        synchronized (entry) {
+            if (!entry.isStarted) {
+                return null;
+            }
+        }
+        JCoIDocServer server = entry.server;
         try {
             server.stop();
         } catch (Throwable e) {
@@ -390,7 +425,9 @@ public final class Listener {
             return SAPErrorCreator.createConfigError(
                     "Server stop timed out: the server is still in STOPPING state after 15 seconds.");
         }
-        client.addNativeData(SAPConstants.IS_STARTED, false);
+        synchronized (entry) {
+            entry.isStarted = false;
+        }
         return null;
     }
 
@@ -425,12 +462,22 @@ public final class Listener {
             if (entry != null && server != null) {
                 synchronized (entry) {
                     if (hasOnReceive) {
+                        if (entry.idocService != service) {
+                            return SAPErrorCreator.createConfigError(
+                                    "Cannot detach IDocService: the provided service is not the currently"
+                                    + " attached instance.");
+                        }
                         entry.isIDocServiceAttached = false;
                         entry.idocService = null;
                         // Reset to no-op so arriving IDocs are discarded rather than
                         // dispatched to the now-detached service.
                         server.setIDocHandlerFactory(new NoOpIDocHandlerFactory());
                     } else if (hasOnCall) {
+                        if (entry.rfcService != service) {
+                            return SAPErrorCreator.createConfigError(
+                                    "Cannot detach RfcService: the provided service is not the currently"
+                                    + " attached instance.");
+                        }
                         entry.isRfcServiceAttached = false;
                         entry.rfcService = null;
                         // Reset to no-op so arriving RFC calls are discarded rather than

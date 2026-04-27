@@ -46,7 +46,11 @@ public type RfcService distinct service object {
     # + parameters - Import and table parameters sent by the SAP caller
     # + return - The RFC response to send back to SAP, or an error. An empty response is
     #            valid for fire-and-forget RFCs. An error response causes an ABAP exception
-    #            to be raised back to the SAP caller.
+    #            to be raised back to the SAP caller. When returning XML, the root element
+    #            is ignored; each direct child element whose name matches a SAP export parameter
+    #            is written as a string value (JCo coerces to the target type). Table parameters
+    #            must be wrapped in a parent element with `<row>` children containing the row
+    #            fields: `<TABLE_NAME><row><FIELD>value</FIELD></row></TABLE_NAME>`.
     remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error?;
 
     # Invoked when a framework-level error occurs while the listener is handling a request.

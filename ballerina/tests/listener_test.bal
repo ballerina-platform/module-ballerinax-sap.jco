@@ -280,26 +280,26 @@ isolated string receivedFunctionName = "";
 
 // A minimal RfcService that returns nil for all calls (models fire-and-forget RFCs).
 RfcService nilReturnRfcService = service object {
-    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error? {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|error? {
         return ();
     }
 
-    remote function onError(error 'error) returns error? {}
+    remote function onError(error err) returns error? {}
 };
 
 // An RfcService that echoes back the import parameters as the export response.
 RfcService echoRfcService = service object {
-    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error? {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|error? {
         RfcRecord result = parameters.importParameters ?: {};
         return result;
     }
 
-    remote function onError(error 'error) returns error? {}
+    remote function onError(error err) returns error? {}
 };
 
 // An RfcService that captures call metadata for the integration test.
 RfcService captureRfcService = service object {
-    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error? {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|error? {
         lock {
             rfcCallReceived = true;
         }
@@ -309,7 +309,24 @@ RfcService captureRfcService = service object {
         return ();
     }
 
-    remote function onError(error 'error) returns error? {}
+    remote function onError(error err) returns error? {}
+};
+
+// An RfcService that returns xml. The root element is ignored; each direct child whose name
+// matches a SAP export parameter is written as a string (JCo coerces to the target type).
+// Table parameters must wrap rows in <row> child elements.
+RfcService xmlReturnRfcService = service object {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error? {
+        lock {
+            rfcCallReceived = true;
+        }
+        return xml `<response>
+            <ECHOTEXT>XML_RESPONSE</ECHOTEXT>
+            <RFCTABLE><row><RFCCHAR1>X</RFCCHAR1><RFCINT1>1</RFCINT1></row></RFCTABLE>
+        </response>`;
+    }
+
+    remote function onError(error err) returns error? {}
 };
 
 // ---------------------------------------------------------------------------
@@ -368,6 +385,19 @@ function testListenerAttachRfcService() returns error? {
     Listener sapListener = check new (serverConfig);
     check sapListener.attach(nilReturnRfcService);
     check sapListener.detach(nilReturnRfcService);
+}
+
+// Verifies that an RfcService returning xml attaches and detaches without error.
+// The xml return path through handleRequest is exercised by the integration test
+// testListenerRfcServiceXmlResponse below.
+@test:Config {
+    enable: listenerTestsEnabled,
+    groups: ["listener"]
+}
+function testListenerAttachXmlReturnRfcService() returns error? {
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(xmlReturnRfcService);
+    check sapListener.detach(xmlReturnRfcService);
 }
 
 // Expects ConfigurationError when a second RfcService is attached to the same listener.
@@ -625,14 +655,14 @@ function testSharedServerEntryRfcServiceSlotIsGlobal() returns error? {
 // Before the nil-handling fix, the nil field caused an NPE when
 // writeRfcResponse called TypeUtils.getType(null).getTag().
 RfcService nilFieldReturnRfcService = service object {
-    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|xml|error? {
+    remote function onCall(string functionName, RfcParameters parameters) returns RfcRecord|error? {
         return {
             "ECHOTEXT": "OK",
             "OPTIONAL_FIELD": ()  // nil field — must be skipped, not NPE
         };
     }
 
-    remote function onError(error 'error) returns error? {}
+    remote function onError(error err) returns error? {}
 };
 
 @test:Config {
@@ -663,6 +693,59 @@ function testListenerRfcServiceNilFieldInResponseIsSkipped() returns error? {
     check sapListener.detach(nilFieldReturnRfcService);
     // If we reach here without a panic/NPE the nil-field handling is correct.
     // The rfcCallReceived flag is informational only — SAP may not have called in time.
+}
+
+// ---------------------------------------------------------------------------
+// XML response integration test
+//
+// Verifies that writeXmlResponse correctly maps the xml returned by onCall back
+// to the JCo export and table parameter lists. The xml document's direct children
+// are mapped by element name: text-only → export scalar, <row>-only children →
+// table parameter. JCo coerces the string values to the target SAP types.
+//
+// Disabled by default: requires SAP to initiate an inbound RFC call to progid.
+// ---------------------------------------------------------------------------
+@test:Config {
+    enable: false,  // requires SAP to send an inbound RFC call to progid
+    groups: ["listener"],
+    dependsOn: [testListenerRfcServiceNilFieldInResponseIsSkipped]
+}
+function testListenerRfcServiceXmlResponse() returns error? {
+    lock {
+        rfcCallReceived = false;
+    }
+
+    Listener sapListener = check new (serverConfig);
+    check sapListener.attach(xmlReturnRfcService);
+    check sapListener.'start();
+
+    // Poll for up to 30 seconds; the SAP caller must initiate the RFC externally.
+    // The service returns:
+    //   <response>
+    //     <ECHOTEXT>XML_RESPONSE</ECHOTEXT>
+    //     <RFCTABLE><row><RFCCHAR1>X</RFCCHAR1><RFCINT1>1</RFCINT1></row></RFCTABLE>
+    //   </response>
+    // JCo writes ECHOTEXT to the export list and RFCTABLE to the table list.
+    int attempts = 0;
+    while attempts < 30 {
+        boolean received;
+        lock {
+            received = rfcCallReceived;
+        }
+        if received {
+            break;
+        }
+        runtime:sleep(1);
+        attempts += 1;
+    }
+
+    check sapListener.gracefulStop();
+    check sapListener.detach(xmlReturnRfcService);
+    // Reaching here without an AbapException means writeXmlResponse did not throw.
+    // Verify the flag was set so we know the call actually arrived.
+    lock {
+        test:assertTrue(rfcCallReceived, "Listener did not receive an RFC call within 30 seconds");
+    }
 }
 
 // ---------------------------------------------------------------------------

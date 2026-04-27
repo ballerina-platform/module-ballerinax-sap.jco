@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `JCoErrorDetail` and `AbapApplicationErrorDetail` record types that are carried as error detail by JCo-origin errors.
 - Added `IDocService` distinct service type for receiving IDocs from the SAP system. Replaces the previous `Service` type.
 - Added `RfcService` distinct service type for handling inbound RFC calls from the SAP system. Exposes `onCall(string functionName, RfcParameters parameters)` and `onError(error err)` remote functions. The return value of `onCall` is serialized and sent back to the SAP caller.
+- Added `xml` as a supported return type for `RfcService.onCall`. The root element is ignored; each direct child element whose name matches a SAP export parameter is written as a string (JCo coerces to the target type). Table parameters must wrap rows in `<row>` child elements: `<TABLE_NAME><row><FIELD>value</FIELD></row></TABLE_NAME>`.
 - Updated `Listener.attach` and `Listener.detach` to accept `IDocService|RfcService`. At most one `IDocService` and one `RfcService` may be attached simultaneously to the same listener.
 - Gateway connectivity errors (unreachable gateway, JCo internal failures) are now dispatched to the attached service's `onError` handler as `ExecutionError`. JCo retries automatically; no listener restart is needed.
 - Added integration tests covering client initialisation, RFC execution, IDoc send, and listener scenarios (IDoc and RFC service types).

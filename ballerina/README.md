@@ -224,11 +224,32 @@ service jco:IDocService on iDocListener {
 
 #### Initialize a listener for inbound RFC calls
 
+Return an `RfcRecord` map to send typed export parameters back to the SAP caller:
+
 ```ballerina
 service jco:RfcService on rfcListener {
     remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
         io:println("RFC called: ", functionName);
-        return ();
+        return {"ECHOTEXT": "Hello from Ballerina"};
+    }
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
+    }
+}
+```
+
+Alternatively, return `xml` when the response structure is more convenient to build as a document. The root element is ignored; each direct child is mapped to a SAP export or table parameter by element name. JCo coerces the string values to the target SAP type. Table parameters must wrap rows in `<row>` child elements:
+
+```ballerina
+service jco:RfcService on rfcListener {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
+        return xml `<response>
+            <ECHOTEXT>Hello from Ballerina</ECHOTEXT>
+            <RFCTABLE>
+                <row><RFCCHAR1>A</RFCCHAR1><RFCINT1>1</RFCINT1></row>
+                <row><RFCCHAR1>B</RFCCHAR1><RFCINT1>2</RFCINT1></row>
+            </RFCTABLE>
+        </response>`;
     }
     remote function onError(error err) returns error? {
         io:println("Error occurred: ", err.message());

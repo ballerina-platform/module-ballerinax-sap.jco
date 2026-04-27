@@ -21,6 +21,8 @@ package io.ballerina.lib.sap.rfc;
 import com.sap.conn.jco.AbapException;
 import com.sap.conn.jco.JCoFunction;
 import com.sap.conn.jco.JCoParameterList;
+import com.sap.conn.jco.JCoStructure;
+import com.sap.conn.jco.JCoTable;
 import com.sap.conn.jco.server.JCoServerContext;
 import com.sap.conn.jco.server.JCoServerFunctionHandler;
 import io.ballerina.lib.sap.ModuleUtils;
@@ -46,9 +48,20 @@ import io.ballerina.runtime.api.values.BString;
 import io.ballerina.runtime.api.values.BXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 
+import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 /**
  * JCo function handler that bridges inbound SAP RFC calls to the Ballerina {@code RfcService}
@@ -131,25 +144,21 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
         }
 
         // (3) Post-dispatch: write response. Framework fault — route to onError.
-        if (result instanceof BXml) {
-            BError err = SAPErrorCreator.createParameterError(
-                    "xml return type not supported for function '" + functionName + "'");
-            invokeOnError(err);
-            throw new AbapException("XML_NOT_SUPPORTED", "xml return type not supported");
-        }
         try {
             if (result instanceof BMap) {
                 @SuppressWarnings("unchecked")
                 BMap<BString, Object> responseRecord = (BMap<BString, Object>) result;
                 writeRfcResponse(function, responseRecord);
+            } else if (result instanceof BXml bXml) {
+                writeXmlResponse(function, bXml);
             }
             // null / nil return: leave export/table lists empty (valid for fire-and-forget RFCs)
         } catch (Throwable t) {
+            String causeMsg = t.getMessage() != null ? t.getMessage() : t.getClass().getName();
             BError err = SAPErrorCreator.createParameterError(
-                    "Failed to write RFC response for function '" + functionName + "': " + t.getMessage());
+                    "Failed to write RFC response for function '" + functionName + "': " + causeMsg);
             invokeOnError(err);
-            throw new AbapException("BALLERINA_PARAMETER_ERROR",
-                    t.getMessage() == null ? "response write failed" : t.getMessage());
+            throw new AbapException("BALLERINA_PARAMETER_ERROR", causeMsg);
         }
     }
 
@@ -230,6 +239,80 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
         if (tableList != null && !arrayFields.isEmpty()) {
             ImportParameterProcessor.setTableParams(tableList, arrayFields);
         }
+    }
+
+    /**
+     * Writes an {@code xml} return value back to the JCo function object.
+     * <p>
+     * The root element is ignored. Each direct child is mapped to a JCo parameter by element name:
+     * <ul>
+     *   <li>Text-only element → export parameter (JCo coerces the string to the target SAP type).</li>
+     *   <li>Element whose direct children are all {@code <row>} elements → table parameter; each
+     *       {@code <row>} appends one row and its child elements become field values.</li>
+     *   <li>Element with mixed-name children → structure export parameter; child element names
+     *       are field names (string coercion applies).</li>
+     * </ul>
+     *
+     * @param function the JCo function object to write to
+     * @param xmlValue the Ballerina XML value returned by {@code onCall()}
+     * @throws Exception if the XML cannot be parsed or a JCo parameter cannot be set
+     */
+    private static void writeXmlResponse(JCoFunction function, BXml xmlValue) throws Exception {
+        Document doc = parseXmlDocument(xmlValue.toString());
+        Element root = doc.getDocumentElement();
+
+        JCoParameterList exportList = function.getExportParameterList();
+        JCoParameterList tableList = function.getTableParameterList();
+
+        for (Element child : getChildElements(root)) {
+            String paramName = child.getTagName();
+            List<Element> subElements = getChildElements(child);
+
+            if (subElements.isEmpty()) {
+                if (exportList != null) {
+                    exportList.setValue(paramName, child.getTextContent().trim());
+                }
+            } else if (subElements.stream().allMatch(e -> "row".equals(e.getTagName()))) {
+                if (tableList != null) {
+                    JCoTable table = tableList.getTable(paramName);
+                    for (Element row : subElements) {
+                        table.appendRow();
+                        for (Element field : getChildElements(row)) {
+                            table.setValue(field.getTagName(), field.getTextContent().trim());
+                        }
+                    }
+                }
+            } else {
+                if (exportList != null) {
+                    JCoStructure structure = exportList.getStructure(paramName);
+                    for (Element field : subElements) {
+                        structure.setValue(field.getTagName(), field.getTextContent().trim());
+                    }
+                    exportList.setValue(paramName, structure);
+                }
+            }
+        }
+    }
+
+    private static Document parseXmlDocument(String xmlString) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        return builder.parse(new InputSource(new StringReader(xmlString)));
+    }
+
+    private static List<Element> getChildElements(Element parent) {
+        List<Element> elements = new ArrayList<>();
+        NodeList children = parent.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            Node node = children.item(i);
+            if (node instanceof Element element) {
+                elements.add(element);
+            }
+        }
+        return elements;
     }
 
     /**

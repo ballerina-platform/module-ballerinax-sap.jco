@@ -3,7 +3,7 @@
 _Authors_: @RDPerera  
 _Reviewers_: @niveathika, @NipunaRanasinghe, @shafreenAnfar  
 _Created_: 2024/08/28  
-_Updated_: 2026/04/07  
+_Updated_: 2026/04/27  
 _Edition_: Swan Lake
 
 ## Introduction
@@ -497,6 +497,41 @@ service jco:RfcService on iDocListener {
 ```
 
 The return value of `onCall` is serialized and sent back to the SAP caller as the RFC response. An error return causes an `AbapException` to be raised on the SAP side. An empty (`()`) response is valid for fire-and-forget RFCs.
+
+**Returning `RfcRecord`**: each key in the returned map is matched to a SAP export or table parameter by name. Array values are written to the table parameter list; all other values are written to the export parameter list using the existing `FieldType` coercion rules.
+
+```ballerina
+remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
+    return {
+        "CREDIT_STATUS": "A",
+        "CREDIT_SCORE": 750,
+        "ITEMS": [{"MATNR": "000001", "QTY": 10}]
+    };
+}
+```
+
+**Returning `xml`**: the root element is ignored. Each direct child element is mapped to a SAP parameter by element name. JCo coerces the string text content to the target SAP type (CHAR, INT, DEC, etc.) automatically. Three element shapes are recognised:
+
+| Element shape | Mapped to |
+|---|---|
+| Text-only child: `<PARAM>value</PARAM>` | Export parameter — string coerced to SAP type |
+| Children all named `<row>`: `<TABLE><row>…</row></TABLE>` | Table parameter — each `<row>` appends one row; row child elements are field values |
+| Mixed-name children: `<STRUCT><FIELD>v</FIELD>…</STRUCT>` | Structure export parameter — child elements are field names |
+
+```ballerina
+remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
+    return xml `<response>
+        <CREDIT_STATUS>A</CREDIT_STATUS>
+        <CREDIT_SCORE>750</CREDIT_SCORE>
+        <ITEMS>
+            <row><MATNR>000001</MATNR><QTY>10</QTY></row>
+            <row><MATNR>000002</MATNR><QTY>5</QTY></row>
+        </ITEMS>
+    </response>`;
+}
+```
+
+Errors from response serialization (malformed XML, unrecognised parameter names reported by JCo) are routed to the `onError` handler as a `ParameterError` and raised to SAP as an `AbapException`.
 
 ##### 2.2.3.3 Error handling in listener
 

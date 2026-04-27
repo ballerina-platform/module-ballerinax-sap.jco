@@ -276,7 +276,17 @@ function testExecuteReturningRfcRecordWithTableData() returns error? {
         importParameters: {"IMPORTSTRUCT": {"RFCCHAR1": "Z"}},
         tableParameters: {"RFCTABLE": [{"RFCCHAR1": "E", "RFCINT1": 5}]}
     });
-    test:assertNotEquals(result, {}, "RfcRecord result should not be empty when table data is present");
+    test:assertTrue(result.hasKey("ECHOSTRUCT"), "Result should contain ECHOSTRUCT export field");
+    test:assertTrue(result.hasKey("RESPTEXT"), "Result should contain RESPTEXT export field");
+    test:assertTrue(result.hasKey("RFCTABLE"), "Result should contain RFCTABLE after table-parameter merge");
+    anydata[]? tableRows = <anydata[]?>result["RFCTABLE"];
+    test:assertTrue(tableRows is anydata[] && tableRows.length() >= 1,
+        "RFCTABLE should contain at least one row");
+    if tableRows is anydata[] && tableRows.length() >= 1 {
+        map<anydata> firstRow = check tableRows[0].ensureType();
+        test:assertEquals(firstRow["RFCCHAR1"], "E", "First RFCTABLE row RFCCHAR1 should equal E");
+        test:assertEquals(firstRow["RFCINT1"], 5, "First RFCTABLE row RFCINT1 should equal 5");
+    }
 }
 
 // --- Type mismatch and field-presence validation ---
