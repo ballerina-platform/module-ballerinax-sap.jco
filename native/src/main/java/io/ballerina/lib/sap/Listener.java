@@ -214,6 +214,9 @@ public final class Listener {
         JCoIDocServer server = (JCoIDocServer) listenerBObject.getNativeData(SAPConstants.JCO_SERVER);
         String serverKey = (String) listenerBObject.getNativeData(NATIVE_SERVER_KEY);
         ServerEntry entry = serverRegistry.get(serverKey);
+        if (entry == null) {
+            return SAPErrorCreator.createConfigError("Listener is not properly initialized: server entry not found.");
+        }
         ServiceType serviceType = (ServiceType) TypeUtils.getImpliedType(service.getOriginalType());
         boolean hasOnReceive = false;
         boolean hasOnCall = false;
@@ -408,6 +411,9 @@ public final class Listener {
                 logger.debug("Server was already stopped.");
             } else {
                 logger.error("Server stop failed.");
+                synchronized (entry) {
+                    entry.isStarted = false;
+                }
                 return SAPErrorCreator.createConfigError("Server stop failed. " + e.getMessage(), e);
             }
         }
@@ -422,6 +428,9 @@ public final class Listener {
         }
         if (server.getState() == JCoServerState.STOPPING) {
             logger.warn("Server did not finish stopping within the deadline; server may still be active.");
+            synchronized (entry) {
+                entry.isStarted = false;
+            }
             return SAPErrorCreator.createConfigError(
                     "Server stop timed out: the server is still in STOPPING state after 15 seconds.");
         }
@@ -483,6 +492,9 @@ public final class Listener {
                         // Reset to no-op so arriving RFC calls are discarded rather than
                         // dispatched to the now-detached service.
                         server.setCallHandlerFactory(new NoOpRfcHandlerFactory());
+                    } else {
+                        return SAPErrorCreator.createConfigError(
+                                "Unsupported service type: expected IDocService or RfcService.");
                     }
                     // Refresh the throwable listener so it no longer dispatches to the detached service.
                     if (entry.runtime != null) {

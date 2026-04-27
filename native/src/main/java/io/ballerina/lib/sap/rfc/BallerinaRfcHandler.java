@@ -60,6 +60,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -127,8 +128,7 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
             BError err = SAPErrorCreator.createParameterError(
                     "Failed to build RFC parameters for function '" + functionName + "': " + causeMsg);
             invokeOnError(err);
-            throw new AbapException("BALLERINA_PARAMETER_ERROR",
-                    t.getMessage() == null ? "parameter build failed" : t.getMessage());
+            throw new AbapException("BALLERINA_PARAMETER_ERROR", causeMsg);
         }
 
         // (2) Dispatch: invoke onCall. User-method errors are NOT routed to onError.
@@ -299,7 +299,11 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
         factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
         factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
         factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+        factory.setXIncludeAware(false);
         DocumentBuilder builder = factory.newDocumentBuilder();
+        builder.setEntityResolver((publicId, systemId) -> new InputSource(new StringReader("")));
         return builder.parse(new InputSource(new StringReader(xmlString)));
     }
 

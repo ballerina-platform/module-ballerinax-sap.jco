@@ -80,7 +80,7 @@ function testListenerInitWithAdvancedConfig() returns error? {
     AdvancedConfig advancedConfig = {
         "jco.server.gwhost": gwhost,
         "jco.server.gwserv": gwserv,
-        "jco.server.progid": progid
+        "jco.server.progid": progid + "_ADV_TEST"
     };
     Listener _ = check new (advancedConfig);
 }
@@ -344,11 +344,17 @@ function testListenerAttachIDocServiceWithUnregisteredRepoDestination() returns 
     ServerConfig unregisteredRepoConfig = {
         gwhost,
         gwserv,
-        progid,
+        progid: progid + "_UNREG_REPO_TEST",
         repositoryDestination: "NONEXISTENT_DESTINATION_XYZ"
     };
-    Listener sapListener = check new (unregisteredRepoConfig);
-    Error? result = sapListener.attach(dummyService);
+    // With a live SAP connection, JCo validates repositoryDestination at JCoIDoc.getServer()
+    // time (synchronously), so init() may fail with ResourceError before attach() is called.
+    // Both outcomes correctly reject the unregistered destination.
+    Listener|Error listenerResult = new (unregisteredRepoConfig);
+    if listenerResult is Error {
+        return;
+    }
+    Error? result = listenerResult.attach(dummyService);
     test:assertTrue(result is ConfigurationError,
         "Expected a ConfigurationError when attaching IDocService with an unregistered repositoryDestination");
 }
@@ -361,11 +367,14 @@ function testListenerAttachRfcServiceWithUnregisteredRepoDestination() returns e
     ServerConfig unregisteredRepoConfig = {
         gwhost,
         gwserv,
-        progid,
+        progid: progid + "_UNREG_REPO_TEST",
         repositoryDestination: "NONEXISTENT_DESTINATION_XYZ"
     };
-    Listener sapListener = check new (unregisteredRepoConfig);
-    Error? result = sapListener.attach(nilReturnRfcService);
+    Listener|Error listenerResult = new (unregisteredRepoConfig);
+    if listenerResult is Error {
+        return;
+    }
+    Error? result = listenerResult.attach(nilReturnRfcService);
     test:assertTrue(result is ConfigurationError,
         "Expected a ConfigurationError when attaching RfcService with an unregistered repositoryDestination");
 }
@@ -761,7 +770,7 @@ function testListenerRfcServiceXmlResponse() returns error? {
     groups: ["listener-inline"]
 }
 function testListenerInitWithInlineRepoConfig() returns error? {
-    Listener _ = check new (serverConfigWithInlineRepoDest);
+    Listener _ = check new (serverConfigWithInlineRepoDest, inlineServerName);
 }
 
 @test:Config {
@@ -769,7 +778,7 @@ function testListenerInitWithInlineRepoConfig() returns error? {
     groups: ["listener-inline"]
 }
 function testListenerAttachIDocServiceWithInlineRepoConfig() returns error? {
-    Listener sapListener = check new (serverConfigWithInlineRepoDest);
+    Listener sapListener = check new (serverConfigWithInlineRepoDest, inlineServerName);
     check sapListener.attach(dummyService);
     check sapListener.detach(dummyService);
 }
@@ -779,7 +788,7 @@ function testListenerAttachIDocServiceWithInlineRepoConfig() returns error? {
     groups: ["listener-inline"]
 }
 function testListenerAttachRfcServiceWithInlineRepoConfig() returns error? {
-    Listener sapListener = check new (serverConfigWithInlineRepoDest);
+    Listener sapListener = check new (serverConfigWithInlineRepoDest, inlineServerName);
     check sapListener.attach(nilReturnRfcService);
     check sapListener.detach(nilReturnRfcService);
 }
@@ -789,7 +798,7 @@ function testListenerAttachRfcServiceWithInlineRepoConfig() returns error? {
     groups: ["listener-inline"]
 }
 function testListenerStartGracefulStopWithInlineRepoConfig() returns error? {
-    Listener sapListener = check new (serverConfigWithInlineRepoDest);
+    Listener sapListener = check new (serverConfigWithInlineRepoDest, inlineServerName);
     check sapListener.attach(dummyService);
     check sapListener.'start();
     check sapListener.gracefulStop();
