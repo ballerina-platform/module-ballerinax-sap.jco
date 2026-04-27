@@ -125,7 +125,7 @@ Transaction **WE60**. Enter `MATMAS03` → Documentation. SAP generates a nicely
 
 ## Pre-requisites
 
-- Ballerina 5.0.0 or later
+- Ballerina **2201.13.3** or later
 
 - Download SAP JCo JARs and native libraries from the SAP Service Marketplace. You need both the `sapjco3.jar` and the platform-specific native library (`sapjco3.dll` on Windows, `libsapjco3.so` on Linux, `libsapjco3.jnilib` on Mac). Add the relevant paths in the **Ballerina.toml** with `provided` scope so they're on the compile-time classpath but not bundled into the final artifact.
 
