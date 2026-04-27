@@ -75,7 +75,7 @@ Transaction **SM59**.
 - **Gateway Options** → set **Gateway Host** and **Gateway Service** (usually `sapgw<sysnr>` where `<sysnr>` is your SAP system number, e.g. `sapgw00`).
 - Save.
 
-<video src="./resources/recordings/define_rfc_destination_sap.mov" controls="controls"></video>
+![](./resources/recordings/define_rfc_destination_sap.gif)
 
 
 ### Step 2 — Open the Gateway ACL
@@ -92,7 +92,7 @@ P TP=TEST_LISTENER HOST=* ACCESS=* CANCEL=*
 - Save.
 - *Reload ACL Files* (this is critical — SAP does *not* hot-reload it).
 
-<video src="./resources/recordings/edit_reginfo_sap.mov" controls="controls"></video>
+![](./resources/recordings/edit_reginfo_sap.gif)
 
 > **Sandbox shortcut:** `HOST=*` and `ACCESS=*` make life easy for blog-demo purposes. In real environments you pin the host to the IPs of your Integrator nodes.
 
@@ -195,20 +195,14 @@ listener jco:Listener rfcListener = new (sapConfig);
 
 service jco:RfcService on rfcListener {
 
-    // Fires synchronously for every inbound RFC. functionName is whatever
-    // function module SAP invoked — here we expect STFC_CONNECTION. The return
-    // value is serialized back into export parameters and returned to the SAP
-    // caller as the RFC response. Returning an error instead surfaces to SAP
-    // as an ABAP exception the caller has to handle.
     remote function onCall(string functionName, jco:RfcParameters parameters)
             returns jco:RfcRecord|error? {
 
-        log:printInfo("RFC call received", functionName = functionName);
+        log:printInfo("RFC call received", functionName = functionName, importParams = parameters.importParameters, tableParams = parameters.tableParameters);
 
         if functionName != "STFC_CONNECTION" {
             return error(string `Unsupported function module: ${functionName}`);
         }
-
         jco:RfcRecord imports = parameters.importParameters ?: {};
         string requestText = (imports["REQUTEXT"] ?: "").toString();
 
@@ -219,23 +213,13 @@ service jco:RfcService on rfcListener {
         // parameters by name.
         return {
             "ECHOTEXT": requestText,
-            "RESPTEXT": "Responded by Ballerina @ " + time()
+            "RESPTEXT": "Responded by Integrator"
         };
     }
 
-    // Framework errors only: gateway retries, server registration failures,
-    // pre/part-dispatch failures (parameter unmarshalling, response serialization).
-    // Errors returned by onCall itself do NOT land here — they surface to the SAP
-    // caller as an ABAP exception on the RFC response.
     remote function onError(error err) returns error? {
-        log:printError("Listener framework error", err = err);
+        log:printError("Error occurred", 'error = err, errorType = (typeof err).toString());
     }
-}
-
-function time() returns string {
-    // Locally formatted timestamp — placeholder for whatever timestamp helper
-    // your flow already has.
-    return "now";
 }
 ```
 
@@ -254,7 +238,7 @@ With the listener running, go back to SM59 → your `BALLERINA_RFC_LISTENER` des
 
 You should see a "Connection Test: BALLERINA_RFC_LISTENER" output with *Result = OK* and round-trip timing. SAP is now confirmed to reach your server.
 
-<video src="./resources/recordings/test_rfc_dest_sap.mov" controls="controls"></video>
+![](./resources/recordings/test_rfc_dest_sap.gif)
 
 ### Trigger an RFC call from SAP
 
@@ -270,22 +254,20 @@ Transaction **SE37**.
   - **REQUTEXT** = `Hello Integrator` (or any string you like).
 - **F8**.
 
-<!-- SCREENSHOT: SE37 — STFC_CONNECTION test screen with RFC target sys = BALLERINA_RFC_LISTENER and REQUTEXT = Hello Ballerina, immediately before pressing F8. -->
+![](./resources/recordings/call_rfc_on_sap.gif)
 
 Integrator console:
 
 ```
-time=... level=INFO message="RFC call received" functionName=STFC_CONNECTION
+time=2026-04-27T11:20:02.844+05:30 level=INFO module=wso2/example message="RFC call received" functionName="STFC_CONNECTION" importParams={"REQUTEXT":"HELLO INTEGRATOR"} tableParams=
 ```
 
 SE37 response screen:
 
 ```
 ECHOTEXT = Hello Ballerina
-RESPTEXT = Responded by Ballerina @ now
+RESPTEXT = Responded by Ballerina
 ```
-
-<!-- SCREENSHOT: SE37 — STFC_CONNECTION response screen showing ECHOTEXT = "Hello Ballerina" and RESPTEXT = "Responded by Ballerina @ ..." returned from the external server. -->
 
 That round-trip is the success criterion for this part. SAP asked a function module called `STFC_CONNECTION` for an echo, and got one — except the function module lives in a Ballerina service, not in SAP.
 
@@ -309,11 +291,13 @@ service jco:RfcService on rfcListener {
         // downstream if the shape is wrong.
         return xml `<STFC_CONNECTION>
             <ECHOTEXT>${requestText}</ECHOTEXT>
-            <RESPTEXT>Responded by Ballerina (xml path)</RESPTEXT>
+            <RESPTEXT>Responded by Integrator (xml path)</RESPTEXT>
         </STFC_CONNECTION>`;
     }
 
-    remote function onError(error err) returns error? { }
+    remote function onError(error err) returns error? {
+        log:printError("Error occurred", 'error = err, errorType = (typeof err).toString());
+    }
 }
 ```
 

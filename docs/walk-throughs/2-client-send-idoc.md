@@ -74,7 +74,7 @@ Before creating a WE20 partner profile of type `LS`, make sure the logical syste
 
 - Transaction **BD54**: create (or verify) logical systems for sender (for example, `TEST_LS`) and receiver (for example, `ABACLNT001`).
 
-<video src="./resources/recordings/create_a_logical_system_sap.mov" controls="controls"></video>
+![](./resources/recordings/create_a_logical_system_sap.gif)
 
 - Transaction **SCC4**: verify the current client is assigned to the correct local logical system of the receiver.
 
@@ -92,7 +92,7 @@ Transaction **WE20**.
   - *Trigger immediately* (radio) — gives you immediate processing for easier debugging.
 - Save.
 
-<video src="./resources/recordings/create_partner_profile_sap.mov" controls="controls"></video>
+![](./resources/recordings/create_partner_profile_sap.gif)
 
 ### Step 3 — Know where to look afterwards (WE02 / WE05)
 
@@ -111,13 +111,13 @@ Key status codes:
 
 **For the purposes of this part, the success bar is "IDoc reaches SAP" — i.e. it shows up in WE02 with a control record.** A `53` is a bonus.
 
-<video src="./resources/recordings/check_idocs_sap.mov" controls="controls"></video>
+![](./resources/recordings/check_idocs_sap.gif)
 
 ### Step 4 — Optional: Inspect IDoc type documentation (WE60)
 
 Transaction **WE60**. Enter `MATMAS03` → Documentation. SAP generates a nicely-formatted doc listing every segment, every field, with types and the original ABAP data element description. It's the authoritative reference for building a valid payload.
 
-<video src="./resources/recordings/check_matmas_idoc_sap.mov" controls="controls"></video>
+![](./resources/recordings/check_matmas_idoc_sap.gif)
 
 > **Tip:** If you want to create the relevant IDoc type in WSO2 Integrator as a record type instead of working with raw XML, you can download the IDoc structure as an XSD file and use Ballerina XSD tool to generate the relevant types. The `sendIdoc` action still accepts raw XML, you can convert the record value to XML and pass it to the action.
 
@@ -287,7 +287,7 @@ Then SAP GUI:
 3. Execute (F8).
 4. The top row is your IDoc. Double-click it.
 
-<video src="./resources/recordings/check_idoc_status_sap.mov" controls="controls"></video>
+![](./resources/recordings/check_idoc_status_sap.gif)
 
 Status records are SAP's story of what it did with your IDoc. In WE02, click **Status records** in the detail tree.
 
@@ -411,7 +411,7 @@ check sapClient->sendIDoc(
 
 On the SAP side, inspect queued IDocs in **SMQ2** (inbound qRFC monitor).
 
-<video src="./resources/recordings/inspect_qrfc_sap.mov" controls="controls"></video>
+![](./resources/recordings/inspect_qrfc_sap.gif)
 
 ---
 

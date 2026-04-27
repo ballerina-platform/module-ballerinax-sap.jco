@@ -75,7 +75,7 @@ Log on to SAP GUI. Transaction **SU01**.
 - **Password** — set an initial password; change it on first logon so JCo doesn't get stuck on a forced-change prompt.
 - **Roles / Profiles** tab — add a role that includes `S_RFC`. For a sandbox, `SAP_ALL` is fine; for anything else, scope it.
 
-<video src="./resources/recordings/create_new_user_sap.mov" controls="controls"></video>
+![](./resources/recordings/create_new_user_sap.gif)
 
 ### Step 2 — Inspect the target function module (SE37)
 
@@ -88,7 +88,7 @@ Enter `RFC_PING` → **Display**. Tabs to skim:
 
 Now **F8** to test it locally from GUI. `RFC_PING` has no parameters — just press F8 on the test screen and look for the *Runtime* field populated with a microsecond count. That confirms the function module works on the SAP side before we ever bring the connector in.
 
-<video src="./resources/recordings/test_rfc_ping_sap.mov" controls="controls"></video>
+![](./resources/recordings/test_rfc_ping_sap.gif)
 
 > **Why this matters:** when something breaks, the first question to answer is *"is it an SAP problem or a connector problem?"* Running the function in SE37 first short-circuits that. If SE37 returns an error, your Ballerina code won't fix it.
 
@@ -98,7 +98,7 @@ Transaction **BAPI** (yes, the transaction code is literally `BAPI`).
 
 Open *Logistics - General → Logistics Basic Data → Material → GetList*. That's `BAPI_MATERIAL_GETLIST` — we'll call it at the end of this part.
 
-<video src="./resources/recordings/check_bapi_sap.mov" controls="controls"></video>
+![](./resources/recordings/check_bapi_sap.gif)
 
 ---
 
