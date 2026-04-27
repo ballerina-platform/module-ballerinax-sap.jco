@@ -1,12 +1,12 @@
-# WSO2 Integrator: Integrate with SAP ECC - Part 3 — Listener Capabilities I: Receiving IDocs from SAP ECC
+# Ballerina: Integrate with SAP ECC - Part 3 — Listener Capabilities I: Receiving IDocs from SAP ECC
 
-> Parts 1 and 2 were Integrator → SAP. From here on, the arrows flip: SAP pushes into your Integrator flow.
+> Parts 1 and 2 were Ballerina → SAP. From here on, the arrows flip: SAP pushes into your Ballerina flow.
 
 ---
 
 ## What we're building
 
-A WSO2 Integrator service that registers itself as a **JCo server** with SAP Gateway. When SAP dispatches an `ORDERS05` IDoc outbound (e.g. a purchase order sent to a supplier), it lands on our `IDocService` as an XML payload, which we parse and forward to a downstream system.
+A Ballerina service that registers itself as a **JCo server** with SAP Gateway. When SAP dispatches an `ORDERS05` IDoc outbound (e.g. a purchase order sent to a supplier), it lands on our `IDocService` as an XML payload, which we parse and forward to a downstream system.
 
 **Success criterion:** trigger an outbound `ORDERS05` from WE19, watch `onReceive` fire with valid XML, log the purchase order number and line items.
 
@@ -77,7 +77,7 @@ P TP=TEST_LISTENER HOST=* ACCESS=* CANCEL=*
 
 ![](./resources/recordings/edit_reginfo_sap.gif)
 
-> **Sandbox shortcut:** `HOST=*` and `ACCESS=*` make life easy for blog-demo purposes. In real environments you pin the host to the IPs of your Integrator nodes.
+> **Sandbox shortcut:** `HOST=*` and `ACCESS=*` make life easy for blog-demo purposes. In real environments you pin the host to the IPs of your Ballerina nodes.
 
 ### Step 3 — Create the IDoc port (WE21)
 
@@ -104,7 +104,7 @@ Transaction **BD54**:
 
 Transaction **WE20**.
 
-- Partner Type LS → the logical system representing your Integrator instance.
+- Partner Type LS → the logical system representing your Ballerina instance.
 - **Outbound parameters** → **Create** (the `+` icon).
 - Fill in:
   - **Message Type** = `ORDERS`
@@ -141,7 +141,7 @@ Transaction **WE19** is an IDoc test tool. If your sandbox already has some `ORD
 
 ## Pre-requisites
 
-- WSO2 Integrator **5.0.0** or later
+- Ballerina **5.0.0** or later
 
 - Download SAP JCo JARs and native libraries from the SAP Service Marketplace. You need both the `sapjco3.jar` and the platform-specific native library (`sapjco3.dll` on Windows, `libsapjco3.so` on Linux, `libsapjco3.jnilib` on Mac). Add the relevant paths in the **Ballerina.toml** with `provided` scope so they're on the compile-time classpath but not bundled into the final artifact.
 
@@ -335,10 +335,10 @@ Back to WE19 → the IDoc you prepped earlier → **Standard outbound processing
 
 ![](./resources/recordings/send_idoc_from_sap.gif)
 
-Integrator console:
+Ballerina console:
 
 ```
-time=2026-04-27T09:30:46.609+05:30 level=INFO module=wso2/example message="Received purchase order" poNumber="4500000123" lineCount=1 sender="INTEGRATOR"
+time=2026-04-27T09:30:46.609+05:30 level=INFO module=wso2/example message="Received purchase order" poNumber="4500000123" lineCount=1 sender="Ballerina"
 ```
 
 WE02 on the SAP side shows the IDoc with outbound status `03` (*Data passed to port OK*) or `12` (*Dispatch OK*) — either is success.

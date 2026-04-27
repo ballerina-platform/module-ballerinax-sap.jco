@@ -1,4 +1,4 @@
-# WSO2 Integrator: Integrate with SAP ECC - Part 1 — Client Capabilities I: Executing RFCs & BAPIs on SAP ECC
+# Ballerina: Integrate with SAP ECC - Part 1 — Client Capabilities I: Executing RFCs & BAPIs on SAP ECC
 
 ## Why ECC integration still matters
 
@@ -6,16 +6,16 @@ A large slice of the SAP install base still runs on **ECC 6.0** (SAP ERP Central
 
 SAP S/4HANA ships OData endpoints by default. **ECC does not.** On NetWeaver the supported path for programmatic access is the **SAP Java Connector (JCo)** — a binary SDK that speaks the proprietary RFC protocol over SAP Gateway. Every other ECC-to-outside-world integration pattern you've seen (PI/PO, CPI's ECC adapter, BTP's RFC connector) is JCo under the hood.
 
-This five-part series is about the Ballerina SAP JCo connector that wraps JCo and **WSO2 Integrator**, so you get the low-code canvas on top and typed Ballerina when you need to drop down a layer.
+This five-part series is about the Ballerina SAP JCo connector that wraps JCo and **Ballerina**, so you get the low-code canvas on top and typed Ballerina when you need to drop down a layer.
 
 ### Map of the series
 
 | Part | Direction | Capability | Standard SAP object used |
 |------|-----------|------------|--------------------------|
-| 1 (this one) | Integrator → SAP | Call RFCs / BAPIs | `RFC_PING`, `STFC_CONNECTION`, `RFC_READ_TABLE`, `BAPI_MATERIAL_GETLIST` |
-| 2 | Integrator → SAP | Send IDocs | `MATMAS03` |
-| 3 | SAP → Integrator | Receive IDocs | `ORDERS05` |
-| 4 | SAP → Integrator | Handle RFC callbacks | `STFC_CONNECTION` (triggered via SE37) |
+| 1 (this one) | Ballerina → SAP | Call RFCs / BAPIs | `RFC_PING`, `STFC_CONNECTION`, `RFC_READ_TABLE`, `BAPI_MATERIAL_GETLIST` |
+| 2 | Ballerina → SAP | Send IDocs | `MATMAS03` |
+| 3 | SAP → Ballerina | Receive IDocs | `ORDERS05` |
+| 4 | SAP → Ballerina | Handle RFC callbacks | `STFC_CONNECTION` (triggered via SE37) |
 
 Every example uses **standard, out-of-the-box SAP objects** — no custom Z-RFCs, no custom Z-IDocs, no ABAP. If you have a vanilla ECC sandbox, you can follow along.
 
@@ -28,10 +28,10 @@ Every example uses **standard, out-of-the-box SAP objects** — no custom Z-RFCs
 - **SAP Gateway** — the TCP-level entry point into an SAP application server. External JCo servers register with the gateway using a **Program ID**.
 - **Program ID** — an identifier a registered external server announces to the gateway. The SAP side references it in SM59 to route traffic outward to your external server.
 
-### Why `ballerinax/sap.jco` + WSO2 Integrator pair well
+### Why `ballerinax/sap.jco` + Ballerina pair well
 
 - **Typed services** — `IDocService` and `RfcService` are first-class listener types; `onReceive` and `onCall` get strongly-typed parameters.
-- **Low-code canvas on top** — drag the connector action onto a WSO2 Integrator flow, fill in the RFC name, and the Ballerina is generated for you. Flip to code when you need custom logic.
+- **Low-code canvas on top** — drag the connector action onto a Ballerina flow, fill in the RFC name, and the Ballerina is generated for you. Flip to code when you need custom logic.
 - **Typed error hierarchy** — `ConnectionError`, `LogonError`, `AbapApplicationError`, `IDocError`, `ParameterError`, `ConfigurationError`, `ExecutionError` — you route on the error *type*, not by parsing strings.
 - **First-class IDoc support** — send and receive without hand-rolling XML pipelines; TID management for tRFC is handled by the connector.
 
@@ -104,7 +104,7 @@ Open *Logistics - General → Logistics Basic Data → Material → GetList*. Th
 
 ## Pre-requisites
 
-- WSO2 Integrator **5.0.0** or later
+- Ballerina **5.0.0** or later
 
 - Download SAP JCo JARs and native libraries from the SAP Service Marketplace. You need both the `sapjco3.jar` and the platform-specific native library (`sapjco3.dll` on Windows, `libsapjco3.so` on Linux, `libsapjco3.jnilib` on Mac). Add the relevant paths in the **Ballerina.toml** with `provided` scope so they're on the compile-time classpath but not bundled into the final artifact.
 
@@ -470,7 +470,7 @@ time=2026-04-22T14:15:27.457+05:30 level=INFO module=wso2/example message="Mater
 
 ### Application errors
 
-All four examples return `error?` at the main level, but in WSO2 Integrator flows you'll want to fork on error type. The connector raises one of these:
+All four examples return `error?` at the main level, but in Ballerina flows you'll want to fork on error type. The connector raises one of these:
 
 | Error type | When |
 |------------|------|

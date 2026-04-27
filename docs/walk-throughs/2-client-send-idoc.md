@@ -1,4 +1,4 @@
-# WSO2 Integrator: Integrate with SAP ECC - Part 2 — Client Capabilities II: Sending IDocs to SAP ECC
+# Ballerina: Integrate with SAP ECC - Part 2 — Client Capabilities II: Sending IDocs to SAP ECC
 
 > Part two of the series. Part 1 covered synchronous RFCs and BAPIs. This part covers the **asynchronous** side of outbound integration: sending IDocs into SAP.
 
@@ -119,13 +119,13 @@ Transaction **WE60**. Enter `MATMAS03` → Documentation. SAP generates a nicely
 
 ![](./resources/recordings/check_matmas_idoc_sap.gif)
 
-> **Tip:** If you want to create the relevant IDoc type in WSO2 Integrator as a record type instead of working with raw XML, you can download the IDoc structure as an XSD file and use Ballerina XSD tool to generate the relevant types. The `sendIdoc` action still accepts raw XML, you can convert the record value to XML and pass it to the action.
+> **Tip:** If you want to create the relevant IDoc type in Ballerina as a record type instead of working with raw XML, you can download the IDoc structure as an XSD file and use Ballerina XSD tool to generate the relevant types. The `sendIdoc` action still accepts raw XML, you can convert the record value to XML and pass it to the action.
 
 ---
 
 ## Pre-requisites
 
-- WSO2 Integrator 5.0.0 or later
+- Ballerina 5.0.0 or later
 
 - Download SAP JCo JARs and native libraries from the SAP Service Marketplace. You need both the `sapjco3.jar` and the platform-specific native library (`sapjco3.dll` on Windows, `libsapjco3.so` on Linux, `libsapjco3.jnilib` on Mac). Add the relevant paths in the **Ballerina.toml** with `provided` scope so they're on the compile-time classpath but not bundled into the final artifact.
 
@@ -314,7 +314,7 @@ Every IDoc with a happy path ends on `53`. If you see `51` or `56` further down,
 
 ### Application errors
 
-All four examples return `error?` at the main level, but in WSO2 Integrator flows you'll want to fork on error type. The connector raises one of these:
+All four examples return `error?` at the main level, but in Ballerina flows you'll want to fork on error type. The connector raises one of these:
 
 | Error type | When |
 |------------|------|
@@ -425,6 +425,6 @@ check sapClient->sendIDoc(iDoc, tid = outboxRowId);
 
 If your process crashes after writing the outbox row but before SAP confirms, the retry reuses the same TID. SAP's tRFC bookkeeping (`ARFCRSTATE`) recognises the TID as already processed and returns success without duplicating.
 
-This is usually only worth wiring when you have at-least-once semantics upstream and need exactly-once into SAP end-to-end. For most WSO2 Integrator flows the connector-generated TID is fine.
+This is usually only worth wiring when you have at-least-once semantics upstream and need exactly-once into SAP end-to-end. For most Ballerina flows the connector-generated TID is fine.
 
 ---

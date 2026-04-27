@@ -1,4 +1,4 @@
-# WSO2 Integrator: Integrate with SAP ECC - Part 4 — Listener Capabilities II: Handling RFC Callbacks from SAP ECC
+# Ballerina: Integrate with SAP ECC - Part 4 — Listener Capabilities II: Handling RFC Callbacks from SAP ECC
 
 > Part 3 was asynchronous inbound (IDocs). This one is synchronous inbound: SAP calls *your* Ballerina service over RFC and waits for a response.
 
@@ -6,7 +6,7 @@
 
 ## What we're building
 
-A WSO2 Integrator service that registers on SAP Gateway as a **server**, announces a Program ID, and responds to inbound RFC calls as if it were a local SAP function module. The example function is `STFC_CONNECTION` — a shipped-standard signature, so we don't need any ABAP.
+A Ballerina service that registers on SAP Gateway as a **server**, announces a Program ID, and responds to inbound RFC calls as if it were a local SAP function module. The example function is `STFC_CONNECTION` — a shipped-standard signature, so we don't need any ABAP.
 
 **Success criterion:** in SE37 on the SAP side, set *RFC target sys* to our SM59 destination, execute `STFC_CONNECTION` with `REQUTEXT = "Hello Ballerina"`, and see `ECHOTEXT` come back populated by the Ballerina service.
 
@@ -94,7 +94,7 @@ P TP=TEST_LISTENER HOST=* ACCESS=* CANCEL=*
 
 ![](./resources/recordings/edit_reginfo_sap.gif)
 
-> **Sandbox shortcut:** `HOST=*` and `ACCESS=*` make life easy for blog-demo purposes. In real environments you pin the host to the IPs of your Integrator nodes.
+> **Sandbox shortcut:** `HOST=*` and `ACCESS=*` make life easy for blog-demo purposes. In real environments you pin the host to the IPs of your Ballerina nodes.
 
 ### Step 3 — Confirm the SAP RFC user has `S_RFC` for the callable function modules
 
@@ -104,7 +104,7 @@ The Ballerina side receives whatever SAP sends — but the SAP user invoking SE3
 
 ## Pre-requisites
 
-- WSO2 Integrator **5.0.0** or later
+- Ballerina **5.0.0** or later
 
 - Download SAP JCo JARs and native libraries from the SAP Service Marketplace. You need both the `sapjco3.jar` and the platform-specific native library (`sapjco3.dll` on Windows, `libsapjco3.so` on Linux, `libsapjco3.jnilib` on Mac). Add the relevant paths in the **Ballerina.toml** with `provided` scope so they're on the compile-time classpath but not bundled into the final artifact.
 
@@ -256,7 +256,7 @@ Transaction **SE37**.
 
 ![](./resources/recordings/call_rfc_on_sap.gif)
 
-Integrator console:
+Ballerina console:
 
 ```
 time=2026-04-27T11:20:02.844+05:30 level=INFO module=wso2/example message="RFC call received" functionName="STFC_CONNECTION" importParams={"REQUTEXT":"HELLO INTEGRATOR"} tableParams=
