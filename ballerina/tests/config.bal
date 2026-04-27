@@ -79,9 +79,16 @@ final DestinationConfig destinationConfig = {
 final ServerConfig serverConfig = {gwhost, gwserv, progid, repositoryDestination: repoDestination};
 
 // ServerConfig that supplies credentials inline (no separate Client required).
+// Uses a distinct progid suffix to avoid sharing a ServerEntry with serverConfig, which has
+// a different repositoryDestination (a named destination vs. an inline DestinationConfig).
 final ServerConfig serverConfigWithInlineRepoDest = {
     gwhost,
     gwserv,
-    progid,
+    progid: progid + "_INLINE",
     repositoryDestination: {ashost, sysnr, jcoClient, user: sapUser, passwd, lang}
 };
+
+// Fixed serverName used by all inline-repo tests so they all resolve to the same repoDest
+// in the shared ServerEntry. Without this, each new() call generates a fresh UUID, causing
+// a "configuration mismatch" when a second test reuses the (gwhost, gwserv, progid) triplet.
+final string inlineServerName = "SAP_JCO_INLINE_REPO_TEST";

@@ -93,8 +93,8 @@ function testExecuteReturningXml() returns error? {
 function testExecuteReturningRfcRecord() returns error? {
     Client sapClient = check new (destinationConfig);
     RfcRecord result = check sapClient->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "Test"}});
-    test:assertTrue(result.hasKey("ECHOTEXT") || result.hasKey("RESPTEXT"),
-            "RfcRecord result should contain ECHOTEXT or RESPTEXT from STFC_CONNECTION");
+    test:assertEquals(result["ECHOTEXT"], "Test",
+            "STFC_CONNECTION ECHOTEXT should echo the import REQUTEXT exactly");
 }
 
 @test:Config {
@@ -279,7 +279,7 @@ function testExecuteReturningRfcRecordWithTableData() returns error? {
     test:assertTrue(result.hasKey("ECHOSTRUCT"), "Result should contain ECHOSTRUCT export field");
     test:assertTrue(result.hasKey("RESPTEXT"), "Result should contain RESPTEXT export field");
     test:assertTrue(result.hasKey("RFCTABLE"), "Result should contain RFCTABLE after table-parameter merge");
-    anydata[]? tableRows = <anydata[]?>result["RFCTABLE"];
+    anydata[]? tableRows = check result["RFCTABLE"].cloneWithType();
     test:assertTrue(tableRows is anydata[] && tableRows.length() >= 1,
         "RFCTABLE should contain at least one row");
     if tableRows is anydata[] && tableRows.length() >= 1 {
