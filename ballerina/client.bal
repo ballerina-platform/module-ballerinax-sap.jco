@@ -27,33 +27,56 @@ public isolated client class Client {
     # + return - An error if the connection cannot be established
     public isolated function init(DestinationConfig|AdvancedConfig config,
                                   string destinationId = uuid:createType4AsString()) returns Error? {
-        check initializeClient(self, config, destinationId);
+        AdvancedConfig clientConfig;
+        if config is DestinationConfig {
+            clientConfig = {
+                "jco.client.ashost": config.ashost,
+                "jco.client.sysnr": config.sysnr,
+                "jco.client.client": config.jcoClient,
+                "jco.client.user": config.user,
+                "jco.client.passwd": config.passwd,
+                "jco.client.group": config.group,
+                "jco.client.lang": config.lang
+            };
+        } else {
+            clientConfig = config;
+        }
+        check initializeClient(self, clientConfig, destinationId);
     }
 
     # Calls an RFC-enabled function module on the SAP system and returns the response.
     #
-    # + functionName - Name of the RFC function module to call (e.g., STFC_CONNECTION).
-    # + parameters   - Input parameters organized by category. Import parameters are scalar or structure values. Table parameters are named tables containing rows of data. Defaults to an empty parameter set for parameter-free RFCs.
-    # + returnType   - Expected response type. The response is populated from both the SAP export parameter list and the table parameter list.
+    # + functionName - Name of the RFC function module to call (for example, STFC_CONNECTION)
+    # + parameters - Input parameters organised by category. Import parameters carry scalar
+    #                or structure values. Table parameters carry named tables of row data.
+    #                Defaults to an empty parameter set for parameter-free RFCs.
+    # + returnType - Expected response shape. The response is populated from both the SAP
+    #                export parameter list and the table parameter list.
     # + return - The RFC response, or an error on failure
     isolated remote function execute(string functionName, RfcParameters parameters = {},
-            typedesc<RfcRecord|xml|json> returnType = <>) returns returnType|Error = @java:Method {
+            typedesc<RfcRecord|xml> returnType = <>) returns returnType|Error = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
-    # Sends an IDoc to the SAP system over tRFC, including TID creation and confirmation.
+    # Sends an IDoc to the SAP system over tRFC or qRFC, including TID creation and confirmation.
     #
-    # + iDoc - IDoc payload as XML
-    # + iDocType - IDoc protocol version
+    # + iDoc - IDoc payload in XML format
+    # + iDocType - IDoc protocol version. Use VERSION_3_IN_QUEUE or VERSION_3_IN_QUEUE_VIA_QRFC for qRFC delivery.
+    # + tid - Optional Transaction ID (TID). If not provided, a new TID is created via the JCo destination.
+    #         Supply your own TID for end-to-end idempotency when the application persists outbound intent.
+    # + queueName - Required for qRFC versions (VERSION_3_IN_QUEUE or VERSION_3_IN_QUEUE_VIA_QRFC). Ignored with a warning for tRFC versions.
     # + return - An error if the IDoc cannot be delivered or the TID cannot be confirmed
-    isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error? = @java:Method {
+    isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT, string? tid = (),
+                                      string? queueName = ()) returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Client"
     } external;
 
-    # Releases the JCo destination registered for this client. Call this when the client is no
-    # longer needed to free the destination ID for reuse. Calling this more than once is safe.
+    # Releases the JCo destination registered for this client. Call this when the client is
+    # no longer needed to free the destination ID for reuse. Calling this more than once is
+    # safe.
     #
-    # + return - An error if the JCo destination could not be fully released; the client is marked closed regardless
+    # + return - An error if the JCo destination could not be fully released; the client is
+    #            marked closed regardless
     public isolated function close() returns Error? = @java:Method {
         name: "closeClient",
         'class: "io.ballerina.lib.sap.Client"
@@ -61,6 +84,6 @@ public isolated client class Client {
 
 }
 
-isolated function initializeClient(Client jcoClient, DestinationConfig|AdvancedConfig config, string destinationId) returns Error? = @java:Method {
+isolated function initializeClient(Client jcoClient, AdvancedConfig config, string destinationId) returns Error? = @java:Method {
     'class: "io.ballerina.lib.sap.Client"
 } external;

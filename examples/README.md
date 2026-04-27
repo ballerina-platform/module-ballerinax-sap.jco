@@ -15,6 +15,10 @@ scenarios to understand how to automate processes involving SAP systems and exte
 4. [SAP Product Catalog Sync](./sap_product_catalog/) - Query SAP material master data using RFC table parameters
    (filter criteria and field selection) and sync the results to an external product catalog API.
 
+5. [SAP Real-Time Credit Check Service](./sap_credit_check_service/) - Expose a Ballerina service as an inbound RFC
+   server that SAP calls synchronously during sales order creation to validate customer creditworthiness against an
+   external credit bureau API.
+
 ## Prerequisites
 
 1. Refer to the [Setup Guide](../../README.md) to configure the Ballerina SAP JCo Connector.
@@ -37,17 +41,9 @@ scenarios to understand how to automate processes involving SAP systems and exte
     lang = "EN"
     ```
 
-   For examples that use a `jco:Listener` (IDoc receive):
+   For examples that use a `jco:Listener` (IDoc receive or inbound RFC):
 
-    ```toml
-    [sapConfig]
-    gwhost = "sapgw.example.com"
-    gwserv = "sapgw00"
-    progid = "JCO_PROGRAM_ID"
-    connectionCount = 2
-    ```
-
-   If the listener requires IDoc metadata resolution, also initialise a `jco:Client` with a matching `destinationId` and set `repositoryDestination` in the server config. The `destinationId` of the `jco:Client` must equal the value of `repositoryDestination`:
+    `repositoryDestination` is required and must match the `destinationId` of an already-initialized `jco:Client`. The listener uses this connection to look up IDoc segment metadata and RFC function module metadata from SAP. Initialize the `jco:Client` before the `jco:Listener`:
 
     ```toml
     [sapConfig]

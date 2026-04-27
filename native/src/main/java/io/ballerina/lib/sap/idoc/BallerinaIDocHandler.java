@@ -47,7 +47,12 @@ import java.util.Map;
  * When JCo delivers an {@link IDocDocumentList}, this handler serialises it to XML, invokes
  * the Ballerina {@code onReceive} resource function, and waits synchronously for the strand
  * to finish before returning control to the JCo worker thread.
- * If processing fails, the Ballerina {@code onError} remote method is invoked.
+ * <p>
+ * Framework faults that prevent {@code onReceive} from being dispatched — such as IDoc XML
+ * rendering or parsing failures — are routed to the service's {@code onError} remote method.
+ * Errors returned or thrown from {@code onReceive} itself are logged and <em>not</em>
+ * dispatched to {@code onError}: IDoc delivery is fire-and-forget and SAP has no return
+ * channel for per-call errors.
  */
 public class BallerinaIDocHandler implements JCoIDocHandler {
     private static final Logger logger = LoggerFactory.getLogger(BallerinaIDocHandler.class);
@@ -63,33 +68,41 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
      * Receives an IDoc document list from JCo, converts it to an XML string, and dispatches it
      * to the Ballerina {@code onReceive} resource function.
      * <p>
-     * Any exception that escapes (parse error or a Ballerina panic surfaced as a {@link BError})
-     * is forwarded to the service's {@code onError} remote method.
+     * Framework faults during rendering or parsing are forwarded to the service's
+     * {@code onError} remote method. Errors returned or panics thrown from {@code onReceive}
+     * itself are logged only.
      *
      * @param serverCtx JCo server context for the current request (not used directly)
      * @param idocList  the list of IDoc documents delivered by SAP
      */
     public void handleRequest(JCoServerContext serverCtx, IDocDocumentList idocList) {
-
         StringWriter stringWriter = new StringWriter();
         try {
-            IDocXMLProcessor xmlProcessor =
-                    JCoIDoc.getIDocFactory().getIDocXMLProcessor();
-            xmlProcessor.render(idocList, stringWriter,
-                    IDocXMLProcessor.RENDER_WITH_TABS_AND_CRLF);
-            String xmlContent = stringWriter.toString();
-            BXml xmlContentValue = XmlUtils.parse(xmlContent);
-            Object[] args = {xmlContentValue, true};
-            Object result = invokeOnReceive(args);
-            if (result instanceof BError returnedError) {
-                BError bError = SAPErrorCreator.createIDocError("IDoc processing failed.", returnedError);
-                invokeOnError(new Object[]{bError, true});
+            // (1) Pre-dispatch: render and parse IDoc XML. Framework fault — route to onError.
+            BXml xmlContentValue;
+            try {
+                IDocXMLProcessor xmlProcessor = JCoIDoc.getIDocFactory().getIDocXMLProcessor();
+                xmlProcessor.render(idocList, stringWriter, IDocXMLProcessor.RENDER_WITH_TABS_AND_CRLF);
+                xmlContentValue = XmlUtils.parse(stringWriter.toString());
+            } catch (Throwable thr) {
+                BError err = (thr instanceof BError bErr)
+                        ? SAPErrorCreator.createIDocError("IDoc rendering failed.", bErr)
+                        : SAPErrorCreator.createIDocError("IDoc rendering failed.", thr);
+                invokeOnError(err);
+                return;
             }
-        } catch (Throwable thr) {
-            BError error = (thr instanceof BError)
-                    ? SAPErrorCreator.createIDocError("IDoc processing failed.", (BError) thr)
-                    : SAPErrorCreator.createIDocError("IDoc processing failed.", thr);
-            invokeOnError(new Object[]{error, true});
+
+            // (2) Dispatch: invoke onReceive. User-method errors are NOT routed to onError.
+            Object result;
+            try {
+                result = invokeOnReceive(xmlContentValue);
+            } catch (Throwable thr) {
+                logger.error("onReceive() threw an unexpected error", thr);
+                return;
+            }
+            if (result instanceof BError returnedError) {
+                logger.error("onReceive() returned an error: {}", returnedError.getMessage());
+            }
         } finally {
             try {
                 stringWriter.close();
@@ -104,7 +117,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
      * Uses concurrent or sequential dispatch based on whether the service and the method
      * are both declared {@code isolated}.
      *
-     * @param args the arguments to pass to the resource function (IDoc XML value + a {@code true} sentinel)
+     * @param args the arguments to pass to the resource function (IDoc XML value)
      * @return the return value from the Ballerina method (may be a {@link BError})
      */
     public Object invokeOnReceive(Object... args) {
@@ -120,9 +133,9 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
      * <p>
      * If the service does not declare an {@code onError} method the call is skipped.
      *
-     * @param args the arguments to pass (Ballerina {@code Error} value + a {@code true} sentinel)
+     * @param error the Ballerina {@code Error} to dispatch
      */
-    public void invokeOnError(Object... args) {
+    public void invokeOnError(BError error) {
         MethodType onErrorFunction = null;
         MethodType[] resourceFunctions = ((ObjectType) TypeUtils.getImpliedType(service.getOriginalType()))
                 .getMethods();
@@ -135,8 +148,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
         }
 
         if (onErrorFunction == null) {
-            BError bError = (BError) args[0];
-            logger.error("No onError method found on service; dropping error", bError);
+            logger.error("No onError method found on service; dropping error", error);
             return;
         }
 
@@ -144,7 +156,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
         StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
         try {
-            Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata, args);
+            Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata, new Object[]{error});
             if (result instanceof BError onErrorResult) {
                 logger.error("onError handler returned an error", onErrorResult);
             }
