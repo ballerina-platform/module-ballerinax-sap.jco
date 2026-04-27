@@ -136,10 +136,13 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
         try {
             result = invokeOnCall(args);
         } catch (Throwable t) {
+            logger.error("onCall() threw an unexpected throwable for function '{}'; "
+                    + "propagating to SAP as BALLERINA_INTERNAL_ERROR", functionName, t);
             throw new AbapException("BALLERINA_INTERNAL_ERROR",
                     t.getMessage() == null ? "onCall() panicked" : t.getMessage());
         }
         if (result instanceof BError bError) {
+            logger.warn("onCall() returned an error for function '{}': {}", functionName, bError.getMessage());
             throw new AbapException("BALLERINA_ERROR", bError.getMessage());
         }
 
