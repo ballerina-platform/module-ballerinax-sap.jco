@@ -407,7 +407,7 @@ public final class Listener {
         try {
             server.stop();
         } catch (Throwable e) {
-            if (e.getMessage() != null && e.getMessage().contains("already stopped")) {
+            if (server.getState() == JCoServerState.STOPPED) {
                 logger.debug("Server was already stopped.");
             } else {
                 logger.error("Server stop failed.");

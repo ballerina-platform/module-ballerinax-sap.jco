@@ -25,7 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `boolean` to `FieldType`, enabling boolean values in RFC import, export, and table parameters.
 - Added `RfcRecord` type alias (`record {| FieldType?...; |}`) as the base record type for RFC import, export, and table row values.
 - Added `RfcParameters` record type that wraps `importParameters` (`RfcRecord`) and `tableParameters` (`map<RfcRecord[]>`) for use with `execute`.
-- [Changed `execute` signature: import and table parameters are now supplied via `RfcParameters parameters = {}`; the return type descriptor parameter is renamed to `returnType` and typed as `typedesc<RfcRecord|xml>` (`json` support removed); the response now merges both export parameters and table parameters returned by SAP.](https://github.com/ballerina-platform/ballerina-library/issues/8714)
 - Introduced distinct error types aligned with Ballerina conventions: `ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `JCoError`, `IDocError`, `ParameterError`, `ConfigurationError`, and `ExecutionError`. All are members of the existing `Error` union.
 - Added `JCoErrorDetail` and `AbapApplicationErrorDetail` record types that are carried as error detail by JCo-origin errors.
 - Added `IDocService` distinct service type for receiving IDocs from the SAP system. Replaces the previous `Service` type.
@@ -37,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** [Changed `execute` signature: import and table parameters are now supplied via `RfcParameters parameters = {}`; the return type descriptor parameter is renamed to `returnType` and typed as `typedesc<RfcRecord|xml>` (`json` support removed); the response now merges both export parameters and table parameters returned by SAP.](https://github.com/ballerina-platform/ballerina-library/issues/8714)
 - **Breaking:** Renamed `Service` type to `IDocService`. Update all `service jco:Service` declarations to `service jco:IDocService`.
 - **Breaking:** `repositoryDestination` in `ServerConfig` is a required field. It may be provided either as a string `destinationId` matching the `destinationId` of an already-initialised `Client`, or as an inline `DestinationConfig` object (in which case the connector initialises the destination automatically and no separate `Client` creation is required).
 - Renamed `onError` parameter from `'error` to `err` in both `IDocService` and `RfcService`.
