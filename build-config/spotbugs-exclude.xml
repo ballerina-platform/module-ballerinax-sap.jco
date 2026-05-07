@@ -64,4 +64,12 @@
         <Method name="getInstance"/>
         <Bug pattern="MS_EXPOSE_REP"/>
     </Match>
+    <Match>
+        <Class name="io.ballerina.lib.sap.idoc.BallerinaThrowableListener"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="io.ballerina.lib.sap.rfc.BallerinaRfcHandler"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
 </FindBugsFilter>

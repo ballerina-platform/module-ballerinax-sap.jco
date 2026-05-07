@@ -3,7 +3,7 @@
 _Authors_: @RDPerera  
 _Reviewers_: @niveathika, @NipunaRanasinghe, @shafreenAnfar  
 _Created_: 2024/08/28  
-_Updated_: 2026/04/07  
+_Updated_: 2026/04/27  
 _Edition_: Swan Lake
 
 ## Introduction
@@ -36,7 +36,8 @@ The conforming implementation of the specification is released and included in t
      - 2.2.2 [Listener lifecycle](#222-listener-lifecycle)
      - 2.2.3 [Available operations](#223-available-operations)
        - 2.2.3.1 [Receive iDocs](#2231-receive-idocs)
-       - 2.2.3.2 [Error handling in listener](#2232-error-handling-in-listener)
+       - 2.2.3.2 [Handle inbound RFC calls](#2232-handle-inbound-rfc-calls)
+       - 2.2.3.3 [Error handling in listener](#2233-error-handling-in-listener)
 3. [Error types](#3-error-types)
          
 ## 1. Overview
@@ -145,9 +146,9 @@ An RFC function call is made using the following function:
 #
 # + functionName - Name of the RFC function module to call (e.g. `"STFC_CONNECTION"`).
 # + parameters - Import and table parameter values wrapped in an `RfcParameters` record.
-# + returnType - Expected type of the RFC response (`xml`, `json`, or a record type).
+# + returnType - Expected type of the RFC response (`xml` or a record type).
 # + return - The export and table parameters merged and converted to the `returnType` type, or an error on failure.
-isolated remote function execute(string functionName, RfcParameters parameters = {}, typedesc<RfcRecord|xml|json> returnType = <>) returns returnType|Error
+isolated remote function execute(string functionName, RfcParameters parameters = {}, typedesc<RfcRecord|xml> returnType = <>) returns returnType|Error
 ```
 
 The `RfcParameters` type wraps import parameters and optional table parameters:
@@ -168,12 +169,12 @@ public type RfcRecord record {| FieldType?...; |};
 `FieldType` covers all scalar, temporal, binary, structure, and table value types supported by SAP JCo:
 
 ```ballerina
-public type FieldType string|int|float|decimal|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
+public type FieldType string|int|float|decimal|boolean|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
 ```
 
-The `functionName` refers to the Remote Function Module name. The `parameters.importParameters` map holds scalar, structure, and table values keyed by SAP parameter name. The `parameters.tableParameters` map holds table input parameters, where each key is a SAP table parameter name and the value is an array of `RfcRecord` rows.
+The `functionName` refers to the Remote Function Module name. The `parameters.importParameters` map holds scalar and structure values keyed by SAP parameter name. The `parameters.tableParameters` map holds table input parameters, where each key is a SAP table parameter name and the value is an array of `RfcRecord` rows.
 
-For the return type, the type descriptor of the user's `returnType` is extracted. The response merges both export parameters and table parameters returned by the SAP function module. Use a `RfcRecord`-compatible record to receive typed results, or `json`/`xml` for untyped access.
+For the return type, the type descriptor of the user's `returnType` is extracted. The response merges both export parameters and table parameters returned by the SAP function module. Use a `RfcRecord`-compatible record to receive typed results, or `xml` for untyped access.
 
 Users can invoke it as shown below:
 
@@ -227,23 +228,39 @@ The RFC Client also supports sending IDocs to an SAP system, allowing you to aut
 An IDoc can be sent using the following function:
 
 ```ballerina
-# Sends an IDoc to the SAP system over tRFC, including TID creation and confirmation.
+# Sends an IDoc to the SAP system over tRFC or qRFC, including TID creation and confirmation.
 #
-# + iDoc - IDoc payload as XML.
-# + iDocType - IDoc version/protocol variant.
-# + return - An error if the IDoc cannot be delivered or the TID cannot be confirmed.
-isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error?
+# + iDoc - IDoc payload in XML format
+# + iDocType - IDoc protocol version. Use `VERSION_3_IN_QUEUE` or `VERSION_3_IN_QUEUE_VIA_QRFC` for qRFC.
+# + tid - Optional Transaction ID (TID). If not provided, a new TID is created via the JCo destination.
+#         Supply your own TID for end-to-end idempotency when the caller persists outbound intent.
+# + queueName - Required when `iDocType` is a qRFC version (`VERSION_3_IN_QUEUE` or
+#               `VERSION_3_IN_QUEUE_VIA_QRFC`). Ignored with a warning for tRFC versions.
+# + return - An error if the IDoc cannot be delivered or the TID cannot be confirmed
+isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT,
+                                  string? tid = (), string? queueName = ()) returns Error?
 ```
 
-The input parameters require `iDoc`, with an optional `iDocType`. The `iDoc` represents the content of the IDoc in XML format. The `iDocType` specifies the version of the IDoc being sent and can be set to `DEFAULT`, `VERSION_2`, `VERSION_3`, `VERSION_3_IN_QUEUE`, or `VERSION_3_IN_QUEUE_VIA_QRFC`. If no `iDocType` is provided, the `DEFAULT` type will be applied.
+The required parameter is `iDoc` (the IDoc payload in XML format). Optional parameters:
+
+- `iDocType` — the IDoc version/protocol variant. `DEFAULT`, `VERSION_2`, and `VERSION_3` use **tRFC** (unordered, exactly-once). `VERSION_3_IN_QUEUE` and `VERSION_3_IN_QUEUE_VIA_QRFC` use **qRFC** (ordered delivery via a named queue).
+- `tid` — a caller-supplied Transaction ID for end-to-end idempotency. If omitted, the JCo destination generates one automatically. Useful when the caller persists the outbound intent (outbox pattern) and needs SAP to recognise the TID as already processed on retry.
+- `queueName` — the SAP inbound queue name. Required for qRFC `iDocType` values; ignored (with a warning) for tRFC values.
 
 Users can invoke it as shown below:
 
 ```ballerina
 public function main() returns error? {
     xml iDoc = check io:fileReadXml("resources/sample.xml");
+
+    // tRFC send (unordered, auto-generated TID)
     check jcoClient->sendIDoc(iDoc);
-    io:println("IDoc sent successfully.");
+
+    // qRFC send (ordered delivery into a named queue)
+    check jcoClient->sendIDoc(iDoc, iDocType = VERSION_3_IN_QUEUE_VIA_QRFC,
+                              queueName = "MATMAS_SENDER_CLNT100");
+
+    io:println("IDocs sent successfully.");
 }
 ```
 
@@ -262,6 +279,7 @@ The following table maps Ballerina data types to their corresponding SAP JCo typ
 | int                                   | long           | INT4                  |
 | float                                 | float          | FLOAT                 |
 | decimal                               | double         | DEC, QUAN, CURR, PREC |
+| boolean                               | Boolean        | CHAR (X/space)        |
 | byte                                  | byte           | INT1                  |
 | byte[]                                | byte[]         | RAW, LRAW, BYTE       |
 | decimal                               | BigDecimal     | DEC, QUAN, CURR       |
@@ -280,6 +298,8 @@ The Listener supports two types of configurations, `ServerConfig` and `AdvancedC
 The `ServerConfig` type represents the configuration details needed to create an IDoc connection.
 
 ```ballerina
+public type RepositoryDestination string|DestinationConfig;
+
 public type ServerConfig record {|
     # The gateway host (jco.server.gwhost)
     string gwhost;
@@ -289,12 +309,17 @@ public type ServerConfig record {|
     string progid;
     # Maximum number of concurrent RFC connections (jco.server.connection_count)
     int connectionCount = 2;
-    # RFC destination used to look up IDoc metadata; must match the `destinationId` of an initialised `Client` (jco.server.repository_destination)
-    string repositoryDestination?;
+    # RFC destination used to look up IDoc and RFC metadata (jco.server.repository_destination)
+    RepositoryDestination repositoryDestination;
 |};
 ```
 
-**Example configuration:**
+`repositoryDestination` is required and accepts two forms:
+
+- **String** — the `destinationId` of an already-initialised `Client`. The listener reuses that client's connection to look up IDoc segment metadata and RFC function module metadata from SAP.
+- **`DestinationConfig`** — SAP credentials supplied directly. The listener registers an internal JCo destination automatically, so no separate `Client` is required.
+
+**Example configuration (string form):**
 
 ```ballerina
 configurable jco:ServerConfig configs = ?;
@@ -312,7 +337,22 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-When `repositoryDestination` is set it must match the `destinationId` of an already-initialised `Client`. This allows the listener to look up IDoc metadata from the SAP system using an existing RFC connection.
+**Example configuration (inline DestinationConfig form):**
+
+```toml
+[configs]
+gwhost = "gwhost"
+gwserv = "sapgw00"
+progid = "progid"
+connectionCount = 2
+
+[configs.repositoryDestination]
+ashost = "sap.example.com"
+sysnr = "00"
+jcoClient = "100"
+user = "SAP_USER"
+passwd = "SAP_PASSWORD"
+```
 
 ##### 2.2.1.2 Advanced configurations
 
@@ -335,6 +375,7 @@ Config.toml file:
 [configs]
 "jco.server.gwhost" = "gwhost"
 "jco.server.gwserv" = "sapgw00"
+"jco.server.progid" = "progID"
 "jco.server.repository_destination" = "SAMPLE_DESTINATION"
 "jco.client.ashost" = "host"
 "jco.client.sysnr" = "00"
@@ -350,7 +391,7 @@ This section describes how to initialise, attach, start, and stop the listener.
 - To initialise the listener with a given configuration, the `init` function can be used.
 
 ```ballerina
-# Registers a JCo IDoc server with the SAP gateway; reuses an existing server for the same (gwhost, gwserv, progid) combination.
+# Registers a JCo server with the SAP gateway; reuses an existing server for the same (gwhost, gwserv, progid) combination.
 #
 # + serverConfig - JCo server connection parameters (`ServerConfig` or `AdvancedConfig`).
 # + serverName - Unique name used to register the server with the JCo framework (default is a UUID).
@@ -358,37 +399,47 @@ This section describes how to initialise, attach, start, and stop the listener.
 public isolated function init(ServerConfig|AdvancedConfig serverConfig, string serverName = uuid:createType4AsString()) returns Error?
 ```
 
-- To attach a service to the iDoc listener, the `attach` function can be used.
+- To attach a service to the listener, the `attach` function can be used.
 
 ```ballerina
-# Attaches a service to receive incoming IDoc documents; only one service may be attached at a time.
+# Attaches a service to the listener. At most one IDocService and one RfcService may be
+# attached at the same time. Both service types require repositoryDestination to be set in
+# ServerConfig. When repositoryDestination is a string destinationId, a Client with that
+# destinationId must have been created first. When repositoryDestination is an inline
+# DestinationConfig, no separate Client creation is required.
 #
-# + s - The service to attach.
-# + name - Optional service name (not used by the JCo transport).
-# + return - An error if the service cannot be attached.
-public isolated function attach(Service s, string[]|string? name = ()) returns Error?
+# + s - The service to attach; must be an IDocService or an RfcService.
+# + name - Optional service name (unused at runtime).
+# + return - An error if the repositoryDestination is not registered, the service type is already attached, or attachment fails.
+public isolated function attach(IDocService|RfcService s, string[]|string? name = ()) returns Error?
 ```
 
-- To detach a service from the iDoc listener, the `detach` function can be used.
+- To detach a service from the listener, the `detach` function can be used.
 
 ```ballerina
-# Detaches the service and clears the server reference without stopping the JCo server.
+# Unregisters a service from the listener without stopping the JCo server.
+# The other service type, if attached, continues to operate.
 #
 # + s - The service to detach.
 # + return - An error if the detach operation fails.
-public isolated function detach(Service s) returns Error?
+public isolated function detach(IDocService|RfcService s) returns Error?
 ```
 
-- To start the iDoc listener, the `'start` function can be used.
+- To start the listener, the `'start` function can be used.
 
 ```ballerina
-# Starts the JCo server and begins accepting IDoc connections from the SAP gateway.
+# Starts the JCo server and returns immediately. Gateway connectivity is established
+# asynchronously by JCo's internal connection threads. A successful return means the server
+# has been submitted to JCo's scheduler — it does not mean the gateway handshake is complete.
 #
-# + return - An error if the server cannot be started.
+# If the gateway is unreachable, JCo retries automatically and delivers each failure to the
+# attached service's `onError` handler as an `ExecutionError`.
+#
+# + return - An error only for pre-flight failures: listener not initialised or already started.
 public isolated function 'start() returns Error?
 ```
 
-- To stop the iDoc listener gracefully, the `gracefulStop` function can be used.
+- To stop the listener gracefully, the `gracefulStop` function can be used.
 
 ```ballerina
 # Stops the JCo server and blocks until it fully leaves the stopping state (up to 15 seconds).
@@ -397,10 +448,11 @@ public isolated function 'start() returns Error?
 public isolated function gracefulStop() returns Error?
 ```
 
-- To stop the iDoc listener immediately, the `immediateStop` function can be used.
+- To stop the listener immediately, the `immediateStop` function can be used.
 
 ```ballerina
-# Stops the JCo server immediately; currently behaves identically to `gracefulStop`.
+# Stops the JCo server. Behaves identically to gracefulStop because JCo exposes a single
+# stop operation with no immediate/graceful distinction.
 #
 # + return - An error if the server cannot be stopped.
 public isolated function immediateStop() returns Error?
@@ -410,37 +462,80 @@ public isolated function immediateStop() returns Error?
 
 ##### 2.2.3.1 Receive iDocs
 
-The Listener can be used to receive IDocs from the SAP system, which can then be processed within your Ballerina application.
+The Listener can be used to receive IDocs from the SAP system using the `IDocService` type.
 
 ```ballerina
 listener jco:Listener iDocListener = new (configurations);
 
-service jco:Service on iDocListener {
+service jco:IDocService on iDocListener {
     remote function onReceive(xml iDoc) returns error? {
         check io:fileWriteXml("resources/received_idoc.xml", iDoc);
         io:println("IDoc received and saved.");
+    }
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
     }
 }
 ```
 
 When an IDoc is received, it will be in XML format, and the user can easily map it to a record using Ballerina's XML-to-Record conversion features.
 
-##### 2.2.3.2 Error handling in listener
+##### 2.2.3.2 Handle inbound RFC calls
 
-The Listener also supports error handling, allowing you to capture and manage any issues that occur during IDoc reception.
+The Listener can also receive inbound RFC calls from the SAP system using the `RfcService` type. SAP invokes this service as if it were a registered RFC function module.
 
 ```ballerina
-service jco:Service on iDocListener {
-    remote function onReceive(xml iDoc) returns error? {
-        check io:fileWriteXml("resources/received_idoc.xml", iDoc);
-        io:println("IDoc received and saved.");
+service jco:RfcService on rfcListener {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
+        io:println("RFC called: ", functionName);
+        return ();
     }
-
-    remote function onError(error 'error) returns error? {
-        io:println("Error occurred: ", 'error.message());
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
     }
 }
 ```
+
+The return value of `onCall` is serialized and sent back to the SAP caller as the RFC response. An error return causes an `AbapException` to be raised on the SAP side. An empty (`()`) response is valid for fire-and-forget RFCs.
+
+**Returning `RfcRecord`**: each key in the returned map is matched to a SAP export or table parameter by name. Array values are written to the table parameter list; all other values are written to the export parameter list using the existing `FieldType` coercion rules.
+
+```ballerina
+remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
+    return {
+        "CREDIT_STATUS": "A",
+        "CREDIT_SCORE": 750,
+        "ITEMS": [{"MATNR": "000001", "QTY": 10}]
+    };
+}
+```
+
+**Returning `xml`**: the root element is ignored. Each direct child element is mapped to a SAP parameter by element name. JCo coerces the string text content to the target SAP type (CHAR, INT, DEC, etc.) automatically. Three element shapes are recognised:
+
+| Element shape | Mapped to |
+|---|---|
+| Text-only child: `<PARAM>value</PARAM>` | Export parameter — string coerced to SAP type |
+| Children all named `<row>`: `<TABLE><row>…</row></TABLE>` | Table parameter — each `<row>` appends one row; row child elements are field values |
+| Mixed-name children: `<STRUCT><FIELD>v</FIELD>…</STRUCT>` | Structure export parameter — child elements are field names |
+
+```ballerina
+remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
+    return xml `<response>
+        <CREDIT_STATUS>A</CREDIT_STATUS>
+        <CREDIT_SCORE>750</CREDIT_SCORE>
+        <ITEMS>
+            <row><MATNR>000001</MATNR><QTY>10</QTY></row>
+            <row><MATNR>000002</MATNR><QTY>5</QTY></row>
+        </ITEMS>
+    </response>`;
+}
+```
+
+Errors from response serialization (malformed XML, unrecognised parameter names reported by JCo) are routed to the `onError` handler as a `ParameterError` and raised to SAP as an `AbapException`.
+
+##### 2.2.3.3 Error handling in listener
+
+Both `IDocService` and `RfcService` expose an `onError` remote function that receives server-level errors, including gateway connectivity failures. Because the listener starts before the gateway handshake completes, this handler is the primary signal for connectivity problems. JCo retries the connection automatically and calls this method on every failed attempt. When the gateway becomes reachable again, JCo reconnects silently and the errors stop — there is no need to restart the listener.
 
 ## 3. Error types
 
