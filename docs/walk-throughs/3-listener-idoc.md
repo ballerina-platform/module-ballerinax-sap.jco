@@ -59,7 +59,7 @@ Transaction **SM59**.
 - **Gateway Options** → set **Gateway Host** and **Gateway Service** (usually `sapgw<sysnr>` where `<sysnr>` is your SAP system number, e.g. `sapgw00`).
 - Save.
 
-![](./resources/recordings/define_rfc_destination_sap.gif)
+![Define RFC destination in SAP](./resources/recordings/define_rfc_destination_sap.gif)
 
 ### Step 2 — Open the Gateway ACL
 
@@ -68,14 +68,14 @@ Transaction **SMGW**.
 - *Goto* → *Expert Functions* → *External Security* → *Maintain ACL Files*.
 - Edit **reginfo**. Add above any deny-all rule at the bottom:
 
-```
+```text
 P TP=TEST_LISTENER HOST=* ACCESS=* CANCEL=*
 ```
 
 - Save.
 - *Reload ACL Files* (this is critical — SAP does *not* hot-reload it).
 
-![](./resources/recordings/edit_reginfo_sap.gif)
+![Edit reginfo in SAP Gateway](./resources/recordings/edit_reginfo_sap.gif)
 
 > **Sandbox shortcut:** `HOST=*` and `ACCESS=*` make life easy for blog-demo purposes. In real environments you pin the host to the IPs of your Ballerina nodes.
 
@@ -88,7 +88,7 @@ Transaction **WE21**.
 - **RFC destination** = `TEST_LISTENER` (the SM59 destination we just made).
 - Save.
 
-![](./resources/recordings/create_port_sap.gif)
+![Create IDoc port in SAP](./resources/recordings/create_port_sap.gif)
 
 ### Step 4 — Create or verify logical systems (BD54, then SCC4)
 
@@ -98,7 +98,7 @@ Transaction **BD54**:
 
 - create (or verify) logical systems for outbound (for example, `INTEGRATOR`).
 
-![](./resources/recordings/add_outbound_ls_sap.gif)
+![Add outbound logical system in SAP](./resources/recordings/add_outbound_ls_sap.gif)
 
 ### Step 5 — Outbound partner profile (WE20)
 
@@ -113,7 +113,7 @@ Transaction **WE20**.
   - **IDoc Type** → **Basic type** = `ORDERS05`.
 - Save.
 
-![](./resources/recordings/add_outbound_partner_sap.gif)
+![Add outbound partner in SAP](./resources/recordings/add_outbound_partner_sap.gif)
 
 ### Step 6 — Have an IDoc to send (WE19)
 
@@ -135,7 +135,7 @@ Transaction **WE19** is an IDoc test tool. If your sandbox already has some `ORD
   - **E1EDP01**: `POSEX=000010`(Document item), `QUALF=001`(Action), `MENGE=5`(Quantity), `PSTYP=0`(Item category), `MATNR=MAT_123`(Material number).
 - Save — but **don't send yet**. We want the Ballerina listener running first.
 
-![](./resources/recordings/create_idoc_sap.gif)
+![Create IDoc in SAP](./resources/recordings/create_idoc_sap.gif)
 
 ---
 
@@ -327,23 +327,23 @@ At this point, SMGW on the SAP side should show a registered server.
 
 Also test the RFC destination in SM59 — it should succeed now that the listener is up.
 
-![](./resources/recordings/test_rfc_dest_sap.gif)
+![Test RFC destination in SAP](./resources/recordings/test_rfc_dest_sap.gif)
 
 ### Send an IDoc from SAP
 
 Back to WE19 → the IDoc you prepped earlier → **Standard outbound processing** (F5, or *IDoc → Start outbound processing*). This triggers the normal partner-profile dispatch path — SAP looks up `INTEGRATOR`'s outbound parameters for `ORDERS` + `ORDERS05`, routes to the WE21 port, which points to the SM59 destination, which points to your Program ID.
 
-![](./resources/recordings/send_idoc_from_sap.gif)
+![Send IDoc from SAP](./resources/recordings/send_idoc_from_sap.gif)
 
 Ballerina console:
 
-```
+```log
 time=2026-04-27T09:30:46.609+05:30 level=INFO module=wso2/example message="Received purchase order" poNumber="4500000123" lineCount=1 sender="Ballerina"
 ```
 
 WE02 on the SAP side shows the IDoc with outbound status `03` (*Data passed to port OK*) or `12` (*Dispatch OK*) — either is success.
 
-![](./resources/recordings/verify_idoc_status_sap.gif)
+![Verify IDoc status in SAP](./resources/recordings/verify_idoc_status_sap.gif)
 
 ---
 

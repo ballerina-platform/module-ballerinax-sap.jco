@@ -75,7 +75,7 @@ Transaction **SM59**.
 - **Gateway Options** → set **Gateway Host** and **Gateway Service** (usually `sapgw<sysnr>` where `<sysnr>` is your SAP system number, e.g. `sapgw00`).
 - Save.
 
-![](./resources/recordings/define_rfc_destination_sap.gif)
+![Define RFC destination in SAP](./resources/recordings/define_rfc_destination_sap.gif)
 
 
 ### Step 2 — Open the Gateway ACL
@@ -85,7 +85,7 @@ Transaction **SMGW**.
 - *Goto* → *Expert Functions* → *External Security* → *Maintain ACL Files*.
 - Edit **reginfo**. Add above any deny-all rule at the bottom:
 
-```
+```text
 P TP=TEST_LISTENER HOST=* ACCESS=* CANCEL=*
 ```
 
@@ -234,11 +234,11 @@ At this point, SMGW on the SAP side should show a registered server.
 
 ![Registered server in SMGW — showing TEST_LISTENER with the correct host and gateway details.](./resources/images/registered-service.png)
 
-With the listener running, go back to SM59 → your `BALLERINA_RFC_LISTENER` destination → **Connection Test** (`Ctrl+F3`).
+With the listener running, go back to SM59 → your `TEST_LISTENER` destination → **Connection Test** (`Ctrl+F3`).
 
-You should see a "Connection Test: BALLERINA_RFC_LISTENER" output with *Result = OK* and round-trip timing. SAP is now confirmed to reach your server.
+You should see a "Connection Test: TEST_LISTENER" output with *Result = OK* and round-trip timing. SAP is now confirmed to reach your server.
 
-![](./resources/recordings/test_rfc_dest_sap.gif)
+![Test RFC destination in SAP](./resources/recordings/test_rfc_dest_sap.gif)
 
 ### Trigger an RFC call from SAP
 
@@ -251,20 +251,20 @@ Transaction **SE37**.
 - On the test screen, **do not press F8 again yet.** Click *Function modules → Test with RFC connection* (or set *RFC target sys* at the top — the field appears on the test screen).
 - **RFC target sys** = `TEST_LISTENER` (the SM59 destination you set up).
 - Fill import parameters:
-  - **REQUTEXT** = `Hello Integrator` (or any string you like).
+  - **REQUTEXT** = `Hello Ballerina` (or any string you like).
 - **F8**.
 
-![](./resources/recordings/call_rfc_on_sap.gif)
+![Call RFC on SAP](./resources/recordings/call_rfc_on_sap.gif)
 
 Ballerina console:
 
-```
-time=2026-04-27T11:20:02.844+05:30 level=INFO module=wso2/example message="RFC call received" functionName="STFC_CONNECTION" importParams={"REQUTEXT":"HELLO INTEGRATOR"} tableParams=
+```log
+time=2026-04-27T11:20:02.844+05:30 level=INFO module=wso2/example message="RFC call received" functionName="STFC_CONNECTION" importParams={"REQUTEXT":"HELLO BALLERINA"} tableParams=
 ```
 
 SE37 response screen:
 
-```
+```text
 ECHOTEXT = Hello Ballerina
 RESPTEXT = Responded by Ballerina
 ```
@@ -320,7 +320,7 @@ On the SAP side, SE37 shows a **system exception** banner with your error messag
 
 ```abap
 CALL FUNCTION 'STFC_CONNECTION'
-    DESTINATION 'BALLERINA_RFC_LISTENER'
+    DESTINATION 'TEST_LISTENER'
     EXPORTING REQUTEXT = 'Hello'
     IMPORTING ECHOTEXT = lv_echo
     EXCEPTIONS system_failure = 1 MESSAGE lv_msg

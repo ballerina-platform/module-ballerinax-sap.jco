@@ -74,7 +74,7 @@ Before creating a WE20 partner profile of type `LS`, make sure the logical syste
 
 - Transaction **BD54**: create (or verify) logical systems for sender (for example, `TEST_LS`) and receiver (for example, `ABACLNT001`).
 
-![](./resources/recordings/create_a_logical_system_sap.gif)
+![Create a logical system in SAP](./resources/recordings/create_a_logical_system_sap.gif)
 
 - Transaction **SCC4**: verify the current client is assigned to the correct local logical system of the receiver.
 
@@ -92,7 +92,7 @@ Transaction **WE20**.
   - *Trigger immediately* (radio) — gives you immediate processing for easier debugging.
 - Save.
 
-![](./resources/recordings/create_partner_profile_sap.gif)
+![Create partner profile in SAP](./resources/recordings/create_partner_profile_sap.gif)
 
 ### Step 3 — Know where to look afterwards (WE02 / WE05)
 
@@ -111,15 +111,15 @@ Key status codes:
 
 **For the purposes of this part, the success bar is "IDoc reaches SAP" — i.e. it shows up in WE02 with a control record.** A `53` is a bonus.
 
-![](./resources/recordings/check_idocs_sap.gif)
+![Check IDocs in SAP](./resources/recordings/check_idocs_sap.gif)
 
 ### Step 4 — Optional: Inspect IDoc type documentation (WE60)
 
 Transaction **WE60**. Enter `MATMAS03` → Documentation. SAP generates a nicely-formatted doc listing every segment, every field, with types and the original ABAP data element description. It's the authoritative reference for building a valid payload.
 
-![](./resources/recordings/check_matmas_idoc_sap.gif)
+![Check MATMAS IDoc type in SAP](./resources/recordings/check_matmas_idoc_sap.gif)
 
-> **Tip:** If you want to create the relevant IDoc type in Ballerina as a record type instead of working with raw XML, you can download the IDoc structure as an XSD file and use Ballerina XSD tool to generate the relevant types. The `sendIdoc` action still accepts raw XML, you can convert the record value to XML and pass it to the action.
+> **Tip:** If you want to create the relevant IDoc type in Ballerina as a record type instead of working with raw XML, you can download the IDoc structure as an XSD file and use Ballerina XSD tool to generate the relevant types. The `sendIDoc` action still accepts raw XML, you can convert the record value to XML and pass it to the action.
 
 ---
 
@@ -210,7 +210,7 @@ We will build a minimal but valid `MATMAS03` payload: one material header (`E1MA
   <IDOC BEGIN="1">
     <EDI_DC40 SEGMENT="1">
       <TABNAM>EDI_DC40</TABNAM>
-      <MANDT>001</MANDT>
+      <MANDT>100</MANDT>
       <DIRECT>2</DIRECT>
       <IDOCTYP>MATMAS03</IDOCTYP>
       <MESTYP>MATMAS</MESTYP>
@@ -274,7 +274,7 @@ public function main() returns error? {
 
 Console:
 
-```
+```text
 IDoc sent. Check WE02 on SAP side.
 ```
 
@@ -405,7 +405,7 @@ Example:
 check sapClient->sendIDoc(
     iDoc,
     iDocType = jco:VERSION_3_IN_QUEUE_VIA_QRFC,
-    queueName = "TEST_QUEUE_I "
+    queueName = "TEST_QUEUE_I"
 );
 ```
 

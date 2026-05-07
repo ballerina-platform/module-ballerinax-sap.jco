@@ -480,9 +480,14 @@ All four examples return `error?` at the main level, but in Ballerina flows you'
 | `ParameterError` | Ballerina ↔ JCo type conversion failed (e.g. you sent a `string` into an SAP `INT4`) |
 | `ConfigurationError` | Client not initialised, closed, destination ID collision |
 
-Pattern-match with `if result is ConnectionError` / `is AbapApplicationError` branches. The `AbapApplicationError` detail gives you structured access to the ABAP message — `abapMsgClass`, `abapMsgNumber`, `abapMsgV1..V4` — so you can route on the specific message without parsing the human-readable string.
+Pattern-match the error with `if err is ConnectionError` / `is AbapApplicationError` branches. The `AbapApplicationError` detail gives you structured access to the ABAP message — `abapMsgClass`, `abapMsgNumber`, `abapMsgV1..V4` — so you can route on the specific message without parsing the human-readable string.
 
 ```ballerina
+import ballerina/io;
+import ballerinax/sap.jco;
+
+configurable jco:DestinationConfig sapConfig = ?;
+
 do {
     jco:Client sapClient = check new (sapConfig);
     MaterialListResponse|error result = sapClient->execute("BAPI_MATERIAL_GETLIST", { ... });
