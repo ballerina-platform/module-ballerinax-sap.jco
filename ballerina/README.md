@@ -8,12 +8,12 @@ environment for businesses.
 
 The `ballerinax/sap.jco` package exposes the SAP JCo library as ballerina functions.
 
-
-### Key Features
+## Key Features
 
 - Connect to SAP systems via SAP JCo (Java Connector)
 - Execute BAPIs and Remote Function Calls (RFC)
 - Support for IDoc processing and exchange — both sending and receiving
+- Receive and handle inbound RFC calls from SAP systems using the `RfcService` listener type
 - Distinct typed error hierarchy (`ConnectionError`, `LogonError`, `ResourceError`, `SystemError`, `AbapApplicationError`, `IDocError`, `ConfigurationError`, `ExecutionError`, and more) for precise error handling
 - Singleton destination and server data providers enabling multiple concurrent clients and listeners without JCo provider conflicts
 - Compatible with SAP ERP and S/4HANA systems
@@ -37,49 +37,36 @@ administrator for the complete list of parameters needed for your setup.
 
 ### Download and Add Middleware Libraries
 
-To use the SAP JCo connector, you need to download the `sapidoc3.jar` and `sapjco3.jar` middleware libraries from the
-SAP
-support portal and add the dependencies to your Ballerina project.
-
-#### Step 1: Download Middleware Libraries
-
-1. Go to the [SAP Support Portal](https://support.sap.com/en/index.html).
-2. Search for and download the following files:
-   - sapjco3.jar
-   - sapidoc3.jar
-
-#### Step 2: Setting Up Environment
-
-1. **Install JRE**: Ensure you have Java Runtime Environment (JRE) version 21 installed on your system.
-
-2. **Set CLASSPATH**: Configure the CLASSPATH environment variable to include the JAR files and the following native SAP JCo libraries based on your operating system:
-
-   | Operating System | Native SAP JCo Library  |
-   |------------------|-------------------------|
-   | Linux            | `libsapjco3.so`         |
-   | Windows          | `sapjco3.dll`           |
-   | MacOS            | `libsapjco3.dylib`      |
-
-#### Step 3: Add Dependencies to Ballerina.toml
-
-After downloading the libraries, add them to your `Ballerina.toml` file in the Ballerina project by specifying the
-paths and relevant details.
+Download SAP JCo JARs and native libraries from the [SAP Service Marketplace](https://support.sap.com/en/index.html). You need both the `sapjco3.jar` and the platform-specific native library (`sapjco3.dll` on Windows, `libsapjco3.so` on Linux, `libsapjco3.jnilib` on Mac). Add the relevant paths in the **Ballerina.toml** with `provided` scope so they're on the compile-time classpath but not bundled into the final artifact.
 
 ```toml
 [[platform.java21.dependency]]
-path = "../sapidoc3.jar"
+path = "<path-to-sapidoc3.jar>"
 groupId = "com.sap"
 artifactId = "com.sap.conn.idoc"
 version = "3.1.*"
+scope = "provided"
 
 [[platform.java21.dependency]]
-path = "../sapjco3.jar"
+path = "<path-to-sapjco3.jar>"
 groupId = "com.sap"
 artifactId = "com.sap.conn.jco"
 version = "3.1.*"
+scope = "provided"
 ```
 
-Ensure that the paths to the JAR files are correct and relative to your project directory.
+The native library needs to be on the system `PATH` (Windows) or `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (Mac) at runtime so the JVM can find it.
+
+### Configure Minimum Version (Optional)
+
+Configure the required minimum version of the SAP JCo connector in your **Ballerina.toml** to avoid accidentally using an incompatible version of JCo:
+
+```toml
+[[dependency]]
+org = "ballerinax"
+name = "sap.jco"
+version = "2.0.0"
+```
 
 ## Quickstart
 
@@ -125,7 +112,11 @@ jco:Client jcoClient = check new (configurations, destinationId = "MY_DESTINATIO
 
 #### Initialize a new JCo listener instance
 
-Configure the necessary SAP connection parameters in `Config.toml` in the project directory:
+Configure the necessary SAP connection parameters in `Config.toml` in the project directory.
+
+`repositoryDestination` is required — the listener uses it to look up IDoc segment metadata and RFC function module metadata from SAP. It accepts two forms:
+
+**Option 1: Reference an existing Client destination** — provide the `destinationId` of an already-initialized `Client`:
 
 ```toml
 [configurations]
@@ -136,7 +127,22 @@ connectionCount = 2
 repositoryDestination = "MY_DESTINATION"
 ```
 
-`repositoryDestination` must match the `destinationId` of an already-initialized `Client` that provides IDoc metadata lookups. It can be omitted if the listener does not require metadata resolution.
+**Option 2: Supply SAP credentials directly** — the listener registers an internal JCo destination automatically, so no separate `Client` is required:
+
+```toml
+[configurations]
+gwhost = "sapgw.example.com"
+gwserv = "sapgw00"
+progid = "JCO_PROGRAM_ID"
+connectionCount = 2
+
+[configurations.repositoryDestination]
+ashost = "sap.example.com"
+sysnr = "00"
+jcoClient = "100"
+user = "SAP_USER"
+passwd = "SAP_PASSWORD"
+```
 
 Then, create a new JCo listener instance for IDoc listener operations.
 
@@ -205,13 +211,48 @@ After `close`, any call to `execute` or `sendIDoc` returns a `ConfigurationError
 #### Initialize a listener for incoming IDocs
 
 ```ballerina
-service jco:Service on iDocListener {
+service jco:IDocService on iDocListener {
     remote function onReceive(xml iDoc) returns error? {
         check io:fileWriteXml("resources/received_idoc.xml", iDoc);
         io:println("IDoc received and saved.");
     }
-    remote function onError(error 'error) returns error? {
-        io:println("Error occurred: ", 'error.message());
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
+    }
+}
+```
+
+#### Initialize a listener for inbound RFC calls
+
+Return an `RfcRecord` map to send typed export parameters back to the SAP caller:
+
+```ballerina
+service jco:RfcService on rfcListener {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
+        io:println("RFC called: ", functionName);
+        return {"ECHOTEXT": "Hello from Ballerina"};
+    }
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
+    }
+}
+```
+
+Alternatively, return `xml` when the response structure is more convenient to build as a document. The root element is ignored; each direct child is mapped to a SAP export or table parameter by element name. JCo coerces the string values to the target SAP type. Table parameters must wrap rows in `<row>` child elements:
+
+```ballerina
+service jco:RfcService on rfcListener {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
+        return xml `<response>
+            <ECHOTEXT>Hello from Ballerina</ECHOTEXT>
+            <RFCTABLE>
+                <row><RFCCHAR1>A</RFCCHAR1><RFCINT1>1</RFCINT1></row>
+                <row><RFCCHAR1>B</RFCCHAR1><RFCINT1>2</RFCINT1></row>
+            </RFCTABLE>
+        </response>`;
+    }
+    remote function onError(error err) returns error? {
+        io:println("Error occurred: ", err.message());
     }
 }
 ```
@@ -237,3 +278,9 @@ scenarios to understand how to automate processes involving SAP systems and exte
 
 3. [Automated Supplier Order Processing via iDoc Listener](https://github.com/ballerina-platform/module-ballerinax-sap.jco/tree/main/examples/order_idoc_listener) - Set up an iDoc listener to automate
    supplier order processing.
+
+4. [SAP Product Catalog Sync](https://github.com/ballerina-platform/module-ballerinax-sap.jco/tree/main/examples/sap_product_catalog) - Query SAP material master data using RFC table parameters
+   (filter criteria and field selection) and sync the results to an external product catalog API.
+
+5. [SAP Real-Time Credit Check Service](https://github.com/ballerina-platform/module-ballerinax-sap.jco/tree/main/examples/sap_credit_check_service) - Expose a Ballerina service as an inbound RFC
+   server that SAP calls synchronously during sales order creation to validate customer creditworthiness.

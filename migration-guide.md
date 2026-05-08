@@ -25,7 +25,8 @@ Version 2.0.0 introduces breaking changes to the `Client.execute()` signature, c
 | `Client.execute()` | Input restructured into `RfcParameters`; return descriptor renamed `returnType` | All RFC call sites must be updated |
 | `Client.init()` | Parameter renamed from `configurations` to `config`; new optional `destinationId` | Named-argument call sites break |
 | Error types | Generic `Error` replaced with ten distinct error types | `is Error` checks still work; type-specific `is` checks need updating |
-| `ServerConfig` | Two new fields: `connectionCount`, `repositoryDestination` | Additive — existing configs compile unchanged |
+| `ServerConfig` | `connectionCount` added (defaulted); `repositoryDestination` added and is now **required** | Listener configs must now include `repositoryDestination` |
+| `Service` type | Renamed to `IDocService`; new `RfcService` type added | All `service jco:Service` declarations must be renamed |
 
 ---
 
@@ -42,7 +43,7 @@ The old signature accepted a flat record for input and discarded all table outpu
 isolated remote function execute(
     string functionName,
     record {|FieldType?...;|} importParams,
-    typedesc<record {|FieldType?...;|}|xml|json> exportParams = <>
+    typedesc<record {|FieldType?...;|}|xml|json?> exportParams = <>
 ) returns exportParams|Error
 ```
 
@@ -57,7 +58,7 @@ The new signature uses explicit input categories and merges all output into one 
 isolated remote function execute(
     string functionName,
     RfcParameters parameters = {},
-    typedesc<RfcRecord|xml|json> returnType = <>
+    typedesc<RfcRecord|xml> returnType = <>
 ) returns returnType|Error
 ```
 
@@ -111,9 +112,9 @@ ReadTableResponse result = check sapClient->execute("RFC_READ_TABLE",
 );
 ```
 
-**Case 4 — XML or JSON response (unchanged behavior, now includes table data)**
+**Case 4 — XML response (JSON support removed, now includes table data)**
 
-The return format is unchanged; only the input wrapping is required:
+JSON return type support has been removed in 2.0.0 (`typedesc<RfcRecord|xml>`). If you were using `json` as the return type, switch to `xml` or a typed `RfcRecord`. The input wrapping is required:
 
 ```ballerina
 // Before
@@ -141,6 +142,9 @@ type MaterialListResponse record {|
 |---|---|
 | `RfcRecord` | Named alias for `record {\| FieldType?...; \|}` — the base type for parameter values |
 | `RfcParameters` | Wrapper with `importParameters` and `tableParameters` sections |
+| `RepositoryDestination` | Union type `string\|DestinationConfig` for listener repository destination |
+
+`boolean` has been added to `FieldType`, enabling boolean values in RFC parameters. This is not a breaking change — existing code continues to work.
 
 ---
 
@@ -260,7 +264,7 @@ if err is sap:ConnectionError {
 
 ---
 
-## 4. `ServerConfig` — two new optional fields
+## 4. `ServerConfig` — `repositoryDestination` is now required
 
 ### What changed
 
@@ -272,23 +276,155 @@ public type ServerConfig record {|
     string progid;
 |};
 
-// 2.0.0 — two new optional fields added
+// 2.0.0 — connectionCount defaulted; repositoryDestination is now required
+public type RepositoryDestination string|DestinationConfig;
+
 public type ServerConfig record {|
     string gwhost;
     string gwserv;
     string progid;
-    int connectionCount = 2;          // new — defaults to 2, no action required
-    string repositoryDestination?;    // new — required when listener resolves IDoc metadata
+    int connectionCount = 2;                      // new — defaults to 2, no action required
+    RepositoryDestination repositoryDestination;   // required
 |};
 ```
 
-Existing `ServerConfig` literals compile unchanged. No migration is required unless you want to:
-- Tune concurrent connections via `connectionCount`
-- Enable IDoc metadata resolution via `repositoryDestination` (must match a `Client`'s `destinationId`)
+`repositoryDestination` is a **required** field. All `ServerConfig` literals and `Config.toml` files must include it. It accepts two forms:
+
+**Option 1 — Reference an existing Client destination** (value must match the `destinationId` of a `Client` initialised before the `Listener`):
+
+```ballerina
+jco:Client sapClient = check new (destConfig, destinationId = "MY_DEST");
+
+jco:Listener sapListener = check new ({
+    gwhost: "sap-gw.example.com",
+    gwserv: "3300",
+    progid: "BALLERINA_PROG",
+    repositoryDestination: "MY_DEST"   // must match destinationId above
+});
+```
+
+**Option 2 — Supply SAP credentials directly** (the listener registers an internal JCo destination automatically, so no separate `Client` is required):
+
+```ballerina
+jco:Listener sapListener = check new ({
+    gwhost: "sap-gw.example.com",
+    gwserv: "3300",
+    progid: "BALLERINA_PROG",
+    repositoryDestination: {
+        ashost: "sap.example.com",
+        sysnr: "00",
+        jcoClient: "100",
+        user: "SAP_USER",
+        passwd: "SAP_PASSWORD"
+    }
+});
+```
 
 ---
 
-## 5. `Client.close()` — new lifecycle method
+## 5. `Service` renamed to `IDocService`; new `RfcService` type
+
+### What changed
+
+The `Service` distinct service type has been renamed to `IDocService`. A new `RfcService` type is introduced for handling inbound RFC calls from SAP.
+
+### Migrating listener service declarations
+
+**Rename `jco:Service` to `jco:IDocService` everywhere:**
+
+```ballerina
+// Before
+service jco:Service on iDocListener {
+    remote function onReceive(xml iDoc) returns error? { ... }
+    remote function onError(error 'error) returns error? { ... }
+}
+
+// After
+service jco:IDocService on iDocListener {
+    remote function onReceive(xml iDoc) returns error? { ... }
+    remote function onError(error err) returns error? { ... }
+}
+```
+
+Note also that the `onError` parameter was renamed from `'error` to `err`.
+
+**`onError` scope:** `onError` now fires only for framework faults — JCo gateway/server errors, pre-dispatch failures (RFC parameter construction, IDoc XML rendering), and post-dispatch failures (RFC response serialization). Errors returned or thrown from `onCall`/`onReceive` are **not** routed through `onError`: `onCall` errors surface to SAP as `AbapException`, and `onReceive` errors are logged.
+
+### Using the new `RfcService` type
+
+Attach an `RfcService` to handle inbound RFC calls from SAP. At most one `IDocService` and one `RfcService` may be attached to the same listener simultaneously.
+
+```ballerina
+service jco:RfcService on rfcListener {
+    remote function onCall(string functionName, jco:RfcParameters parameters) returns jco:RfcRecord|xml|error? {
+        io:println("RFC called: ", functionName);
+        return ();
+    }
+    remote function onError(error err) returns error? {
+        io:println("Error: ", err.message());
+    }
+}
+```
+
+---
+
+## 6. `Client.sendIDoc()` — new optional parameters; qRFC now functional
+
+This is not a breaking change — existing `sendIDoc` calls continue to work. Two optional parameters have been added and a pre-existing qRFC bug has been fixed.
+
+### New parameters
+
+```ballerina
+// 1.0.0 / 2.0.0 before this fix
+isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT) returns Error?
+
+// 2.0.0 with qRFC fix
+isolated remote function sendIDoc(xml iDoc, IDocType iDocType = DEFAULT,
+                                  string? tid = (), string? queueName = ()) returns Error?
+```
+
+| Parameter | Default | Purpose |
+|---|---|---|
+| `tid` | auto-generated | Supply your own 24-hex Transaction ID for end-to-end idempotency. Useful when you persist the outbound intent (outbox pattern) and need SAP to recognise the TID as already processed on retry. |
+| `queueName` | `()` | Required for qRFC types (`VERSION_3_IN_QUEUE`, `VERSION_3_IN_QUEUE_VIA_QRFC`). Names the SAP inbound queue. Ignored (with a warning) for tRFC types. |
+
+### qRFC bug fix
+
+In earlier builds, `VERSION_3_IN_QUEUE` ("Q") and `VERSION_3_IN_QUEUE_VIA_QRFC` ("I") were declared in the `IDocType` enum but not actually supported. The Java implementation always called the 4-arg `JCoIDoc.send` with no queue name, which fails at the SAP JCo layer for qRFC versions. These types now work correctly.
+
+### Migrating existing `sendIDoc` calls
+
+No migration required for existing calls. The new parameters are optional with backward-compatible defaults.
+
+**To send via qRFC (ordered delivery):**
+
+```ballerina
+// Ordered send into a named inbound queue.
+// All IDocs in this queue are processed by SAP in FIFO order.
+check sapClient->sendIDoc(iDoc, iDocType = jco:VERSION_3_IN_QUEUE_VIA_QRFC,
+                          queueName = "MATMAS_SENDER_CLNT100");
+```
+
+**To supply your own TID for idempotency:**
+
+SAP TIDs must be exactly 24 uppercase hexadecimal characters. Derive a stable TID from your
+database row ID (e.g. by hashing) and **persist `sapTid` before calling `sendIDoc`** so that
+retries reuse the identical TID. SAP uses ARFCRSTATE to detect already-processed TIDs.
+
+```ballerina
+import ballerina/crypto;
+
+// Derive a 24-char hex TID from the database row ID.
+// Persist sapTid alongside outboxRowId before calling sendIDoc so retries use the same TID.
+byte[] hash = crypto:hashSha256(outboxRowId.toBytes());
+string sapTid = hash.toBase16().toUpperAscii().substring(0, 24);
+
+check sapClient->sendIDoc(iDoc, tid = sapTid);
+```
+
+---
+
+## 7. `Client.close()` — new lifecycle method
 
 `close()` is a new addition, not a breaking change. It releases the JCo destination registration. After `close()`, calls to `execute()` or `sendIDoc()` return a `ConfigurationError`. Calling `close()` more than once is safe.
 
@@ -311,7 +447,10 @@ Work through each item in order:
 - [ ] **`execute()` — response types:** add table-parameter fields to response record types if you need tabular data that was previously unavailable
 - [ ] **`Client.init()` named args:** rename `configurations =` to `config =` at any named call sites
 - [ ] **`Client.init()` destinationId:** supply an explicit `destinationId` for any client referenced by a listener's `repositoryDestination`
-- [ ] **`ServerConfig`:** add `repositoryDestination` if your listener needs to resolve IDoc metadata
+- [ ] **`ServerConfig`:** add `repositoryDestination` (now required) — either a `string` matching the `destinationId` of an already-initialised `Client`, or an inline `DestinationConfig`
+- [ ] **`Service` → `IDocService`:** rename all `service jco:Service` declarations to `service jco:IDocService`
+- [ ] **`onError` parameter:** rename `error 'error` to `error err` in all `onError` remote function signatures
 - [ ] **Error handling:** review `on fail` / `is` checks — `is sap:Error` continues to work; add specific error types where finer handling is needed
 - [ ] **`Client.close()`:** add `close()` calls in cleanup paths where clients are no longer needed
+- [ ] **`sendIDoc` qRFC:** if you were using `VERSION_3_IN_QUEUE` or `VERSION_3_IN_QUEUE_VIA_QRFC`, add the required `queueName` argument — previously these calls failed at runtime; they now require a queue name
 - [ ] Run the integration test suite against your SAP sandbox to confirm correct behavior

@@ -33,8 +33,16 @@ public type DestinationConfig record {|
     string group = "PUBLIC";
 |};
 
-# Advanced configuration using raw JCo property key-value pairs, for settings not covered by DestinationConfig or ServerConfig.
+# Advanced configuration expressed as raw JCo property key-value pairs, for settings not
+# covered by the standard destination or server configuration.
 public type AdvancedConfig map<string>;
+
+# Identifies the repository destination used by the listener to look up RFC and IDoc
+# metadata. Either reference the ID of an already-initialised client to reuse its
+# destination, or supply SAP credentials directly — the listener registers those
+# credentials as an internal JCo destination automatically, so no separate client is
+# required.
+public type RepositoryDestination string|DestinationConfig;
 
 # Connection parameters for a JCo IDoc server.
 public type ServerConfig record {|
@@ -46,8 +54,9 @@ public type ServerConfig record {|
     string progid;
     # Maximum number of concurrent RFC connections
     int connectionCount = 2;
-    # RFC destination used to look up IDoc metadata; defaults to the server name
-    string repositoryDestination?;
+    # RFC destination used to look up IDoc and RFC metadata. Provide the ID of an
+    # already-initialised client or SAP credentials to register an internal destination automatically.
+    RepositoryDestination repositoryDestination;
 |};
 
 # IDoc protocol version used when sending IDocs to the SAP system.
@@ -65,7 +74,7 @@ public enum IDocType {
 };
 
 # Any value that can appear as an RFC import/export parameter or a field inside a JCo structure or table.
-public type FieldType string|int|float|decimal|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
+public type FieldType string|int|float|decimal|boolean|time:Date|time:TimeOfDay|byte[]|record {|FieldType?...;|}|record {|FieldType?...;|}[];
 
 # Represents a single RFC parameter set — scalar values, structures, or table row data.
 public type RfcRecord record {|
@@ -88,7 +97,7 @@ public type JCoErrorDetail record {|
     string key?;
 |};
 
-# Error detail for ABAP application exceptions, extending JCoErrorDetail with ABAP message fields.
+# Error detail for ABAP application exceptions, providing all fields from JCoErrorDetail along with additional ABAP message fields.
 public type AbapApplicationErrorDetail record {|
     *JCoErrorDetail;
     # ABAP message class (two-character identifier)

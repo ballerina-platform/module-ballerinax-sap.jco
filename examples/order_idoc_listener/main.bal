@@ -15,7 +15,7 @@
 // under the License.
 
 import ballerina/io;
-import ballerina/xmldata;
+import ballerina/data.xmldata;
 import ballerinax/sap.jco;
 
 // Configurable variables to hold the configuration values from Config.toml
@@ -25,10 +25,10 @@ configurable jco:ServerConfig sapConfig = ?;
 listener jco:Listener idocListener = new (sapConfig);
 
 // Service to process incoming iDocs
-service jco:Service on idocListener {
+service jco:IDocService on idocListener {
     remote function onReceive(xml iDoc) returns error? {
         // Parse iDoc XML to iDoc record
-        ORDERS05 iDocRecord = check xmldata:fromXml(iDoc);
+        ORDERS05 iDocRecord = check xmldata:parseAsType(iDoc);
 
         // Transform iDoc to internal order format
         InternalOrder internalOrder = transform(iDocRecord);

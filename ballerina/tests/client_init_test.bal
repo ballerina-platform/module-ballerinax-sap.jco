@@ -138,7 +138,7 @@ function testDestinationIdReclaimableAfterClose() returns error? {
 function testExecuteAfterCloseReturnsConfigurationError() returns error? {
     Client sapClient = check new (destinationConfig);
     check sapClient.close();
-    json|Error result = sapClient->execute("RFC_PING", {});
+    RfcRecord|Error result = sapClient->execute("RFC_PING", {});
     test:assertTrue(result is Error, "Expected an Error when calling execute() after close()");
     test:assertTrue(result is ConfigurationError,
             "execute() after close() should return a ConfigurationError");

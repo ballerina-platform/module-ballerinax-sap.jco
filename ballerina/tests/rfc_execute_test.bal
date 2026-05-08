@@ -90,10 +90,11 @@ function testExecuteReturningXml() returns error? {
     enable: testsEnabled,
     groups: ["rfc-execute"]
 }
-function testExecuteReturningJson() returns error? {
+function testExecuteReturningRfcRecord() returns error? {
     Client sapClient = check new (destinationConfig);
-    json result = check sapClient->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "Test"}});
-    test:assertNotEquals(result, (), "JSON result should not be null");
+    RfcRecord result = check sapClient->execute("STFC_CONNECTION", {importParameters: {"REQUTEXT": "Test"}});
+    test:assertEquals(result["ECHOTEXT"], "Test",
+            "STFC_CONNECTION ECHOTEXT should echo the import REQUTEXT exactly");
 }
 
 @test:Config {
@@ -168,7 +169,7 @@ function testExecuteWithDateAndTimeParams() returns error? {
 }
 function testExecuteWithEmptyFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
-    json|error result = sapClient->execute("");
+    RfcRecord|error result = sapClient->execute("");
     test:assertTrue(result is Error, "Expected an Error for an empty function name");
     test:assertTrue(result is ParameterError, "Expected a ParameterError for an empty function name");
 }
@@ -179,7 +180,7 @@ function testExecuteWithEmptyFunctionName() returns error? {
 }
 function testExecuteWithInvalidFunctionName() returns error? {
     Client sapClient = check new (destinationConfig);
-    json|error result = sapClient->execute("NONEXISTENT_RFC_FUNCTION_XYZ");
+    RfcRecord|error result = sapClient->execute("NONEXISTENT_RFC_FUNCTION_XYZ");
     test:assertTrue(result is Error, "Expected an Error for a non-existent RFC function name");
     test:assertTrue(result is ParameterError, "Expected a ParameterError for a non-existent RFC function");
 }
@@ -268,12 +269,190 @@ function testExecuteReturningXmlWithTableData() returns error? {
     enable: testsEnabled,
     groups: ["rfc-execute"]
 }
-function testExecuteReturningJsonWithTableData() returns error? {
-    // Verify JSON serialization includes table parameter rows in the response.
+function testExecuteReturningRfcRecordWithTableData() returns error? {
+    // Verify RfcRecord response includes table parameter rows in the merged output.
     Client sapClient = check new (destinationConfig);
-    json result = check sapClient->execute("STFC_STRUCTURE", {
+    RfcRecord result = check sapClient->execute("STFC_STRUCTURE", {
         importParameters: {"IMPORTSTRUCT": {"RFCCHAR1": "Z"}},
         tableParameters: {"RFCTABLE": [{"RFCCHAR1": "E", "RFCINT1": 5}]}
     });
-    test:assertNotEquals(result, (), "JSON result should not be null when table data is present");
+    test:assertTrue(result.hasKey("ECHOSTRUCT"), "Result should contain ECHOSTRUCT export field");
+    test:assertTrue(result.hasKey("RESPTEXT"), "Result should contain RESPTEXT export field");
+    test:assertTrue(result.hasKey("RFCTABLE"), "Result should contain RFCTABLE after table-parameter merge");
+    anydata[]? tableRows = check result["RFCTABLE"].cloneWithType();
+    test:assertTrue(tableRows is anydata[] && tableRows.length() >= 1,
+        "RFCTABLE should contain at least one row");
+    if tableRows is anydata[] && tableRows.length() >= 1 {
+        map<anydata> firstRow = check tableRows[0].ensureType();
+        test:assertEquals(firstRow["RFCCHAR1"], "E", "First RFCTABLE row RFCCHAR1 should equal E");
+        test:assertEquals(firstRow["RFCINT1"], 5, "First RFCTABLE row RFCINT1 should equal 5");
+    }
+}
+
+// --- Type mismatch and field-presence validation ---
+//
+// These tests verify that ExportParameterProcessor produces a ParameterError
+// whenever the caller's declared return type is incompatible with the actual
+// JCo-typed value returned by SAP, and that optional/nilable/required field
+// semantics are honoured when a declared field is absent from the SAP response.
+
+// Declares ECHOTEXT as int, but STFC_CONNECTION always returns it as a string.
+type ScalarTypeMismatchOutput record {|
+    int ECHOTEXT;
+    string RESPTEXT?;
+|};
+
+// Declares ECHOSTRUCT as int, but STFC_STRUCTURE returns it as a JCo structure.
+type StructureTypeMismatchOutput record {|
+    int ECHOSTRUCT;
+    string RESPTEXT?;
+|};
+
+// Declares RFCTABLE as a plain string, but STFC_STRUCTURE returns it as a JCo table.
+type TableNonArrayTypeMismatchOutput record {|
+    string RFCTABLE;
+    string RESPTEXT?;
+|};
+
+// Declares RFCTABLE as byte[], but STFC_STRUCTURE returns a table of RFCTEST records.
+// byte[] is a valid FieldType (accepted by the compiler), but its element type (byte)
+// is not a RecordType, so the connector throws a ParameterError at runtime.
+type TableWrongElementTypeMismatchOutput record {|
+    byte[] RFCTABLE;
+    string RESPTEXT?;
+|};
+
+// NONEXISTENT_SAP_FIELD does not exist in STFC_CONNECTION's export parameter list.
+// Declared optional (field?) — should be silently absent with no error.
+type EchoWithOptionalUnknownField record {|
+    string ECHOTEXT?;
+    string RESPTEXT?;
+    string NONEXISTENT_SAP_FIELD?;
+|};
+
+// NONEXISTENT_SAP_FIELD does not exist in STFC_CONNECTION's export parameter list.
+// Declared nilable (type?) — should be nil with no error.
+type EchoWithNilableUnknownField record {|
+    string? ECHOTEXT;
+    string? RESPTEXT;
+    string? NONEXISTENT_SAP_FIELD;
+|};
+
+// NONEXISTENT_SAP_FIELD does not exist in STFC_CONNECTION's export parameter list.
+// Declared required (no ? suffix) — should produce a ParameterError.
+type EchoWithRequiredUnknownField record {|
+    string ECHOTEXT?;
+    string RESPTEXT?;
+    string NONEXISTENT_SAP_FIELD;
+|};
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteScalarTypeMismatchReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    ScalarTypeMismatchOutput|error result = sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": "Test"}});
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when ECHOTEXT is declared as int but SAP returns a string");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteStructureTypeMismatchReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    StructureTypeMismatchOutput|error result = sapClient->execute("STFC_STRUCTURE",
+            {importParameters: {"IMPORTSTRUCT": {}}});
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when ECHOSTRUCT is declared as int but SAP returns a structure");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteTableNonArrayTypeMismatchReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    TableNonArrayTypeMismatchOutput|error result = sapClient->execute("STFC_STRUCTURE", {
+        importParameters: {"IMPORTSTRUCT": {}},
+        tableParameters: {"RFCTABLE": [{"RFCCHAR1": "A"}]}
+    });
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when RFCTABLE is declared as string but SAP returns a table");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteTableWrongElementTypeMismatchReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    TableWrongElementTypeMismatchOutput|error result = sapClient->execute("STFC_STRUCTURE", {
+        importParameters: {"IMPORTSTRUCT": {}},
+        tableParameters: {"RFCTABLE": [{"RFCCHAR1": "A"}]}
+    });
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when RFCTABLE is declared as string[] but SAP returns a table of records");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteOptionalFieldAbsentFromSapIsSkipped() returns error? {
+    Client sapClient = check new (destinationConfig);
+    EchoWithOptionalUnknownField result = check sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": "Test"}});
+    test:assertEquals(result.ECHOTEXT, "Test", "ECHOTEXT should be present from SAP response");
+    test:assertEquals(result.NONEXISTENT_SAP_FIELD, (),
+            "Optional field absent from SAP response should be absent in the result");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteNilableFieldAbsentFromSapIsNil() returns error? {
+    Client sapClient = check new (destinationConfig);
+    EchoWithNilableUnknownField result = check sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": "Test"}});
+    test:assertNotEquals(result.ECHOTEXT, (), "ECHOTEXT should be set from SAP response");
+    test:assertEquals(result.NONEXISTENT_SAP_FIELD, (),
+            "Nilable field absent from SAP response should be nil in the result");
+}
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteRequiredFieldAbsentFromSapReturnsParameterError() returns error? {
+    Client sapClient = check new (destinationConfig);
+    EchoWithRequiredUnknownField|error result = sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": "Test"}});
+    test:assertTrue(result is ParameterError,
+            "Expected ParameterError when a required declared field is not present in the SAP response");
+}
+
+// --- Nil import parameter ---
+//
+// Verifies that a nil (()) value in importParameters is silently skipped rather than
+// causing an NPE in ImportParameterProcessor.setImportParams. The nil field is omitted
+// from the JCo parameter list and SAP receives the SAP-default/initial value for that
+// parameter instead.
+
+@test:Config {
+    enable: testsEnabled,
+    groups: ["rfc-execute"]
+}
+function testExecuteWithNilImportParameterIsSkipped() returns error? {
+    Client sapClient = check new (destinationConfig);
+    string? nilValue = ();
+    // REQUTEXT is nil — the processor must skip it rather than calling TypeUtils.getType(null).
+    // STFC_CONNECTION returns an empty ECHOTEXT when REQUTEXT is absent/initial.
+    StfcConnectionOutput result = check sapClient->execute("STFC_CONNECTION",
+            {importParameters: {"REQUTEXT": nilValue}});
+    test:assertEquals(result.ECHOTEXT, "", "ECHOTEXT should be empty when REQUTEXT is nil/skipped");
 }
