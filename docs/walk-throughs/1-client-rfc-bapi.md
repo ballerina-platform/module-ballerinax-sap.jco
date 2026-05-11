@@ -75,7 +75,7 @@ Log on to SAP GUI. Transaction **SU01**.
 - **Password** — set an initial password; change it on first logon so JCo doesn't get stuck on a forced-change prompt.
 - **Roles / Profiles** tab — add a role that includes `S_RFC`. For a sandbox, `SAP_ALL` is fine; for anything else, scope it.
 
-![](./resources/recordings/create_new_user_sap.gif)
+![Create new SAP user in SU01 - screen recording](./resources/recordings/create_new_user_sap.gif)
 
 ### Step 2 — Inspect the target function module (SE37)
 
@@ -88,7 +88,7 @@ Enter `RFC_PING` → **Display**. Tabs to skim:
 
 Now **F8** to test it locally from GUI. `RFC_PING` has no parameters — just press F8 on the test screen and look for the *Runtime* field populated with a microsecond count. That confirms the function module works on the SAP side before we ever bring the connector in.
 
-![](./resources/recordings/test_rfc_ping_sap.gif)
+![Test RFC_PING in SE37 - screen recording](./resources/recordings/test_rfc_ping_sap.gif)
 
 > **Why this matters:** when something breaks, the first question to answer is *"is it an SAP problem or a connector problem?"* Running the function in SE37 first short-circuits that. If SE37 returns an error, your Ballerina code won't fix it.
 
@@ -98,7 +98,7 @@ Transaction **BAPI** (yes, the transaction code is literally `BAPI`).
 
 Open *Logistics - General → Logistics Basic Data → Material → GetList*. That's `BAPI_MATERIAL_GETLIST` — we'll call it at the end of this part.
 
-![](./resources/recordings/check_bapi_sap.gif)
+![Browse BAPI transaction in SAP - screen recording](./resources/recordings/check_bapi_sap.gif)
 
 ---
 
@@ -209,7 +209,7 @@ public function main() {
 
 Console:
 
-```
+```log
 time=2026-04-22T10:09:32.133+05:30 level=INFO module=wso2/example message="RFC_PING successful, SAP is reachable and responding" result={}
 ```
 
@@ -260,7 +260,7 @@ public function main() returns error? {
 
 Console:
 
-```
+```log
 time=2026-04-22T11:23:42.689+05:30 level=INFO module=wso2/example message="RFC STFC_CONNECTION successful, SAP is reachable and responding" echoText="Hello from Ballerina" responseText="SAP R/3 Rel. 750   Sysid: ABA      Date: 20260422   Time: 055342   Logon_Data: 001/TEST_USER/E"
 ```
 
@@ -344,7 +344,7 @@ public function main() returns error? {
 
 Console:
 
-```
+```log
 time=2026-04-22T12:49:00.961+05:30 level=INFO module=wso2/example message="RFC_READ_TABLE successful, received data from SAP" fieldMeta=[{"FIELDNAME":"MATNR","OFFSET":"000000","LENGTH":"000018","TYPE":"C"},{"FIELDNAME":"MTART","OFFSET":"000019","LENGTH":"000004","TYPE":"C"},{"FIELDNAME":"MBRSH","OFFSET":"000024","LENGTH":"000001","TYPE":"C"},{"FIELDNAME":"MEINS","OFFSET":"000026","LENGTH":"000003","TYPE":"C"}] data=[{"WA":"000000000000000023|FERT|M|ST"},{"WA":"000000000000000024|FERT|M|ST"},...]
 ```
 
@@ -447,7 +447,7 @@ public function main() returns error? {
 
 Console:
 
-```
+```log
 time=2026-04-22T14:15:27.456+05:30 level=INFO module=wso2/example message="Found materials in SAP" returnMessage="10 materials found" materialCount=10
 time=2026-04-22T14:15:27.457+05:30 level=INFO module=wso2/example message="Material found" material="000000000000001234" materialType="FERT" industrySector="M" materialGroup="FG01"
 ...

@@ -92,7 +92,7 @@ P TP=TEST_LISTENER HOST=* ACCESS=* CANCEL=*
 - Save.
 - *Reload ACL Files* (this is critical — SAP does *not* hot-reload it).
 
-![](./resources/recordings/edit_reginfo_sap.gif)
+![Edit reginfo ACL file in SMGW - screen recording](./resources/recordings/edit_reginfo_sap.gif)
 
 > **Sandbox shortcut:** `HOST=*` and `ACCESS=*` make life easy for blog-demo purposes. In real environments you pin the host to the IPs of your Ballerina nodes.
 
@@ -266,7 +266,7 @@ SE37 response screen:
 
 ```text
 ECHOTEXT = Hello Ballerina
-RESPTEXT = Responded by Ballerina
+RESPTEXT = Responded by Integrator
 ```
 
 That round-trip is the success criterion for this part. SAP asked a function module called `STFC_CONNECTION` for an echo, and got one — except the function module lives in a Ballerina service, not in SAP.
@@ -340,7 +340,7 @@ That asymmetry matters: think of `onCall` as a synchronous service boundary — 
 
 Part 3 needed `repositoryDestination` for IDoc segment types. RFC is the same but stricter: `onCall` *cannot* fire until the connector has resolved the function signature. If `repositoryDestination` is misconfigured — wrong credentials, unreachable SAP — the listener starts, registers, and then `onError` fires the first time SAP calls in with something like:
 
-```
+```text
 Unable to retrieve function module metadata for STFC_CONNECTION: Logon failed
 ```
 

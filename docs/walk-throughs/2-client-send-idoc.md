@@ -287,11 +287,11 @@ Then SAP GUI:
 3. Execute (F8).
 4. The top row is your IDoc. Double-click it.
 
-![](./resources/recordings/check_idoc_status_sap.gif)
+![Check IDoc status in WE02 - screen recording](./resources/recordings/check_idoc_status_sap.gif)
 
 Status records are SAP's story of what it did with your IDoc. In WE02, click **Status records** in the detail tree.
 
-```
+```text
 01  IDoc generated
 30  IDoc ready for dispatch (ALE service)
 64  IDoc ready to be transferred to the application
@@ -324,12 +324,13 @@ All four examples return `error?` at the main level, but in Ballerina flows you'
 | `ParameterError` | Ballerina ↔ JCo type conversion failed (e.g. you sent a `string` into an SAP `INT4`) |
 | `ConfigurationError` | Client not initialised, closed, destination ID collision |
 
-Pattern-match with `if result is ConnectionError` / `is AbapApplicationError` branches. The `AbapApplicationError` detail gives you structured access to the ABAP message — `abapMsgClass`, `abapMsgNumber`, `abapMsgV1..V4` — so you can route on the specific message without parsing the human-readable string.
+Pattern-match with `if err is ConnectionError` / `is AbapApplicationError` branches. The `AbapApplicationError` detail gives you structured access to the ABAP message — `abapMsgClass`, `abapMsgNumber`, `abapMsgV1..V4` — so you can route on the specific message without parsing the human-readable string.
 
 ```ballerina
 do {
     jco:Client sapClient = check new (sapConfig);
-    MaterialListResponse|error result = sapClient->execute("BAPI_MATERIAL_GETLIST", { ... });
+    xml iDoc = check io:fileReadXml("resources/material.xml");
+    check sapClient->sendIDoc(iDoc);
 } on fail error err {
     if err is jco:AbapApplicationError {
         jco:AbapApplicationErrorDetail detail = err.detail();
@@ -367,7 +368,7 @@ This means your connector did its job perfectly—the data reached SAP! However,
 
 The Fix: In WE02, expand the Status records folder and click on the lines with the red circle icon. Look at the text at the bottom of the screen.
 
-```
+```text
 "The field MARA-GEWEI is defined as a required field": Add the missing tag (e.g., `<GEWEI>KGM</GEWEI>`).
 
 "Plant 1000 does not exist": Your sandbox is missing basic factory data. Simply remove the Plant segment (`<E1MARCM>`) from your XML so SAP only creates the global basic data.
@@ -411,7 +412,7 @@ check sapClient->sendIDoc(
 
 On the SAP side, inspect queued IDocs in **SMQ2** (inbound qRFC monitor).
 
-![](./resources/recordings/inspect_qrfc_sap.gif)
+![Inspect qRFC queue in SMQ2 - screen recording](./resources/recordings/inspect_qrfc_sap.gif)
 
 ---
 
