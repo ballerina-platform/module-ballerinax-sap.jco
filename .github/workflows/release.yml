@@ -3,12 +3,12 @@ name: Publish Release
 on:
   workflow_dispatch:
   repository_dispatch:
-    types: [stdlib-release-pipeline]
+    types: [ stdlib-release-pipeline ]
 
 jobs:
   publish-release:
     name: Release Package
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: github.repository_owner == 'ballerina-platform'
     steps:
       - name: Checkout Repository
@@ -18,7 +18,7 @@ jobs:
 
       - name: Get Ballerina Version
         run: |
-          BAL_VERSION=$(grep -w 'ballerinaLangVersion' gradle.properties | cut -d= -f2 | rev | cut --complement -d- -f1 | rev) 
+          BAL_VERSION=$(grep -w 'ballerinaLangVersion' gradle.properties | cut -d= -f2 | rev | cut --complement -d- -f1 | rev)
           if [ -z "$BAL_VERSION" ]; then
             BAL_VERSION="latest"
           fi
@@ -36,6 +36,10 @@ jobs:
         with:
           distribution: "temurin"
           java-version: 21.0.3
+
+      - name: Set ENV Variables
+        run: |
+          echo -e '${{ toJson(secrets) }}' | jq -r 'to_entries[] | .key + "=" + .value' >> $GITHUB_ENV
 
       - name: Clone lib repo
         uses: actions/checkout@v4
@@ -59,23 +63,26 @@ jobs:
         working-directory: jco
 
       - name: Create lib Directory if not Exists
-        run: |
-          mkdir -p ballerina/lib
+        run: mkdir -p ballerina/lib
         working-directory: jco
 
       - name: Run Trivy Vulnerability Scanner
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db,public.ecr.aws/aquasecurity/trivy-db
+          TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db,public.ecr.aws/aquasecurity/trivy-java-db
         with:
           scan-type: "rootfs"
-          scan-ref: "/github/workspace/jco/ballerina/lib"
+          scan-ref: "${{ github.workspace }}/jco/ballerina/lib"
           format: "table"
           timeout: "10m0s"
           exit-code: "1"
           skip-dirs: "examples"
+          scanners: "vuln"
+          cache-dir: "/tmp/trivy-cache"
 
       - name: Get Release Version
-        run: |
-          echo "VERSION=$((grep -w 'version' | cut -d= -f2) < gradle.properties | rev | cut -d- -f2 | rev)" >> $GITHUB_ENV
+        run: echo "VERSION=$((grep -w 'version' | cut -d= -f2) < gradle.properties | rev | cut -d- -f2 | rev)" >> $GITHUB_ENV
         working-directory: jco
 
       - name: Checkout to Release Branch
@@ -89,7 +96,7 @@ jobs:
           sudo rm -rf ballerina/target
           sudo rm -rf ballerina/build
         working-directory: jco
-  
+
       - name: Publish Package
         env:
           GITHUB_TOKEN: ${{ secrets.BALLERINA_BOT_TOKEN }}
@@ -108,5 +115,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.BALLERINA_BOT_TOKEN }}
         run: |
           gh release create v$VERSION --title "module-ballerinax-sap.jco-v$VERSION"
+          git push origin release-${VERSION}
           gh pr create --base ${GITHUB_REF##*/} --title "[Automated] Sync ${GITHUB_REF##*/} after $VERSION release" --body "Sync ${GITHUB_REF##*/} after $VERSION release"
         working-directory: jco
