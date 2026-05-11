@@ -21,7 +21,7 @@ scenarios to understand how to automate processes involving SAP systems and exte
 
 ## Prerequisites
 
-1. Refer to the [Setup Guide](../../README.md) to configure the Ballerina SAP JCo Connector.
+1. Refer to the [Setup Guide](../README.md#setup-guide) to configure the Ballerina SAP JCo Connector.
 
 2. For each example, create a `Config.toml` file in the example directory with your SAP connection parameters and any
    required API endpoints.
