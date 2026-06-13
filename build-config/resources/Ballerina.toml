@@ -2,7 +2,7 @@
 org = "ballerinax"
 name = "sap.jco"
 version = "@toml.version@"
-distribution = "2201.11.0"
+distribution = "2201.13.0"
 authors = ["Ballerina"]
 keywords = ["Business Management/ERP", "Cost/Paid", "Vendor/SAP", "Area/ERP & Business Operations", "Type/Connector", "Type/Trigger"]
 repository = "https://github.com/ballerina-platform/module-ballerinax-sap.jco"
