@@ -1,8 +1,8 @@
 [package]
 org = "ballerinax"
 name = "sap.jco"
-version = "2.0.0"
-distribution = "2201.11.0"
+version = "2.1.0"
+distribution = "2201.13.0"
 authors = ["Ballerina"]
 keywords = ["Business Management/ERP", "Cost/Paid", "Vendor/SAP", "Area/ERP & Business Operations", "Type/Connector", "Type/Trigger"]
 repository = "https://github.com/ballerina-platform/module-ballerinax-sap.jco"
@@ -13,8 +13,8 @@ license = ["Apache-2.0"]
 [[platform.java21.dependency]]
 groupId = "io.ballerina.lib.sap"
 artifactId = "sap.jco-native"
-version = "2.0.0"
-path = "../native/build/libs/sap.jco-native-2.0.0.jar"
+version = "2.1.0-SNAPSHOT"
+path = "../native/build/libs/sap.jco-native-2.1.0-SNAPSHOT.jar"
 
 [[platform.java21.dependency]]
 path = "../native/libs/sapidoc3.jar"
