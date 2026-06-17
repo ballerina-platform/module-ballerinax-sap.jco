@@ -147,7 +147,7 @@ public class BallerinaThrowableListener implements JCoServerErrorListener, JCoSe
             return;
         }
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
-        StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
+        StrandMetadata metadata = new StrandMetadata(isConcurrent, null);
         try {
             Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata,
                     new Object[]{bError});
