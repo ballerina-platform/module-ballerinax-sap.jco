@@ -57,7 +57,10 @@ Transaction **SM59**.
 - **Technical Settings** tab → **Activation Type** = *Registered Server Program*.
 - **Program ID** = `TEST_LISTENER` — this is what the Ballerina listener will use in `ServerConfig.progid`.
 - **Gateway Options** → set **Gateway Host** and **Gateway Service** (usually `sapgw<sysnr>` where `<sysnr>` is your SAP system number, e.g. `sapgw00`).
+- **Unicode** tab → **Communication Type with Target System** → select **Unicode**.
 - Save.
+
+> **Important:** Setting the Unicode tab to *Unicode* is required when your SAP system is a Unicode system (which all modern ECC and S/4HANA systems are). Without it, SAP sends raw UTF-16 LE bytes for IDoc type names and metadata, which the JCo server misreads as garbled characters (e.g. `ORDERS` appears as `伀刀䐀䔀刀匀`), causing `IDOC_ERROR_METADATA_UNAVAILABLE` at runtime.
 
 ![Define RFC destination in SAP](./resources/recordings/define_rfc_destination_sap.gif)
 
@@ -402,6 +405,23 @@ jco:Client rfcClient = check new (clientConfig, destinationId = "ECC_DEV");
 Use Option B when your flow *also* runs outbound RFCs — one destination serves both directions, halving the number of logon sessions on SAP.
 
 If you leave `repositoryDestination` out, `ServerConfig` won't compile. It's required.
+
+### `IDOC_ERROR_METADATA_UNAVAILABLE` — Unicode encoding mismatch
+
+Symptom: the listener starts and registers successfully, but every incoming IDoc triggers an `onError` with a message like:
+
+```
+IDOC_ERROR_METADATA_UNAVAILABLE: The meta data for the IDoc type
+"           伀刀䐀䔀刀匀         " with extension "  ORDSAPABL TEST_  " is unavailable.
+```
+
+The garbled IDoc type name (`伀刀䐀䔀刀匀` instead of `ORDERS`) is the ASCII string encoded as UTF-16 LE (two bytes per character, little-endian) being misinterpreted as Unicode code points — e.g. the bytes `4F 00` for `O` are read as U+4F00 (伀).
+
+Root cause: the SM59 destination's **Unicode** tab has **Communication Type with Target System** set to *Non-Unicode*. This causes SAP to skip encoding negotiation and send raw UTF-16 LE bytes directly, which the JCo server cannot decode correctly.
+
+Fix: in transaction **SM59**, open the RFC destination (e.g. `TEST_LISTENER`) → **Unicode** tab → under **Communication Type with Target System**, select **Unicode** → Save.
+
+![SM59 Unicode tab — Communication Type with Target System set to Unicode](./resources/images/sm59-unicode-tab.png)
 
 ---
 
