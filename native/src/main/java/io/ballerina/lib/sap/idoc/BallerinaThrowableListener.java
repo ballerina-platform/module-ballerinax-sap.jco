@@ -34,8 +34,6 @@ import io.ballerina.runtime.api.values.BObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-
 /**
  * Dispatches JCo server-level errors and exceptions to the {@code onError()} handler of every
  * attached Ballerina service.
