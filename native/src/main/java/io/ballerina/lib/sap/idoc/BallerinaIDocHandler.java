@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.Map;
 
 
 /**
@@ -123,7 +122,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
     public Object invokeOnReceive(Object... args) {
         ObjectType serviceType = (ObjectType) TypeUtils.getImpliedType(service.getOriginalType());
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_RECEIVE);
-        StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
+        StrandMetadata metadata = new StrandMetadata(isConcurrent, null);
         return runtime.callMethod(service, SAPConstants.ON_RECEIVE, metadata, args);
     }
 
@@ -154,7 +153,7 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
 
         ObjectType serviceType = (ObjectType) TypeUtils.getImpliedType(service.getOriginalType());
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
-        StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
+        StrandMetadata metadata = new StrandMetadata(isConcurrent, null);
         try {
             Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata, new Object[]{error});
             if (result instanceof BError onErrorResult) {

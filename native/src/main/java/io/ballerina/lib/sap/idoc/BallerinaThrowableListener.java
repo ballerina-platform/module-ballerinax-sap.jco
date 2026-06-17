@@ -34,8 +34,6 @@ import io.ballerina.runtime.api.values.BObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-
 /**
  * Dispatches JCo server-level errors and exceptions to the {@code onError()} handler of every
  * attached Ballerina service.
@@ -147,7 +145,7 @@ public class BallerinaThrowableListener implements JCoServerErrorListener, JCoSe
             return;
         }
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
-        StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
+        StrandMetadata metadata = new StrandMetadata(isConcurrent, null);
         try {
             Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata,
                     new Object[]{bError});

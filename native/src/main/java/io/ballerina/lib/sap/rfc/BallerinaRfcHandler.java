@@ -332,7 +332,7 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
     private Object invokeOnCall(Object... args) {
         ObjectType serviceType = (ObjectType) TypeUtils.getImpliedType(service.getOriginalType());
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_CALL);
-        StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
+        StrandMetadata metadata = new StrandMetadata(isConcurrent, null);
         return runtime.callMethod(service, SAPConstants.ON_CALL, metadata, args);
     }
 
@@ -358,7 +358,7 @@ public class BallerinaRfcHandler implements JCoServerFunctionHandler {
             return;
         }
         boolean isConcurrent = serviceType.isIsolated() && serviceType.isIsolated(SAPConstants.ON_ERROR);
-        StrandMetadata metadata = new StrandMetadata(isConcurrent, Map.of());
+        StrandMetadata metadata = new StrandMetadata(isConcurrent, null);
         try {
             Object result = runtime.callMethod(service, SAPConstants.ON_ERROR, metadata,
                     new Object[]{error});
