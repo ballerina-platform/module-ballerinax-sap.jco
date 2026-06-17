@@ -410,7 +410,7 @@ If you leave `repositoryDestination` out, `ServerConfig` won't compile. It's req
 
 Symptom: the listener starts and registers successfully, but every incoming IDoc triggers an `onError` with a message like:
 
-```
+```text
 IDOC_ERROR_METADATA_UNAVAILABLE: The meta data for the IDoc type
 "           伀刀䐀䔀刀匀         " with extension "  ORDSAPABL TEST_  " is unavailable.
 ```
