@@ -228,4 +228,82 @@ public enum IDocType {
 
 public type FieldType string|int|float|decimal|time:Date|byte[];
 
+# Represents a structure parameter of an RFC function: a record whose fields are scalar
+# values, nested structures, or tables (arrays of structures).
+public type ParamStructure record {|ParamValue?...;|};
+
+# Represents a value assignable to an RFC parameter: a scalar field, a structure, or a table.
+public type ParamValue FieldType|ParamStructure|ParamStructure[];
+
+# Represents a single function invocation inside a bgRFC unit.
+#
+# + functionName - The name of the RFC-enabled function module to invoke.
+# + importParams - The import, changing, and table parameters for the invocation.
+public type FunctionCall record {|
+    string functionName;
+    ParamStructure importParams = {};
+|};
+
+# The type of a bgRFC unit: `T` (transactional, exactly-once) or
+# `Q` (queued, exactly-once-in-order).
+public enum BgRfcUnitType {
+    BGRFC_TYPE_T = "T",
+    BGRFC_TYPE_Q = "Q"
+}
+
+# The processing state of a bgRFC unit as reported by the SAP backend.
+public enum BgRfcUnitState {
+    NOT_FOUND,
+    IN_PROCESS,
+    COMMITTED,
+    CONFIRMED,
+    ROLLED_BACK
+}
+
+# Configurations for a bgRFC unit.
+#
+# + unitId - A 32-character hexadecimal unit ID to use. If not given, a unique ID is generated.
+# + queueNames - The inbound queues the unit is assigned to. If one or more queue names are
+#                given, the unit becomes a type Q (bg-qRFC) unit; otherwise it is type T.
+# + 'lock - Locks the unit in the backend so that it is held back from processing until unlocked.
+# + unitHistory - Records the unit history in the backend.
+# + kernelTrace - Enables kernel tracing for the unit.
+# + commitCheck - Checks whether the unit can be processed before committing.
+# + programName - The calling program name to record with the unit.
+# + transactionCode - The transaction code to record with the unit.
+public type BgRfcUnitConfig record {|
+    string unitId?;
+    string[] queueNames = [];
+    boolean 'lock = false;
+    boolean unitHistory = false;
+    boolean kernelTrace = false;
+    boolean commitCheck = false;
+    string programName?;
+    string transactionCode?;
+|};
+
+# Identifies a committed bgRFC unit.
+#
+# + unitId - The 32-character hexadecimal ID of the unit.
+# + unitType - The type of the unit (T or Q).
+public type BgRfcUnitInfo record {|
+    string unitId;
+    BgRfcUnitType unitType;
+|};
+
 public type Error distinct error;
+
+# The detail record of a `TransactionError`.
+#
+# + tid - The transaction ID of the failed operation. Set by `sendTRfc`, `sendQRfc`, and
+#         `confirmTid` failures when a TID was already created. Retrying the send with this
+#         TID preserves exactly-once semantics.
+# + unitId - The bgRFC unit ID of the failed operation. Set by `sendBgRfcUnit`,
+#            `getBgRfcUnitState`, and `confirmBgRfcUnit` failures.
+public type TransactionErrorDetail record {
+    string tid?;
+    string unitId?;
+};
+
+# Represents an error that occurred while sending a transactional (tRFC/qRFC/bgRFC) call.
+public type TransactionError distinct Error & error<TransactionErrorDetail>;

@@ -45,8 +45,7 @@ public class Listener {
     public static Object init(BObject listenerBObject, BMap<BString, Object> jcoDestinationConfig,
                               BString destinationId) {
         try {
-            BallerinaDestinationDataProvider dp = new BallerinaDestinationDataProvider();
-            com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
+            BallerinaDestinationDataProvider dp = BallerinaDestinationDataProvider.getRegisteredInstance();
             dp.addDestination(jcoDestinationConfig, destinationId);
             JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
             JCoIDocServer server = JCoIDoc.getServer(destination.getDestinationName());

@@ -60,3 +60,5 @@ examples/**/Config.toml
 
 # Environment files
 *.env
+*.dylib
+*.jar.bak

@@ -20,16 +20,37 @@ package io.ballerina.lib.sap;
 
 import com.sap.conn.jco.ext.DestinationDataEventListener;
 import com.sap.conn.jco.ext.DestinationDataProvider;
+import com.sap.conn.jco.ext.Environment;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BallerinaDestinationDataProvider implements DestinationDataProvider {
 
-    private final Map<String, Properties> destinationProperties = new HashMap<>();
+    // JCo allows exactly one DestinationDataProvider per JVM, so all clients and listeners
+    // share this instance; each adds its own destination to the map.
+    private static final BallerinaDestinationDataProvider INSTANCE = new BallerinaDestinationDataProvider();
+    private static boolean registered = false;
+
+    private final Map<String, Properties> destinationProperties = new ConcurrentHashMap<>();
+
+    private BallerinaDestinationDataProvider() {
+    }
+
+    public static synchronized BallerinaDestinationDataProvider getRegisteredInstance() {
+        if (!registered) {
+            if (Environment.isDestinationDataProviderRegistered()) {
+                throw new IllegalStateException("A different JCo DestinationDataProvider is already " +
+                        "registered in this JVM. The Ballerina SAP connector cannot manage destinations.");
+            }
+            Environment.registerDestinationDataProvider(INSTANCE);
+            registered = true;
+        }
+        return INSTANCE;
+    }
 
     @Override
     public Properties getDestinationProperties(String destinationName) {

@@ -137,6 +137,52 @@ public function main() returns error? {
 }
 ```
 
+#### Execute a Function Module as a transactional RFC (tRFC)
+
+A tRFC call is executed exactly once on the SAP backend, and is tracked by a transaction ID (TID).
+If the send fails, retry with the same TID (available in the `TransactionError` detail) to keep
+the exactly-once guarantee.
+
+```ballerina
+public function main() returns error? {
+    string tid = check jcoClient->sendTRfc("STFC_WRITE_TO_TCPIC",
+            {"TCPICDAT": [{"LINE": "Hello from Ballerina tRFC"}]});
+    io:println("Sent with TID: ", tid);
+}
+```
+
+#### Execute a Function Module as a queued RFC (qRFC)
+
+qRFC extends tRFC with exactly-once-in-order semantics: calls sent to the same inbound queue are
+processed serially in the order they were sent.
+
+```ballerina
+public function main() returns error? {
+    string tid = check jcoClient->sendQRfc("STFC_WRITE_TO_TCPIC", "MY_INBOUND_QUEUE",
+            {"TCPICDAT": [{"LINE": "Hello from Ballerina qRFC"}]});
+    io:println("Queued with TID: ", tid);
+}
+```
+
+#### Send a bgRFC unit (type T or type Q)
+
+bgRFC bundles one or more function calls into a single logical unit of work. Without queue names
+the unit is type T (exactly-once); with queue names it is type Q (exactly-once-in-order). The
+state of a unit can be queried and confirmed through the client.
+
+```ballerina
+public function main() returns error? {
+    jco:BgRfcUnitInfo unit = check jcoClient->sendBgRfcUnit([
+        {functionName: "STFC_WRITE_TO_TCPIC", importParams: {"TCPICDAT": [{"LINE": "bgRFC call 1"}]}},
+        {functionName: "STFC_WRITE_TO_TCPIC", importParams: {"TCPICDAT": [{"LINE": "bgRFC call 2"}]}}
+    ], {unitHistory: true});
+    io:println("Committed bgRFC unit: ", unit.unitId, " type: ", unit.unitType);
+
+    jco:BgRfcUnitState state = check jcoClient->getBgRfcUnitState(unit);
+    io:println("Unit state: ", state);
+}
+```
+
 #### Initialize a listener for incoming IDocs
 
 ```ballerina

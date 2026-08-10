@@ -33,6 +33,26 @@ public class SAPConstants {
     public static final String SET_NULL = "setImportParamNull";
     public static final String DATE = "Date";
 
+    // Constants for transactional RFC support (tRFC, qRFC, bgRFC)
+    public static final String T = "T";
+    public static final String Q = "Q";
+    public static final String UNIT_ID = "unitId";
+    public static final String QUEUE_NAMES = "queueNames";
+    public static final String FUNCTION_NAME = "functionName";
+    public static final String IMPORT_PARAMS = "importParams";
+    public static final String LOCK = "lock";
+    public static final String UNIT_HISTORY = "unitHistory";
+    public static final String KERNEL_TRACE = "kernelTrace";
+    public static final String COMMIT_CHECK = "commitCheck";
+    public static final String PROGRAM_NAME = "programName";
+    public static final String TRANSACTION_CODE = "transactionCode";
+    public static final String BGRFC_UNIT_INFO_RECORD = "BgRfcUnitInfo";
+    public static final String UNIT_ID_FIELD = "unitId";
+    public static final String UNIT_TYPE_FIELD = "unitType";
+    public static final String TRANSACTION_ERROR = "TransactionError";
+    public static final String TRANSACTION_ERROR_DETAIL = "TransactionErrorDetail";
+    public static final String TID_FIELD = "tid";
+
     // Constants for SAP Destination Provider Configurations
     public static final Map<String, String> CONFIG_KEYS = Map.<String, String>ofEntries(
             Map.entry("jcoClient", DestinationDataProvider.JCO_CLIENT),

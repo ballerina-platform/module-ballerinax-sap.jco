@@ -58,8 +58,7 @@ public class Client {
     public static Object initializeClient(BObject client, BMap<BString, Object> jcoDestinationConfig,
                                           BString destinationId, boolean setImportParamNull) {
         try {
-            BallerinaDestinationDataProvider dp = new BallerinaDestinationDataProvider();
-            com.sap.conn.jco.ext.Environment.registerDestinationDataProvider(dp);
+            BallerinaDestinationDataProvider dp = BallerinaDestinationDataProvider.getRegisteredInstance();
             dp.addDestination(jcoDestinationConfig, destinationId);
             JCoDestination destination = JCoDestinationManager.getDestination(destinationId.toString());
             destination.ping();
