@@ -58,9 +58,12 @@ public final class Transactions {
 
     public static Object confirmTid(BObject client, BString tid) {
         try {
+            validateTid(tid.toString());
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
             destination.confirmTID(tid.toString());
             return null;
+        } catch (BError e) {
+            return e;
         } catch (JCoException e) {
             return SAPErrorCreator.transactionError("Failed to confirm TID '" + tid + "': " + e.getMessage(),
                     e, tid.toString(), null);
@@ -91,7 +94,12 @@ public final class Transactions {
             boolean setNull = (boolean) client.getNativeData(SAPConstants.SET_NULL);
             ParameterProcessor.setParameters(function, importParams, setNull);
 
-            tidStr = tid == null ? destination.createTID() : tid.toString();
+            if (tid == null) {
+                tidStr = destination.createTID();
+            } else {
+                validateTid(tid.toString());
+                tidStr = tid.toString();
+            }
             if (queueName == null) {
                 function.execute(destination, tidStr);
             } else {
@@ -135,6 +143,9 @@ public final class Transactions {
 
             JCoBackgroundUnitAttributes attributes = buildAttributes(unitConfig);
             Object configuredId = unitConfig.get(StringUtils.fromString(SAPConstants.UNIT_ID));
+            if (configuredId != null) {
+                validateUnitId(configuredId.toString());
+            }
             JCoFunctionUnit unit = configuredId == null ? JCo.createFunctionUnit(attributes)
                     : JCo.createFunctionUnit(configuredId.toString(), attributes);
 
@@ -181,6 +192,7 @@ public final class Transactions {
     public static Object getBgRfcUnitState(BObject client, BMap<BString, Object> unitInfo) {
         String unitId = unitField(unitInfo, SAPConstants.UNIT_ID_FIELD);
         try {
+            validateUnitId(unitId);
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
             JCoUnitIdentifier identifier = JCo.createUnitIdentifier(unitId,
                     toUnitType(unitField(unitInfo, SAPConstants.UNIT_TYPE_FIELD)));
@@ -188,6 +200,8 @@ public final class Transactions {
         } catch (JCoException e) {
             return SAPErrorCreator.transactionError("Failed to get bgRFC unit state for unit '" + unitId +
                     "': " + e.getMessage(), e, null, unitId);
+        } catch (BError e) {
+            return e;
         } catch (Exception e) {
             return SAPErrorCreator.createError("Failed to get bgRFC unit state.", e);
         }
@@ -196,6 +210,7 @@ public final class Transactions {
     public static Object confirmBgRfcUnit(BObject client, BMap<BString, Object> unitInfo) {
         String unitId = unitField(unitInfo, SAPConstants.UNIT_ID_FIELD);
         try {
+            validateUnitId(unitId);
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
             JCoUnitIdentifier identifier = JCo.createUnitIdentifier(unitId,
                     toUnitType(unitField(unitInfo, SAPConstants.UNIT_TYPE_FIELD)));
@@ -204,9 +219,39 @@ public final class Transactions {
         } catch (JCoException e) {
             return SAPErrorCreator.transactionError("Failed to confirm bgRFC unit '" + unitId + "': " +
                     e.getMessage(), e, null, unitId);
+        } catch (BError e) {
+            return e;
         } catch (Exception e) {
             return SAPErrorCreator.createError("Failed to confirm bgRFC unit.", e);
         }
+    }
+
+    // JCo parses these identifiers positionally and throws raw StringIndexOutOfBoundsException
+    // on a malformed value, so they are checked here to fail with an actionable message instead.
+    private static void validateTid(String tid) {
+        if (!isHexOfLength(tid, SAPConstants.TID_LENGTH)) {
+            throw SAPErrorCreator.fromBError("Invalid transaction ID '" + tid + "'. A TID must be a " +
+                    SAPConstants.TID_LENGTH + "-character hexadecimal string, as returned by createTid().", null);
+        }
+    }
+
+    private static void validateUnitId(String unitId) {
+        if (!isHexOfLength(unitId, SAPConstants.UNIT_ID_LENGTH)) {
+            throw SAPErrorCreator.fromBError("Invalid bgRFC unit ID '" + unitId + "'. A unit ID must be a " +
+                    SAPConstants.UNIT_ID_LENGTH + "-character hexadecimal string.", null);
+        }
+    }
+
+    private static boolean isHexOfLength(String value, int length) {
+        if (value == null || value.length() != length) {
+            return false;
+        }
+        for (int i = 0; i < length; i++) {
+            if (Character.digit(value.charAt(i), 16) == -1) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String unitField(BMap<BString, Object> unitInfo, String field) {

@@ -52,6 +52,8 @@ public class SAPConstants {
     public static final String TRANSACTION_ERROR = "TransactionError";
     public static final String TRANSACTION_ERROR_DETAIL = "TransactionErrorDetail";
     public static final String TID_FIELD = "tid";
+    public static final int TID_LENGTH = 24;
+    public static final int UNIT_ID_LENGTH = 32;
 
     // Constants for SAP Destination Provider Configurations
     public static final Map<String, String> CONFIG_KEYS = Map.<String, String>ofEntries(
