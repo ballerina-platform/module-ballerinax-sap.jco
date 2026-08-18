@@ -79,8 +79,11 @@ function testMultipleClients() returns error? {
     // "DestinationDataProvider already registered".
     Client first = check getTestClient();
     Client second = check new ({host, systemNumber, jcoClient, user, password});
-    string tid = check second->createTid();
-    test:assertTrue(tid.length() > 0);
+    string firstTid = check first->createTid();
+    string secondTid = check second->createTid();
+    test:assertTrue(firstTid.length() > 0, "the first client must stay usable");
+    test:assertTrue(secondTid.length() > 0, "the second client must be usable");
+    test:assertNotEquals(firstTid, secondTid, "each client must get its own TID");
 }
 
 @test:Config {enable: enableLiveTests}
