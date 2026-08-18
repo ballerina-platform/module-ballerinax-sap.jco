@@ -19,6 +19,7 @@
 // assumptions (for example: SAP silently accepts the confirmation of a TID it never issued).
 
 import ballerina/test;
+import ballerina/time;
 import ballerina/uuid;
 
 // --- Identifier validation (no SAP round trip needed for the rejection itself) ---
@@ -162,6 +163,52 @@ function testImportAndTableParametersTogether() returns error? {
         "TCPICDAT": tcpicRows("IMPORTPARAM")
     });
     test:assertTrue(tid.length() > 0);
+}
+
+@test:Config {enable: enableLiveTests}
+function testFullyTypedStructureAndTable() returns error? {
+    // STFC_STRUCTURE takes the RFCTEST structure, which covers every ABAP type the
+    // connector converts: FLTP, INT1, INT2, INT4, RAW, DATS, TIMS and CHAR. The structure
+    // goes to the IMPORT list and the table of the same type to the TABLES list, so one
+    // call exercises the whole of ParameterProcessor.
+    Client sap = check getTestClient();
+    time:Date postingDate = {year: 2026, month: 8, day: 18};
+    ParamStructure postingTime = {
+        "year": 2026,
+        "month": 8,
+        "day": 18,
+        "hour": 14,
+        "minute": 5,
+        "second": 12
+    };
+    ParamStructure row = {
+        "RFCFLOAT": 1250.75,
+        "RFCCHAR1": "R",
+        // STFC_STRUCTURE's ABAP body increments the numeric fields of RFCTABLE, so the
+        // values stay clear of the ABAP type limits (INT1 is 0-255, INT2 is signed 16-bit).
+        "RFCINT1": 100,
+        "RFCINT2": 32000,
+        "RFCINT4": 2147483000,
+        "RFCCHAR2": "KG",
+        "RFCCHAR4": "1010",
+        "RFCHEX3": <byte[]>[0xA1, 0xB2, 0xC3],
+        "RFCDATE": postingDate,
+        "RFCTIME": postingTime,
+        "RFCDATA1": "MAT-1000",
+        "RFCDATA2": testMarker
+    };
+
+    string tid = check sap->sendTRfc("STFC_STRUCTURE", {"IMPORTSTRUCT": row, "RFCTABLE": [row, row]});
+    test:assertTrue(tid.length() > 0, "a fully typed structure and table must be accepted");
+}
+
+@test:Config {enable: enableLiveTests}
+function testChangingParameterRouting() returns error? {
+    // STFC_CHANGING exposes COUNTER as a CHANGING parameter and START_VALUE as an IMPORT
+    // parameter, so this is the only call shape that exercises the changing-list branch.
+    Client sap = check getTestClient();
+    string tid = check sap->sendTRfc("STFC_CHANGING", {"START_VALUE": 10, "COUNTER": 5});
+    test:assertTrue(tid.length() > 0, "a changing parameter must be routed and accepted");
 }
 
 // --- Concurrency ---
