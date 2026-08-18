@@ -89,17 +89,15 @@ public final class Transactions {
                                             boolean autoConfirm) {
         String tidStr = null;
         try {
+            if (tid != null) {
+                validateTid(tid.toString());
+            }
             JCoDestination destination = (JCoDestination) client.getNativeData(SAPConstants.RFC_DESTINATION);
             JCoFunction function = lookupFunction(destination, functionName);
             boolean setNull = (boolean) client.getNativeData(SAPConstants.SET_NULL);
             ParameterProcessor.setParameters(function, importParams, setNull);
 
-            if (tid == null) {
-                tidStr = destination.createTID();
-            } else {
-                validateTid(tid.toString());
-                tidStr = tid.toString();
-            }
+            tidStr = tid == null ? destination.createTID() : tid.toString();
             if (queueName == null) {
                 function.execute(destination, tidStr);
             } else {
@@ -226,15 +224,23 @@ public final class Transactions {
         }
     }
 
-    // JCo parses these identifiers positionally and throws raw StringIndexOutOfBoundsException
-    // on a malformed value, so they are checked here to fail with an actionable message instead.
+    // A TID is split positionally by JCo into four fixed-width character fields, so anything
+    // shorter than 24 characters raises a raw StringIndexOutOfBoundsException, and anything
+    // longer is silently truncated - which would break exactly-once, because SAP would then
+    // record a different identifier than the caller believes it used. The content itself is
+    // not restricted: SAP stores the TID components as CHAR, so an application is free to
+    // derive a TID from its own idempotency key.
     private static void validateTid(String tid) {
-        if (!isHexOfLength(tid, SAPConstants.TID_LENGTH)) {
-            throw SAPErrorCreator.fromBError("Invalid transaction ID '" + tid + "'. A TID must be a " +
-                    SAPConstants.TID_LENGTH + "-character hexadecimal string, as returned by createTid().", null);
+        if (tid == null || tid.length() != SAPConstants.TID_LENGTH) {
+            throw SAPErrorCreator.fromBError("Invalid transaction ID '" + tid + "'. A TID must be exactly " +
+                    SAPConstants.TID_LENGTH + " characters long, as returned by createTid().", null);
         }
     }
 
+    // Unit IDs, unlike TIDs, are genuinely 16 bytes in hexadecimal - JCo documents that and
+    // rejects bad values in createUnitIdentifier. JCo.createFunctionUnit however accepts any
+    // length without complaint, so a wrong ID would only surface later when the unit is
+    // queried; validating here keeps that failure at the call that caused it.
     private static void validateUnitId(String unitId) {
         if (!isHexOfLength(unitId, SAPConstants.UNIT_ID_LENGTH)) {
             throw SAPErrorCreator.fromBError("Invalid bgRFC unit ID '" + unitId + "'. A unit ID must be a " +
@@ -247,7 +253,9 @@ public final class Transactions {
             return false;
         }
         for (int i = 0; i < length; i++) {
-            if (Character.digit(value.charAt(i), 16) == -1) {
+            char c = value.charAt(i);
+            boolean hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+            if (!hex) {
                 return false;
             }
         }

@@ -62,7 +62,7 @@ public isolated client class Client {
     # the same TID until it succeeds, then confirm. A confirmed TID must not be reused - the
     # backend forgets it, so a resend under it would execute again.
     #
-    # + tid - The TID to confirm.
+    # + tid - The TID to confirm. Must be exactly 24 characters long.
     # + return - An error if the confirmation fails.
     isolated remote function confirmTid(string tid) returns Error? = @java:Method {
         'class: "io.ballerina.lib.sap.Transactions"
@@ -77,6 +77,8 @@ public isolated client class Client {
     # + functionName - The name of the RFC-enabled function module to execute.
     # + importParams - The import, changing, and table parameters for the function.
     # + tid - The transaction ID to use. If not given, a new TID is created automatically.
+    #         A supplied TID must be exactly 24 characters long; its content is otherwise
+    #         unrestricted, so it may be derived from an application idempotency key.
     # + autoConfirm - If true, the TID is confirmed automatically after a successful send
     #                 (best-effort: a failed confirmation is logged but not surfaced, since
     #                 the call was already delivered). Set to false to confirm manually via
@@ -97,6 +99,8 @@ public isolated client class Client {
     # + queueName - The name of the SAP inbound queue to place the call on.
     # + importParams - The import, changing, and table parameters for the function.
     # + tid - The transaction ID to use. If not given, a new TID is created automatically.
+    #         A supplied TID must be exactly 24 characters long; its content is otherwise
+    #         unrestricted, so it may be derived from an application idempotency key.
     # + autoConfirm - If true, the TID is confirmed automatically after a successful send
     #                 (best-effort: a failed confirmation is logged but not surfaced, since
     #                 the call was already delivered). Set to false to confirm manually via

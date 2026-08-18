@@ -22,18 +22,35 @@ import ballerina/test;
 import ballerina/time;
 import ballerina/uuid;
 
-// --- Identifier validation (no SAP round trip needed for the rejection itself) ---
+// --- Identifier validation ---
 
 @test:Config {enable: enableLiveTests}
-function testSendTRfcRejectsMalformedTid() returns error? {
+function testSendTRfcRejectsWrongLengthTid() returns error? {
+    // Shorter than 24 characters is split out of bounds by JCo; longer is silently truncated,
+    // which would record a different identifier than the caller believes it used.
     Client sap = check getTestClient();
-    string|Error result = sap->sendTRfc("STFC_WRITE_TO_TCPIC",
-            {"TCPICDAT": tcpicRows("BADTID")}, "NOT-A-VALID-TID");
-    test:assertTrue(result is Error, "a malformed TID must be rejected");
-    if result is Error {
-        test:assertTrue(result.message().includes("24-character hexadecimal"),
-                "the error must explain the required TID format, got: " + result.message());
+    foreach string bad in ["NOT-A-VALID-TID", "0A0018D5CB206A8405D20000EXTRA"] {
+        string|Error result = sap->sendTRfc("STFC_WRITE_TO_TCPIC",
+                {"TCPICDAT": tcpicRows("BADTID")}, bad);
+        test:assertTrue(result is Error, string `TID '${bad}' must be rejected`);
+        if result is Error {
+            test:assertTrue(result.message().includes("exactly 24 characters"),
+                    "the error must explain the required TID length, got: " + result.message());
+        }
     }
+}
+
+@test:Config {enable: enableLiveTests}
+function testSendTRfcAcceptsNonHexTidOfCorrectLength() returns error? {
+    // SAP stores the TID components as CHAR, so an application may derive a TID from its own
+    // idempotency key. Only the length matters - rejecting these would break that pattern.
+    Client sap = check getTestClient();
+    string businessTid = "IDEMPOTENCY-KEY-" + testMarker.substring(testMarker.length() - 8);
+    test:assertEquals(businessTid.length(), 24, "the test's own fixture must be 24 characters");
+    string used = check sap->sendTRfc("STFC_WRITE_TO_TCPIC",
+            {"TCPICDAT": tcpicRows("BIZTID")}, businessTid, autoConfirm = false);
+    test:assertEquals(used, businessTid, "a 24-character non-hex TID must be usable");
+    check sap->confirmTid(businessTid);
 }
 
 @test:Config {enable: enableLiveTests}
@@ -99,6 +116,11 @@ function testExplicitUnitIdIsHonoured() returns error? {
         {functionName: "STFC_WRITE_TO_TCPIC", importParams: {"TCPICDAT": tcpicRows("EXPLICIT-UNITID")}}
     ], {unitId: wanted, unitHistory: true});
     test:assertEquals(again.unitId, wanted);
+
+    // The assertions above are satisfied locally by JCo echoing the ID back, so query the
+    // backend as well: a unit it has actually accepted must not report NOT_FOUND.
+    BgRfcUnitState state = check waitForUnitProcessing(sap, unit);
+    test:assertNotEquals(state, NOT_FOUND, "SAP must know the unit that was committed under this ID");
 }
 
 @test:Config {enable: enableLiveTests}
@@ -122,6 +144,10 @@ function testUnitAttributesAccepted() returns error? {
         unitHistory: true
     });
     test:assertEquals(unit.unitId.length(), 32);
+    // A generated ID is 32 characters regardless, so confirm the backend accepted the unit
+    // carrying these attributes.
+    BgRfcUnitState state = check waitForUnitProcessing(sap, unit);
+    test:assertNotEquals(state, NOT_FOUND, "a unit sent with attributes must exist on the backend");
 }
 
 // --- Parameter handling ---
