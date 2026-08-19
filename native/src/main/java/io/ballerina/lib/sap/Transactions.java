@@ -26,6 +26,7 @@ import com.sap.conn.jco.JCoFunction;
 import com.sap.conn.jco.JCoFunctionUnit;
 import com.sap.conn.jco.JCoParameterList;
 import com.sap.conn.jco.JCoRepository;
+import com.sap.conn.jco.JCoRuntimeException;
 import com.sap.conn.jco.JCoUnitIdentifier;
 import io.ballerina.lib.sap.parameterprocessor.ImportParameterProcessor;
 import io.ballerina.runtime.api.creators.ValueCreator;
@@ -201,9 +202,14 @@ public final class Transactions {
             if (queueNames != null) {
                 for (int i = 0; i < queueNames.size(); i++) {
                     String queue = queueNames.getBString(i).getValue();
-                    if (!unit.addQueueName(queue)) {
+                    try {
+                        // A false return means the queue is already assigned to this unit, which
+                        // is harmless. An invalid name raises a runtime exception instead, which
+                        // would otherwise escape as an unhandled Java error.
+                        unit.addQueueName(queue);
+                    } catch (JCoRuntimeException e) {
                         return SAPErrorCreator.createParameterError(
-                                "Queue name '" + queue + "' was rejected by JCo.");
+                                "Invalid queue name '" + queue + "': " + e.getMessage());
                     }
                 }
             }
