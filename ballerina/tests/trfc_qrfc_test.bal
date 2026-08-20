@@ -26,10 +26,10 @@ import ballerina/test;
 // All tests are disabled by default. Set the required environment variables
 // (see config.bal) to enable them.
 
-const string TRFC_FUNCTION = "STFC_WRITE_TO_TCPIC";
+const TRFC_FUNCTION = "STFC_WRITE_TO_TCPIC";
 
 // A queue name that satisfies SAP's naming rules (uppercase letters, digits, underscores).
-const string TEST_QUEUE = "BAL_JCO_TEST_QUEUE";
+const TEST_QUEUE = "BAL_JCO_TEST_QUEUE";
 
 isolated function tcpicRow(string tag) returns RfcParameters {
     return {tableParameters: {"TCPICDAT": [{"LINE": "ballerina-test " + tag}]}};

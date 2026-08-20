@@ -27,8 +27,8 @@ import ballerina/uuid;
 // All tests are disabled by default. Set the required environment variables
 // (see config.bal) to enable them.
 
-const string BGRFC_FUNCTION = "STFC_WRITE_TO_TCPIC";
-const string BGRFC_QUEUE = "BAL_JCO_BGRFC_QUEUE";
+const BGRFC_FUNCTION = "STFC_WRITE_TO_TCPIC";
+const BGRFC_QUEUE = "BAL_JCO_BGRFC_QUEUE";
 
 isolated function unitCall(string tag) returns FunctionCall {
     return {
