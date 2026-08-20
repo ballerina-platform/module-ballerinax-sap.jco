@@ -70,6 +70,8 @@ public final class Transactions {
             return e;
         } catch (JCoException e) {
             return SAPErrorCreator.fromJCoException(e);
+        } catch (JCoRuntimeException e) {
+            return runtimeFailure(e, null, null, "Failed to create a transaction ID.");
         }
     }
 
@@ -91,6 +93,8 @@ public final class Transactions {
         } catch (JCoException e) {
             return SAPErrorCreator.createTransactionError(
                     "Failed to confirm TID '" + tidStr + "'.", e, tidStr, null);
+        } catch (JCoRuntimeException e) {
+            return runtimeFailure(e, tidStr, null, "Failed to confirm TID '" + tidStr + "'.");
         }
     }
 
@@ -155,6 +159,12 @@ public final class Transactions {
             String protocol = queueName == null ? "tRFC" : "qRFC";
             return SAPErrorCreator.createTransactionError(
                     protocol + " call to '" + functionName + "' failed.", e, tidStr, null);
+        } catch (JCoRuntimeException e) {
+            // JCoRuntimeException is unrelated to JCoException, so the catch above does not cover
+            // it. Parameter binding raises ConversionException, a subclass, for a value that does
+            // not fit its ABAP field; without this the call would abort with a raw Java error.
+            return runtimeFailure(e, tidStr, null,
+                    (queueName == null ? "tRFC" : "qRFC") + " call to '" + functionName + "' failed.");
         }
     }
 
@@ -230,6 +240,10 @@ public final class Transactions {
             return e;
         } catch (JCoException e) {
             return SAPErrorCreator.createTransactionError("bgRFC unit commit failed.", e, null, unitId);
+        } catch (JCoRuntimeException e) {
+            // addFunction, the unit builders and parameter binding all signal invalid input with
+            // a JCoRuntimeException, which the catch above does not cover.
+            return runtimeFailure(e, null, unitId, "bgRFC unit commit failed.");
         }
     }
 
@@ -250,6 +264,9 @@ public final class Transactions {
         } catch (JCoException e) {
             return SAPErrorCreator.createTransactionError(
                     "Failed to read the state of bgRFC unit '" + unitId + "'.", e, null, unitId);
+        } catch (JCoRuntimeException e) {
+            return runtimeFailure(e, null, unitId,
+                    "Failed to read the state of bgRFC unit '" + unitId + "'.");
         }
     }
 
@@ -270,6 +287,8 @@ public final class Transactions {
         } catch (JCoException e) {
             return SAPErrorCreator.createTransactionError(
                     "Failed to confirm bgRFC unit '" + unitId + "'.", e, null, unitId);
+        } catch (JCoRuntimeException e) {
+            return runtimeFailure(e, null, unitId, "Failed to confirm bgRFC unit '" + unitId + "'.");
         }
     }
 
@@ -358,6 +377,22 @@ public final class Transactions {
     private static String unitField(BMap<BString, Object> unitInfo, BString field) {
         Object value = unitInfo.get(field);
         return value == null ? "" : value.toString();
+    }
+
+    // JCo reports invalid input through JCoRuntimeException, which does not extend JCoException
+    // and so is not caught alongside it. ConversionException, raised when a supplied value does
+    // not fit its ABAP field, is the common case. These are all caller-input failures, so they
+    // surface as a ParameterError; any identifier already in play is kept in the message so a
+    // retry can still be traced.
+    private static Object runtimeFailure(JCoRuntimeException e, String tid, String unitId, String context) {
+        StringBuilder message = new StringBuilder(context).append(' ').append(e.getMessage());
+        if (tid != null) {
+            message.append(" (TID ").append(tid).append(')');
+        }
+        if (unitId != null) {
+            message.append(" (unit ").append(unitId).append(')');
+        }
+        return SAPErrorCreator.createParameterError(message.toString());
     }
 
     private static JCoDestination destinationOf(BObject client) {
