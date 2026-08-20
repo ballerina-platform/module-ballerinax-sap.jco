@@ -357,7 +357,7 @@ Background RFC (bgRFC) groups one or more function calls into a single logical u
 
 ```ballerina
 # A single function invocation inside a bgRFC unit of work.
-public type FunctionCall record {|
+public type RemoteFunctionCall record {|
     # Name of the RFC-enabled function module to call
     string functionName;
     # Input parameters for the call, organised by category
@@ -401,7 +401,7 @@ public type BgRfcUnitInfo record {|
 # + functionCalls - The calls that make up the unit
 # + unitConfig - Configuration for the unit
 # + return - The ID and type of the committed unit, or an error if the commit fails
-isolated remote function sendBgRfcUnit(FunctionCall[] functionCalls,
+isolated remote function sendBgRfcUnit(RemoteFunctionCall[] functionCalls,
         BgRfcUnitConfig unitConfig = {}) returns BgRfcUnitInfo|Error
 ```
 

@@ -13,6 +13,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+import ballerina/lang.regexp;
 import ballerina/time;
 
 # Connection parameters for an SAP RFC destination.
@@ -90,7 +91,7 @@ public type RfcParameters record {|
 |};
 
 # A single function invocation inside a bgRFC unit of work.
-public type FunctionCall record {|
+public type RemoteFunctionCall record {|
     # Name of the RFC-enabled function module to call
     string functionName;
     # Input parameters for the call, organised by category
@@ -125,7 +126,7 @@ public type BgRfcUnitConfig record {|
     # repeated submission idempotent. If omitted, a unique ID is generated.
     string unitId?;
     # Inbound queues the unit is assigned to. Supplying at least one queue makes the unit
-    # type `Q`; otherwise it is type `T`.
+    # type Q; otherwise it is type T.
     string[] queueNames = [];
     # Holds the unit back from processing until it is unlocked in the SAP system
     boolean 'lock = false;
@@ -140,6 +141,15 @@ public type BgRfcUnitConfig record {|
     # Transaction code recorded with the unit
     string transactionCode?;
 |};
+
+# Required length of a transaction ID.
+const int TID_LENGTH = 24;
+
+# Required length of a bgRFC unit ID.
+const int UNIT_ID_LENGTH = 32;
+
+# A bgRFC unit ID is 16 bytes in hexadecimal.
+final regexp:RegExp UNIT_ID_PATTERN = re `[0-9a-fA-F]{32}`;
 
 # Identifies a bgRFC unit that was committed to the SAP system.
 public type BgRfcUnitInfo record {|

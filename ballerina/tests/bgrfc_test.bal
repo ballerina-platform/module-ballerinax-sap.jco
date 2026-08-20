@@ -30,7 +30,7 @@ import ballerina/uuid;
 const BGRFC_FUNCTION = "STFC_WRITE_TO_TCPIC";
 const BGRFC_QUEUE = "BAL_JCO_BGRFC_QUEUE";
 
-isolated function unitCall(string tag) returns FunctionCall {
+isolated function unitCall(string tag) returns RemoteFunctionCall {
     return {
         functionName: BGRFC_FUNCTION,
         parameters: {tableParameters: {"TCPICDAT": [{"LINE": "ballerina-bgrfc " + tag}]}}

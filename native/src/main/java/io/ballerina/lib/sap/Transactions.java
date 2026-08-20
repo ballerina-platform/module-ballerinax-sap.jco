@@ -57,7 +57,9 @@ public final class Transactions {
     }
 
     /**
-     * Creates a transaction ID on the SAP system.
+     * Obtains a transaction ID from the SAP system. The value is allocated by SAP through
+     * {@code JCoDestination.createTID} and returned verbatim; the connector neither generates
+     * nor transforms it.
      *
      * @param client the Ballerina {@code Client} object
      * @return the TID as a Ballerina string, or a Ballerina {@code Error} on failure
@@ -85,7 +87,6 @@ public final class Transactions {
     public static Object confirmTid(BObject client, BString tid) {
         String tidStr = tid.getValue();
         try {
-            validateTid(tidStr);
             destinationOf(client).confirmTID(tidStr);
             return null;
         } catch (BError e) {
@@ -109,8 +110,8 @@ public final class Transactions {
      * @return the TID the call was sent under, or a Ballerina {@code Error} on failure
      */
     public static Object sendTRfc(BObject client, BString functionName, BMap<BString, Object> parameters,
-                                  Object tid, boolean autoConfirm) {
-        return send(client, functionName, parameters, tid, null, autoConfirm);
+                                  BString tid, boolean autoConfirm) {
+        return send(client, functionName, parameters, tid.getValue(), null, autoConfirm);
     }
 
     /**
@@ -125,25 +126,16 @@ public final class Transactions {
      * @return the TID the call was sent under, or a Ballerina {@code Error} on failure
      */
     public static Object sendQRfc(BObject client, BString functionName, BString queueName,
-                                  BMap<BString, Object> parameters, Object tid, boolean autoConfirm) {
-        String queue = queueName.getValue();
-        if (queue.isEmpty()) {
-            return SAPErrorCreator.createParameterError("Queue name is empty.");
-        }
-        return send(client, functionName, parameters, tid, queue, autoConfirm);
+                                  BMap<BString, Object> parameters, BString tid, boolean autoConfirm) {
+        return send(client, functionName, parameters, tid.getValue(), queueName.getValue(), autoConfirm);
     }
 
     private static Object send(BObject client, BString functionName, BMap<BString, Object> parameters,
-                               Object tid, String queueName, boolean autoConfirm) {
-        String tidStr = null;
+                               String tidStr, String queueName, boolean autoConfirm) {
         try {
-            if (tid instanceof BString) {
-                validateTid(((BString) tid).getValue());
-            }
             JCoDestination destination = destinationOf(client);
             JCoFunction function = prepareFunction(destination, functionName, parameters);
 
-            tidStr = (tid instanceof BString) ? ((BString) tid).getValue() : destination.createTID();
             if (queueName == null) {
                 function.execute(destination, tidStr);
             } else {
@@ -152,7 +144,7 @@ public final class Transactions {
             if (autoConfirm) {
                 confirmQuietly(destination, tidStr);
             }
-            return StringUtils.fromString(tidStr);
+            return null;
         } catch (BError e) {
             return e;
         } catch (JCoException e) {
@@ -193,16 +185,9 @@ public final class Transactions {
                                        BMap<BString, Object> unitConfig) {
         String unitId = null;
         try {
-            if (functionCalls.size() == 0) {
-                return SAPErrorCreator.createParameterError(
-                        "A bgRFC unit must contain at least one function call.");
-            }
             JCoDestination destination = destinationOf(client);
 
             Object configuredId = unitConfig.get(SAPConstants.BGRFC_UNIT_ID);
-            if (configuredId != null) {
-                validateUnitId(configuredId.toString());
-            }
             JCoBackgroundUnitAttributes attributes = buildAttributes(unitConfig);
             JCoFunctionUnit unit = (configuredId == null)
                     ? JCo.createFunctionUnit(attributes)
@@ -344,7 +329,6 @@ public final class Transactions {
 
     private static JCoUnitIdentifier toIdentifier(BMap<BString, Object> unitInfo) {
         String unitId = unitField(unitInfo, SAPConstants.BGRFC_UNIT_ID);
-        validateUnitId(unitId);
         JCoUnitIdentifier.Type type =
                 SAPConstants.BGRFC_TYPE_Q.equals(unitField(unitInfo, SAPConstants.BGRFC_UNIT_TYPE))
                         ? JCoUnitIdentifier.Type.TYPE_Q
@@ -403,39 +387,4 @@ public final class Transactions {
         return destination;
     }
 
-    // JCo splits a TID positionally into four fixed-width character fields, so a shorter value
-    // raises a raw StringIndexOutOfBoundsException and a longer one is silently truncated —
-    // which would break exactly-once, because SAP would record a different identifier than the
-    // caller believes it used. The content is deliberately not restricted: SAP stores the TID
-    // components as CHAR, so an application may derive a TID from its own idempotency key.
-    private static void validateTid(String tid) {
-        if (tid == null || tid.length() != SAPConstants.TID_LENGTH) {
-            throw SAPErrorCreator.createParameterError("Invalid transaction ID '" + tid
-                    + "'. A TID must be exactly " + SAPConstants.TID_LENGTH + " characters long.");
-        }
-    }
-
-    // Unit IDs, unlike TIDs, really are 16 bytes in hexadecimal — JCo documents that and rejects
-    // bad values in createUnitIdentifier. JCo.createFunctionUnit however accepts any length, so a
-    // malformed ID would otherwise surface only later when the unit is queried.
-    private static void validateUnitId(String unitId) {
-        if (!isHexOfLength(unitId, SAPConstants.UNIT_ID_LENGTH)) {
-            throw SAPErrorCreator.createParameterError("Invalid bgRFC unit ID '" + unitId
-                    + "'. A unit ID must be a " + SAPConstants.UNIT_ID_LENGTH
-                    + "-character hexadecimal string.");
-        }
-    }
-
-    private static boolean isHexOfLength(String value, int length) {
-        if (value == null || value.length() != length) {
-            return false;
-        }
-        for (int i = 0; i < length; i++) {
-            char c = value.charAt(i);
-            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
-                return false;
-            }
-        }
-        return true;
-    }
 }
