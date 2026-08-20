@@ -38,15 +38,8 @@ isolated function unitCall(string tag) returns FunctionCall {
 }
 
 // A 32-character hexadecimal unit ID, unique per run.
-isolated function newUnitId() returns string {
-    string id = "";
-    foreach string:Char c in uuid:createType4AsString() {
-        if c != "-" {
-            id += c;
-        }
-    }
-    return id.toUpperAscii();
-}
+isolated function newUnitId() returns string =>
+        re `-`.replaceAll(uuid:createRandomUuid(), "").toUpperAscii();
 
 // Polls until the unit leaves the in-flight states. COMMITTED is the terminal state from the
 // sender's point of view: CONFIRMED only exists after confirmBgRfcUnit is called, so waiting
