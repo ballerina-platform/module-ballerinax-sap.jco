@@ -43,6 +43,32 @@ public class SAPConstants {
     public static final BString RFC_IMPORT_PARAMETERS = StringUtils.fromString("importParameters");
     public static final BString RFC_TABLE_PARAMETERS = StringUtils.fromString("tableParameters");
 
+    // Transactional RFC (tRFC / qRFC / bgRFC)
+    public static final int TID_LENGTH = 24;
+    public static final int UNIT_ID_LENGTH = 32;
+    public static final String BGRFC_TYPE_T = "T";
+    public static final String BGRFC_TYPE_Q = "Q";
+    public static final String BGRFC_UNIT_INFO_RECORD = "BgRfcUnitInfo";
+
+    // FunctionCall field names
+    public static final BString BGRFC_FUNCTION_NAME = StringUtils.fromString("functionName");
+    public static final BString BGRFC_PARAMETERS = StringUtils.fromString("parameters");
+
+    // BgRfcUnitConfig / BgRfcUnitInfo field names
+    public static final BString BGRFC_UNIT_ID = StringUtils.fromString("unitId");
+    public static final BString BGRFC_UNIT_TYPE = StringUtils.fromString("unitType");
+    public static final BString BGRFC_QUEUE_NAMES = StringUtils.fromString("queueNames");
+    public static final BString BGRFC_LOCK = StringUtils.fromString("lock");
+    public static final BString BGRFC_UNIT_HISTORY = StringUtils.fromString("unitHistory");
+    public static final BString BGRFC_KERNEL_TRACE = StringUtils.fromString("kernelTrace");
+    public static final BString BGRFC_COMMIT_CHECK = StringUtils.fromString("commitCheck");
+    public static final BString BGRFC_PROGRAM_NAME = StringUtils.fromString("programName");
+    public static final BString BGRFC_TRANSACTION_CODE = StringUtils.fromString("transactionCode");
+
+    // TransactionErrorDetail field keys
+    public static final BString DETAIL_TID = StringUtils.fromString("tid");
+    public static final BString DETAIL_UNIT_ID = StringUtils.fromString("unitId");
+
 
     // Class names
     public static final String JCO_STRING = "java.lang.String";
@@ -72,6 +98,7 @@ public class SAPConstants {
     public static final String PARAMETER_ERROR_TYPE         = "ParameterError";
     public static final String CONFIGURATION_ERROR_TYPE     = "ConfigurationError";
     public static final String EXECUTION_ERROR_TYPE         = "ExecutionError";
+    public static final String TRANSACTION_ERROR_TYPE       = "TransactionError";
 
     // JCoErrorDetail field keys
     public static final BString DETAIL_ERROR_GROUP      = StringUtils.fromString("errorGroup");

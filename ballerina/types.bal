@@ -13,6 +13,7 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+import ballerina/lang.regexp;
 import ballerina/time;
 
 # Connection parameters for an SAP RFC destination.
@@ -89,6 +90,75 @@ public type RfcParameters record {|
     map<RfcRecord[]> tableParameters?;
 |};
 
+# A single function invocation inside a bgRFC unit of work.
+public type RemoteFunctionCall record {|
+    # Name of the RFC-enabled function module to call
+    string functionName;
+    # Input parameters for the call, organised by category
+    RfcParameters parameters = {};
+|};
+
+# Type of a bgRFC unit: transactional (exactly-once) or queued (exactly-once in order).
+public enum BgRfcUnitType {
+    # Transactional unit, executed exactly once
+    BGRFC_TYPE_T = "T",
+    # Queued unit, executed exactly once and in order within its queues
+    BGRFC_TYPE_Q = "Q"
+};
+
+# Processing state of a bgRFC unit as reported by the SAP system.
+public enum BgRfcUnitState {
+    # The SAP system has no record of the unit
+    NOT_FOUND,
+    # The unit is currently being processed
+    IN_PROCESS,
+    # Processing finished; the unit is ready to be confirmed
+    COMMITTED,
+    # The unit was confirmed by the client
+    CONFIRMED,
+    # Processing failed and the unit was rolled back
+    ROLLED_BACK
+};
+
+# Configuration for a bgRFC unit of work.
+public type BgRfcUnitConfig record {|
+    # A 32-character hexadecimal unit ID. Supply one derived from a business key to make a
+    # repeated submission idempotent. If omitted, a unique ID is generated.
+    string unitId?;
+    # Inbound queues the unit is assigned to. Supplying at least one queue makes the unit
+    # type Q; otherwise it is type T.
+    string[] queueNames = [];
+    # Holds the unit back from processing until it is unlocked in the SAP system
+    boolean 'lock = false;
+    # Records the unit history in the SAP system
+    boolean unitHistory = false;
+    # Enables kernel tracing for the unit
+    boolean kernelTrace = false;
+    # Checks whether the unit can be processed before committing it
+    boolean commitCheck = false;
+    # Calling program name recorded with the unit
+    string programName?;
+    # Transaction code recorded with the unit
+    string transactionCode?;
+|};
+
+# Required length of a transaction ID.
+const int TID_LENGTH = 24;
+
+# Required length of a bgRFC unit ID.
+const int UNIT_ID_LENGTH = 32;
+
+# A bgRFC unit ID is 16 bytes in hexadecimal.
+final regexp:RegExp UNIT_ID_PATTERN = re `[0-9a-fA-F]{32}`;
+
+# Identifies a bgRFC unit that was committed to the SAP system.
+public type BgRfcUnitInfo record {|
+    # The 32-character hexadecimal ID of the unit
+    string unitId;
+    # The type of the unit
+    BgRfcUnitType unitType;
+|};
+
 # Error detail for JCo-origin errors, providing the JCo error group and SAP exception key.
 public type JCoErrorDetail record {|
     # JCo error group identifier
@@ -146,6 +216,20 @@ public type ConfigurationError distinct error;
 # Raised when an unexpected error occurs during RFC execution or other runtime operations.
 public type ExecutionError distinct error;
 
+# Error detail for a failed transactional call, carrying the identifier the call was using so
+# that the caller can retry under it without risking a duplicate execution.
+public type TransactionErrorDetail record {|
+    *JCoErrorDetail;
+    # Transaction ID of the failed tRFC or qRFC call, when one had already been created
+    string tid?;
+    # Unit ID of the failed bgRFC unit operation
+    string unitId?;
+|};
+
+# Raised when a transactional call (tRFC, qRFC, or bgRFC) fails. Retrying under the `tid` or
+# `unitId` carried in the detail preserves the exactly-once guarantee.
+public type TransactionError distinct error<TransactionErrorDetail>;
+
 # Represents all errors that can be returned by the SAP JCo connector.
 public type Error ConnectionError|LogonError|ResourceError|SystemError|AbapApplicationError
-    |JCoError|IDocError|ParameterError|ConfigurationError|ExecutionError;
+    |JCoError|IDocError|ParameterError|ConfigurationError|ExecutionError|TransactionError;

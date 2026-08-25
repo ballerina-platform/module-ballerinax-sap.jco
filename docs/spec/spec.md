@@ -3,7 +3,7 @@
 _Authors_: @RDPerera  
 _Reviewers_: @niveathika, @NipunaRanasinghe, @shafreenAnfar  
 _Created_: 2024/08/28  
-_Updated_: 2026/04/27  
+_Updated_: 2026/08/20  
 _Edition_: Swan Lake
 
 ## Introduction
@@ -28,6 +28,9 @@ The conforming implementation of the specification is released and included in t
        - 2.1.2.1 [Execute a function module via RFC](#2121-execute-a-function-module-via-rfc)
        - 2.1.2.2 [Close the client](#2122-close-the-client)
        - 2.1.2.3 [Send iDocs to an SAP system](#2123-send-idocs-to-an-sap-system)
+       - 2.1.2.4 [Call a function module exactly once via tRFC](#2124-call-a-function-module-exactly-once-via-trfc)
+       - 2.1.2.5 [Call a function module in order via qRFC](#2125-call-a-function-module-in-order-via-qrfc)
+       - 2.1.2.6 [Commit several calls as one unit of work via bgRFC](#2126-commit-several-calls-as-one-unit-of-work-via-bgrfc)
      - 2.1.3 [Data types](#213-data-type-mapping-between-ballerina-and-sap-jco)
    - 2.2 [Listener](#22-listener)
      - 2.2.1 [Configurations](#221-configurations)
@@ -263,6 +266,175 @@ public function main() returns error? {
     io:println("IDocs sent successfully.");
 }
 ```
+
+##### 2.1.2.4 Call a function module exactly once via tRFC
+
+`execute` is a request/response call and therefore carries no delivery guarantee: if the connection drops after SAP has committed but before the response is received, the caller cannot tell whether the call ran. Transactional RFC (tRFC) closes that gap. SAP tracks the call by a transaction ID (TID) and refuses to execute a second call sent under the same TID, so a retry is safe.
+
+```ballerina
+# Calls an RFC-enabled function module as a transactional RFC (tRFC), which the SAP system
+# executes exactly once. The call is asynchronous, so export and table values the function
+# module produces are discarded and only the TID is returned. Use `execute` when the result
+# is needed.
+#
+# + functionName - Name of the RFC function module to call
+# + parameters - Input parameters organised by category
+# + tid - The transaction ID to use. If not provided, one is created automatically. A supplied
+#         TID must be exactly 24 characters long; its content is otherwise unrestricted, so it
+#         may be derived from an application idempotency key.
+# + autoConfirm - Whether to confirm the TID after a successful send
+# + return - The TID the call was sent under, or an error if the send fails
+isolated remote function sendTRfc(string functionName, RfcParameters parameters = {},
+        string? tid = (), boolean autoConfirm = true) returns string|Error
+```
+
+The transaction ID lifecycle is also available directly, for integrations that must survive a process failure:
+
+```ballerina
+# Creates a transaction ID on the SAP system for use with `sendTRfc` or `sendQRfc`.
+isolated remote function createTid() returns string|Error
+
+# Confirms a transaction ID so that the SAP system can discard its record of it.
+#
+# + tid - The TID to confirm. Must be exactly 24 characters long.
+isolated remote function confirmTid(string tid) returns Error?
+```
+
+With the default `autoConfirm = true` the TID is created and confirmed by the connector, which is all a fire-and-forget call needs. Taking control of the lifecycle is what makes delivery survive a crash: if the process dies mid-send there is no error value to inspect, so the identifier must be obtained and persisted *before* the call for a restarted process to resume under it.
+
+```ballerina
+string tid = check sapClient->createTid();
+check persistTid(movementId, tid);
+_ = check sapClient->sendTRfc("Z_POST_GOODS_MOVEMENT", parameters, tid, autoConfirm = false);
+check sapClient->confirmTid(tid);
+```
+
+###### How a transaction ID is generated
+
+A TID is produced in one of two ways, and the connector never invents one itself:
+
+1. **By the SAP system.** `createTid`, and the automatic path taken when `tid` is omitted, both call `JCoDestination.createTID`, so the value is allocated by the SAP system and is guaranteed unique for that destination. It is returned verbatim; the connector does not transform it.
+2. **By the application.** A TID passed in by the caller is used verbatim. Only its length is constrained — exactly 24 characters — because SAP stores the TID components as `CHAR` and applies no format rule of its own. This is what allows a TID to be derived from an application idempotency key.
+
+A caller deriving a TID from a business key needs a rule for reaching 24 characters. Truncating the key itself is unsafe: two operations sharing a prefix would map to the same TID, and SAP would discard the second as a duplicate, losing an update. The recommended derivation is a hash of the canonical business key, hex-encoded in uppercase and truncated to 24 characters:
+
+```ballerina
+string tid = crypto:hashSha256(businessKey.toBytes()).toBase16().toUpperAscii().substring(0, 24);
+```
+
+That retains 96 bits of the digest, which makes an accidental collision negligible, and it is deterministic, so a restarted process derives the same TID from the same key.
+
+A TID is only meaningful on the destination and client that issued it. An application that persists a TID must key its store by destination and client; resuming against a different SAP system would execute the call again.
+
+A confirmed TID must not be reused. Once confirmed, the SAP system forgets it, so a later call sent under that TID is executed again.
+
+When a send fails, the returned `TransactionError` carries the TID in its detail, so the caller can retry under the same identifier without risking a duplicate.
+
+##### 2.1.2.5 Call a function module in order via qRFC
+
+Queued RFC (qRFC) extends the tRFC guarantee with ordering. Calls placed on the same SAP inbound queue are executed exactly once and in the order they were sent, which is required when later updates to a business object must not overtake earlier ones.
+
+```ballerina
+# Calls an RFC-enabled function module as a queued RFC (qRFC). Calls placed on the same
+# inbound queue are executed exactly once and in the order they were sent.
+#
+# + functionName - Name of the RFC function module to call
+# + queueName - The SAP inbound queue that serialises the calls
+# + parameters - Input parameters organised by category
+# + tid - The transaction ID to use. If not provided, one is created automatically.
+# + autoConfirm - Whether to confirm the TID after a successful send
+# + return - The TID the call was sent under, or an error if the send fails
+isolated remote function sendQRfc(string functionName, string queueName,
+        RfcParameters parameters = {}, string? tid = (), boolean autoConfirm = true)
+        returns string|Error
+```
+
+Placing calls on the queue in the correct order is the responsibility of the connector. Draining the queue is a property of the SAP system: entries remain queued until the inbound queue is registered with the QIN scheduler (transaction `SMQR`).
+
+##### 2.1.2.6 Commit several calls as one unit of work via bgRFC
+
+Background RFC (bgRFC) groups one or more function calls into a single logical unit of work, applied together or not at all. This is what keeps related calls, such as a posting and its audit entry, from diverging.
+
+```ballerina
+# A single function invocation inside a bgRFC unit of work.
+public type RemoteFunctionCall record {|
+    # Name of the RFC-enabled function module to call
+    string functionName;
+    # Input parameters for the call, organised by category
+    RfcParameters parameters = {};
+|};
+
+# Configuration for a bgRFC unit of work.
+public type BgRfcUnitConfig record {|
+    # A 32-character hexadecimal unit ID. Supply one derived from a business key to make a
+    # repeated submission idempotent. If omitted, a unique ID is generated.
+    string unitId?;
+    # Inbound queues the unit is assigned to. Supplying at least one queue makes the unit
+    # type `Q`; otherwise it is type `T`.
+    string[] queueNames = [];
+    # Holds the unit back from processing until it is unlocked in the SAP system
+    boolean 'lock = false;
+    # Records the unit history in the SAP system
+    boolean unitHistory = false;
+    # Enables kernel tracing for the unit
+    boolean kernelTrace = false;
+    # Checks whether the unit can be processed before committing it
+    boolean commitCheck = false;
+    # Calling program name recorded with the unit
+    string programName?;
+    # Transaction code recorded with the unit
+    string transactionCode?;
+|};
+
+# Identifies a bgRFC unit that was committed to the SAP system.
+public type BgRfcUnitInfo record {|
+    # The 32-character hexadecimal ID of the unit
+    string unitId;
+    # The type of the unit
+    BgRfcUnitType unitType;
+|};
+```
+
+```ballerina
+# Commits one or more function calls to the SAP system as a single bgRFC unit of work.
+#
+# + functionCalls - The calls that make up the unit
+# + unitConfig - Configuration for the unit
+# + return - The ID and type of the committed unit, or an error if the commit fails
+isolated remote function sendBgRfcUnit(RemoteFunctionCall[] functionCalls,
+        BgRfcUnitConfig unitConfig = {}) returns BgRfcUnitInfo|Error
+```
+
+A unit is either type `T`, executed exactly once, or type `Q`, executed exactly once and in order within its queues. The type is determined by whether `queueNames` is supplied.
+
+```ballerina
+public enum BgRfcUnitType {
+    BGRFC_TYPE_T = "T",
+    BGRFC_TYPE_Q = "Q"
+}
+```
+
+The processing state of a committed unit can be read and, once processing has finished, confirmed:
+
+```ballerina
+public enum BgRfcUnitState {
+    NOT_FOUND,
+    IN_PROCESS,
+    COMMITTED,
+    CONFIRMED,
+    ROLLED_BACK
+}
+
+# Reads the processing state of a bgRFC unit from the SAP system.
+isolated remote function getBgRfcUnitState(BgRfcUnitInfo unit) returns BgRfcUnitState|Error
+
+# Confirms a bgRFC unit so that the SAP system can delete its status record.
+isolated remote function confirmBgRfcUnit(BgRfcUnitInfo unit) returns Error?
+```
+
+`COMMITTED` is the terminal state from the sender's point of view: it means processing finished and the unit is ready to be confirmed. `CONFIRMED` occurs only after `confirmBgRfcUnit` is called, so waiting for it before confirming would never return. A confirmed unit ID must not be reused.
+
+Supplying a `unitId` derived from a business key makes a repeated submission idempotent, in the same way that reusing a TID does for tRFC: the SAP system recognises the unit and executes it only once.
 
 #### 2.1.3 Data type mapping between Ballerina and SAP JCo
 
@@ -543,7 +715,7 @@ The connector defines distinct error types aligned with Ballerina conventions. A
 
 ```ballerina
 public type Error ConnectionError|LogonError|ResourceError|SystemError|AbapApplicationError
-    |JCoError|IDocError|ParameterError|ConfigurationError|ExecutionError;
+    |JCoError|IDocError|ParameterError|ConfigurationError|ExecutionError|TransactionError;
 ```
 
 | Error type               | Description                                                                                   |
@@ -558,5 +730,6 @@ public type Error ConnectionError|LogonError|ResourceError|SystemError|AbapAppli
 | `ParameterError`         | Raised when an RFC import or export parameter cannot be converted to or from a Ballerina type.|
 | `ConfigurationError`     | Raised during client or listener initialisation and lifecycle management, including calls to `execute` or `sendIDoc` after `close`.|
 | `ExecutionError`         | Raised when an unexpected error occurs during RFC execution or other runtime operations.                                           |
+| `TransactionError`       | Raised when a transactional call (tRFC, qRFC, or bgRFC) fails. Its detail carries the `tid` or `unitId` in use, so the caller can retry under the same identifier without risking a duplicate. |
 
 Most JCo-origin errors carry a `JCoErrorDetail` record with an `errorGroup` integer and an optional `key` string. ABAP application errors additionally carry ABAP message class, type, number, and up to four message variables via `AbapApplicationErrorDetail`.

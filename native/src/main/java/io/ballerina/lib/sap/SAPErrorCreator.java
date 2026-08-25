@@ -214,6 +214,31 @@ public class SAPErrorCreator {
     // Private helpers
     // -------------------------------------------------------------------------
 
+    /**
+     * Creates a {@code TransactionError} for a failed tRFC, qRFC, or bgRFC operation, carrying the
+     * identifier the operation was using. The identifier is what makes the delivery repeatable:
+     * retrying under the same TID or unit ID lets SAP recognise the duplicate and execute the call
+     * only once, so it is surfaced to the caller rather than discarded with the exception.
+     *
+     * @param message a human-readable description of what failed
+     * @param e       the originating JCo exception
+     * @param tid     the transaction ID in use, or {@code null} if none had been created
+     * @param unitId  the bgRFC unit ID in use, or {@code null} if not a unit operation
+     * @return a Ballerina {@code TransactionError}
+     */
+    public static BError createTransactionError(String message, JCoException e, String tid, String unitId) {
+        BMap<BString, Object> detail = buildJCoDetail(e.getGroup(), e.getKey());
+        if (tid != null) {
+            detail.put(SAPConstants.DETAIL_TID, StringUtils.fromString(tid));
+        }
+        if (unitId != null) {
+            detail.put(SAPConstants.DETAIL_UNIT_ID, StringUtils.fromString(unitId));
+        }
+        String detailed = message + " " + firstLine(e.getMessage(), "Unknown JCo error");
+        return ErrorCreator.createError(ModuleUtils.getModule(), SAPConstants.TRANSACTION_ERROR_TYPE,
+                StringUtils.fromString(detailed), ErrorCreator.createError(e), detail);
+    }
+
     private static BMap<BString, Object> buildJCoDetail(int errorGroup, String key) {
         BMap<BString, Object> detail = ValueCreator.createMapValue(
                 TypeCreator.createMapType(PredefinedTypes.TYPE_ANYDATA));
