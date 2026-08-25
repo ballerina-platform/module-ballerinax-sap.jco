@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-08-25
+
+### Added
+
+- Added transactional RFC support, so an RFC call can be delivered with an exactly-once guarantee instead of the at-most-once guarantee of `execute`.
+  - `Client.sendTRfc` calls a function module as a transactional RFC (tRFC). The call is asynchronous, so only the Transaction ID (TID) is returned.
+  - `Client.sendQRfc` calls a function module as a queued RFC (qRFC). Calls placed on the same inbound queue are executed exactly once and in the order they were sent.
+  - `Client.createTid` and `Client.confirmTid` expose the TID lifecycle, so a caller can obtain a TID before the first send, retry under it, and confirm it once the send succeeds. A TID may also be supplied by the caller, which allows an application idempotency key to be used as the TID.
+  - `Client.sendBgRfcUnit` commits several function calls to the SAP system as a single background RFC (bgRFC) unit of work, applied together or not at all. Supplying `queueNames` makes the unit type Q; otherwise it is type T.
+  - `Client.getBgRfcUnitState` and `Client.confirmBgRfcUnit` follow a committed unit through its lifecycle and release its status record in the SAP system.
+- Added the `RemoteFunctionCall`, `BgRfcUnitConfig`, and `BgRfcUnitInfo` records and the `BgRfcUnitType` and `BgRfcUnitState` enums, which describe a bgRFC unit of work and its processing state.
+- Added the `TransactionError` error type, whose detail carries the `tid` or `unitId` the failed call was using, so that a retry can preserve the exactly-once guarantee.
+
+## [2.0.1] - 2026-06-17
+
 ### Fixed
 
 - [Fix unsupported operation error when observability is enabled](https://github.com/ballerina-platform/ballerina-library/issues/8827)
