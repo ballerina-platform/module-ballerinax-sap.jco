@@ -69,6 +69,17 @@ version = "0.0.0"
 
 [[package]]
 org = "ballerina"
+name = "lang.regexp"
+version = "0.0.0"
+dependencies = [
+	{org = "ballerina", name = "jballerina.java"}
+]
+modules = [
+	{org = "ballerina", packageName = "lang.regexp", moduleName = "lang.regexp"}
+]
+
+[[package]]
+org = "ballerina"
 name = "lang.runtime"
 version = "0.0.0"
 scope = "testOnly"
@@ -121,9 +132,10 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "sap.jco"
-version = "2.0.1"
+version = "2.1.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
+	{org = "ballerina", name = "lang.regexp"},
 	{org = "ballerina", name = "lang.runtime"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerina", name = "time"},
