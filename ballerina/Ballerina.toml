@@ -8,6 +8,7 @@ keywords = ["Business Management/ERP", "Cost/Paid", "Vendor/SAP", "Area/ERP & Bu
 repository = "https://github.com/ballerina-platform/module-ballerinax-sap.jco"
 icon = "icon.png"
 license = ["Apache-2.0"]
+include = ["resources/**/*"]
 
 
 [[platform.java21.dependency]]
