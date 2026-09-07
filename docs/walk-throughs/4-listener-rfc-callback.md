@@ -126,7 +126,7 @@ The Ballerina side receives whatever SAP sends — but the SAP user invoking SE3
   
   The native library needs to be on the system `PATH` (Windows) or `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (Mac) at runtime so the JVM can find it.
 
-- Configure the required minimum version of SAP JCo connector in your **Ballerina.toml**: (This is optional but recommended to avoid accidentally using an incompatible version of JCo)
+- Configure the required minimum version of SAP ECC (JCo) connector in your **Ballerina.toml**: (This is optional but recommended to avoid accidentally using an incompatible version of JCo)
 
     ```toml
     [[dependency]]

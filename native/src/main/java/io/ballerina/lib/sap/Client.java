@@ -46,7 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Native function implementations for the Ballerina SAP JCo {@code Client} object.
+ * Native function implementations for the Ballerina SAP ECC (JCo) {@code Client} object.
  * Each public static method in this class corresponds to a Ballerina extern function.
  */
 public class Client {

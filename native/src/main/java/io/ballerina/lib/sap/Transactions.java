@@ -40,7 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Native implementations of the transactional RFC operations on the Ballerina SAP JCo
+ * Native implementations of the transactional RFC operations on the Ballerina SAP ECC (JCo)
  * {@code Client}: tRFC and qRFC function calls, and bgRFC units of work.
  * <p>
  * All three protocols give the caller a guarantee that a plain {@code execute} cannot: the call

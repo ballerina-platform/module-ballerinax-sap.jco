@@ -51,7 +51,7 @@ When the connector calls `sendIDoc`, under the hood JCo does this:
 
 That's the exactly-once guarantee. You don't have to implement it.
 
-The Ballerina SAP JCo connector manages TIDs internally. You can supply your own TID to `sendIDoc` for idempotency across process restarts (e.g. if you persist the outbound intent before calling the connector), but for most flows the connector-generated TID is the right default.
+The Ballerina SAP ECC (JCo) connector manages TIDs internally. You can supply your own TID to `sendIDoc` for idempotency across process restarts (e.g. if you persist the outbound intent before calling the connector), but for most flows the connector-generated TID is the right default.
 
 ### Partner profile — the SAP side has to agree
 
@@ -147,7 +147,7 @@ Transaction **WE60**. Enter `MATMAS03` → Documentation. SAP generates a nicely
   
   The native library needs to be on the system `PATH` (Windows) or `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (Mac) at runtime so the JVM can find it.
 
-- Configure the required minimum version of SAP JCo connector in your **Ballerina.toml**: (This is optional but recommended to avoid accidentally using an incompatible version of JCo)
+- Configure the required minimum version of SAP ECC (JCo) connector in your **Ballerina.toml**: (This is optional but recommended to avoid accidentally using an incompatible version of JCo)
 
     ```toml
     [[dependency]]
