@@ -4,7 +4,7 @@
   "listeners": [
     {
       "id": "$listener",
-      "doc": "SAP JCo server that receives inbound IDocs and RFC calls from the SAP system and dispatches each to the attached IDocService or RfcService instance.",
+      "doc": "SAP ECC (JCo) server that receives inbound IDocs and RFC calls from the SAP system and dispatches each to the attached IDocService or RfcService instance.",
       "type": { "name": "Listener" },
       "services": ["$idocService", "$rfcService"],
       "multipleServicesAllowed": true,

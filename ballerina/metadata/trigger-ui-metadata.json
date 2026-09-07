@@ -4,7 +4,7 @@
     "kind": "event"
   },
   "trigger": {
-    "displayName": "SAP JCo Event Integration",
+    "displayName": "SAP ECC (JCo) Event Integration",
     "description": "Create a service to handle IDocs or RFC calls from SAP via the JCo listener",
     "type": "sap.jco"
   },
@@ -145,24 +145,24 @@
       "form": {
         "section": {
           "label": "Listener",
-          "description": "Select an existing SAP JCo listener or create a new one."
+          "description": "Select an existing SAP ECC (JCo) listener or create a new one."
         },
         "createNew": {
           "label": "Create New Listener",
-          "description": "Define a new SAP JCo listener in the project."
+          "description": "Define a new SAP ECC (JCo) listener in the project."
         },
         "listenerConfig": {
           "label": "Listener Configurations",
-          "description": "Configure the SAP JCo listener."
+          "description": "Configure the SAP ECC (JCo) listener."
         },
         "useExisting": {
           "label": "Use Existing Listener",
-          "description": "Attach to a SAP JCo listener already declared in the project."
+          "description": "Attach to a SAP ECC (JCo) listener already declared in the project."
         },
         "useExistingEditable": false,
         "existingListener": {
           "label": "Listener",
-          "description": "Select an existing SAP JCo listener to attach to."
+          "description": "Select an existing SAP ECC (JCo) listener to attach to."
         },
         "existingListenerBallerinaType": "sap.jco:Listener"
       },
@@ -621,7 +621,7 @@
                   "default": "",
                   "metadata": {
                     "label": "JCo Properties",
-                    "description": "SAP JCo server properties as key-value pairs (e.g. jco.server.gwhost)."
+                    "description": "SAP ECC (JCo) server properties as key-value pairs (e.g. jco.server.gwhost)."
                   },
                   "widget": {
                     "widgetKind": "REPEATABLE_MAP",
@@ -1263,15 +1263,15 @@
     }
   ],
   "artifactInfo": {
-    "displayLabel": "SAP JCO Event Integration",
+    "displayLabel": "SAP ECC (JCo) Event Integration",
     "icon": {
       "lightPath": "icons/light.svg",
       "darkPath": "icons/dark.svg",
       "color": "#0FAAFF"
     },
     "displayLabelOverrides": {
-      "IDocService": "SAP JCo IDoc Service",
-      "RfcService": "SAP JCo RFC Service"
+      "IDocService": "SAP ECC (JCo) IDoc Service",
+      "RfcService": "SAP ECC (JCo) RFC Service"
     }
   }
 }
