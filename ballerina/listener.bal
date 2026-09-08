@@ -19,6 +19,7 @@ import ballerina/uuid;
 
 # SAP ECC (JCo) listener that registers as a JCo server with the SAP gateway and forwards
 # incoming IDocs and inbound RFC calls to the attached handlers.
+@display {label: "SAP ECC (JCo) Listener", iconPath: "icon.png"}
 public isolated class Listener {
 
     # Registers a JCo server with the SAP gateway. Reuses an existing server for the same
