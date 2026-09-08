@@ -1,6 +1,6 @@
 # SAP Product Catalog Sync for GlobalTech Corp
 
-In this example, we demonstrate how to use table parameters with the Ballerina SAP JCo Connector to query data from
+In this example, we demonstrate how to use table parameters with the Ballerina SAP ECC (JCo) Connector to query data from
 SAP and sync it to an external system. The scenario involves a fictional company, "GlobalTech Corp.", which manufactures
 finished goods and maintains its material master data in SAP. GlobalTech Corp. needs to periodically sync its SAP
 material catalog to an external product catalog API used by its e-commerce platform.
@@ -23,7 +23,7 @@ catalog API.
 
 ## Prerequisites
 
-### 1. Setup SAP JCo Connector
+### 1. Setup SAP ECC (JCo) Connector
 
 Ensure that the SAP JCo Connector libraries are installed and properly configured on your system. You also need valid
 credentials to connect to your SAP system. Refer to the [Setup Guide](../../README.md) for necessary credentials.

@@ -166,7 +166,7 @@ Transaction **WE19** is an IDoc test tool. If your sandbox already has some `ORD
   
   The native library needs to be on the system `PATH` (Windows) or `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (Mac) at runtime so the JVM can find it.
 
-- Configure the required minimum version of SAP JCo connector in your **Ballerina.toml**: (This is optional but recommended to avoid accidentally using an incompatible version of JCo)
+- Configure the required minimum version of SAP ECC (JCo) connector in your **Ballerina.toml**: (This is optional but recommended to avoid accidentally using an incompatible version of JCo)
 
     ```toml
     [[dependency]]
@@ -203,7 +203,7 @@ Add the following to your **Config.toml**, replacing the values with your SAP sy
 | `gwserv` | The gateway service name, usually in the format `sapgwXX` where `XX` is your SAP system number (e.g. `sapgw00`). |
 | `progid` | The Program ID that your listener will register under. This must match the Program ID configured in your SM59 destination. |
 | `connectionCount` | The number of concurrent connections the listener will register with the gateway. Start with `2` for testing; increase if you expect high volume. |
-| `repositoryDestination` | The destination used by the listener to fetch IDoc segment metadata from SAP. This is required for the listener to render incoming IDocs as XML with the correct field types. You can either specify inline credentials or reference an existing destination defined with a SAP JCo client. |
+| `repositoryDestination` | The destination used by the listener to fetch IDoc segment metadata from SAP. This is required for the listener to render incoming IDocs as XML with the correct field types. You can either specify inline credentials or reference an existing destination defined with a SAP ECC (JCo) client. |
 
 ```toml
 [sapConfig]

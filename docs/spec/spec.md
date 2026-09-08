@@ -1,4 +1,4 @@
-# Specification: Ballerina SAP JCo Connector
+# Specification: Ballerina SAP ECC (JCo) Connector
 
 _Authors_: @RDPerera  
 _Reviewers_: @niveathika, @NipunaRanasinghe, @shafreenAnfar  
@@ -8,9 +8,9 @@ _Edition_: Swan Lake
 
 ## Introduction
 
-This is the specification for the SAP JCo connector library of [Ballerina language](https://ballerina.io/), which is used for integrating Ballerina applications with SAP systems.
+This is the specification for the SAP ECC (JCo) connector library of [Ballerina language](https://ballerina.io/), which is used for integrating Ballerina applications with SAP systems.
 
-The SAP JCo connector specification has evolved and may continue to evolve in the future. The released versions of the specification can be found under the relevant GitHub tag.
+The SAP ECC (JCo) connector specification has evolved and may continue to evolve in the future. The released versions of the specification can be found under the relevant GitHub tag.
 
 If you have any feedback or suggestions about the connector, start a discussion via a GitHub issue or in the Discord server. Based on the outcome of the discussion, the specification and implementation can be updated. Community feedback is always welcome. Any accepted proposal, which affects the specification is stored under `/docs/proposals`. Proposals under discussion can be found with the label `type/proposal` in GitHub.
 
@@ -45,17 +45,17 @@ The conforming implementation of the specification is released and included in t
          
 ## 1. Overview
 
-The Ballerina SAP JCo Connector provides seamless integration with SAP systems through Java Connector (JCo) capabilities. This connector allows Ballerina applications to interact with SAP systems, enabling operations like Remote Function Call (RFC) execution, IDoc processing, and more. By leveraging this connector, developers can easily integrate SAP functionalities into their Ballerina applications, making it an essential tool for enterprises working with SAP.
+The Ballerina SAP ECC (JCo) Connector provides seamless integration with SAP systems through Java Connector (JCo) capabilities. This connector allows Ballerina applications to interact with SAP systems, enabling operations like Remote Function Call (RFC) execution, IDoc processing, and more. By leveraging this connector, developers can easily integrate SAP functionalities into their Ballerina applications, making it an essential tool for enterprises working with SAP.
 
 The `ballerinax/sap.jco` package exposes the SAP JCo library as Ballerina functions, enabling easy access to SAP's enterprise resource planning (ERP) software and other SAP solutions, such as human capital management (HCM), customer relationship management (CRM), and supply chain management (SCM).
 
 ### Architecture overview
 
-The SAP JCo Connector architecture comprises key components facilitating communication between Ballerina applications and SAP systems. These components include the SAP function modules, the SAP system itself, the Ballerina code that handles the RFC calls, and the IDoc servers responsible for sending and receiving IDocs. This architecture enables robust integration, supporting various enterprise operations.
+The SAP ECC (JCo) Connector architecture comprises key components facilitating communication between Ballerina applications and SAP systems. These components include the SAP function modules, the SAP system itself, the Ballerina code that handles the RFC calls, and the IDoc servers responsible for sending and receiving IDocs. This architecture enables robust integration, supporting various enterprise operations.
 
 ## 2. Components
 
-This section outlines the core components of the Ballerina SAP JCo Connector and their configurations, focusing on how they interact with the SAP system.
+This section outlines the core components of the Ballerina SAP ECC (JCo) Connector and their configurations, focusing on how they interact with the SAP system.
 
 ### 2.1 RFC client
 

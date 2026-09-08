@@ -1,7 +1,7 @@
 # Automating iDoc Dispatch for GlobalExports
 
 This example demonstrates how to automate the generation and dispatching of Intermediate Documents (iDocs) in an SAP
-system using the Ballerina SAP JCo Connector.
+system using the Ballerina SAP ECC (JCo) Connector.
 The scenario involves "GlobalExports Inc.," a company that uses external data sources to get updates on shipment
 details. These updates are converted into iDocs and sent to their SAP system for processing in the format of the
 DELVRY03 iDoc type, commonly used for delivery and shipment processing.
@@ -26,7 +26,7 @@ record can be converted into XML format, which is the iDoc format that can be se
 
 ## Prerequisites
 
-### 1. Setup SAP JCo Connector
+### 1. Setup SAP ECC (JCo) Connector
 
 Ensure that the SAP JCo Connector libraries are installed and properly configured on your system. This includes having
 valid credentials and access to the necessary SAP resources. Refer to the [Setup Guide](../../README.md) for necessary

@@ -23,7 +23,7 @@ as RFC export parameters.
 
 ## Prerequisites
 
-### 1. Setup SAP JCo Connector
+### 1. Setup SAP ECC (JCo) Connector
 
 Ensure that the SAP JCo Connector libraries are installed and properly configured on your system. You also need valid
 credentials to connect to your SAP system. Refer to the [Setup Guide](../../README.md) for necessary credentials.

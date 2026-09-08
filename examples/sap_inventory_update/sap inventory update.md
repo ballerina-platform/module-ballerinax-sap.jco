@@ -1,6 +1,6 @@
 # SAP Inventory Update for BestWidgets
 
-In this example, we will demonstrate how to integrate external data into an SAP system using the Ballerina SAP JCo
+In this example, we will demonstrate how to integrate external data into an SAP system using the Ballerina SAP ECC (JCo)
 Connector, showcasing Ballerina's data mapping capabilities and the RFC function calling feature. The scenario involves
 a fictional company, "BestWidgets Inc." which manufactures and supplies various types of widgets. BestWidgets Inc. uses
 a third-party logistics provider for inventory management, which exposes an API for inventory updates.
@@ -33,7 +33,7 @@ structures, making it easy to transform data between different formats.
 
 ## Prerequisites
 
-### 1. Setup SAP JCo Connector
+### 1. Setup SAP ECC (JCo) Connector
 
 Ensure that the SAP JCo Connector libraries are installed and properly configured on your system. You also need valid
 credentials to connect to your SAP system. Refer to the [Setup Guide](../../README.md) for necessary credentials.
