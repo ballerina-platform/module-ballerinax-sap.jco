@@ -1,4 +1,4 @@
-# Ballerina SAP JCo Connector
+# Ballerina SAP ECC (JCo) Connector
 
 [![Build](https://github.com/ballerina-platform/module-ballerinax-sap.jco/actions/workflows/ci.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-sap.jco/actions/workflows/ci.yml)
 [![Trivy](https://github.com/ballerina-platform/module-ballerinax-sap.jco/actions/workflows/trivy-scan.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-sap.jco/actions/workflows/trivy-scan.yml)
@@ -65,7 +65,7 @@ The native library needs to be on the system `PATH` (Windows) or `LD_LIBRARY_PAT
 
 ### Configure Minimum Version (Optional)
 
-Configure the required minimum version of the SAP JCo connector in your **Ballerina.toml** to avoid accidentally using an incompatible version of JCo:
+Configure the required minimum version of the SAP ECC (JCo) connector in your **Ballerina.toml** to avoid accidentally using an incompatible version of JCo:
 
 ```toml
 [[dependency]]
@@ -76,7 +76,7 @@ version = "2.0.0"
 
 ## Quickstart
 
-To use the SAP JCo connector in your Ballerina application, modify the `.bal` file as follows:
+To use the SAP ECC (JCo) connector in your Ballerina application, modify the `.bal` file as follows:
 
 ### Step 1: Import connector
 
@@ -244,7 +244,7 @@ service jco:RfcService on rfcListener {
 
 ### Step 4: Run the Ballerina application
 
-To run your Ballerina application which interacts with SAP using the SAP JCo Connector, execute:
+To run your Ballerina application which interacts with SAP using the SAP ECC (JCo) Connector, execute:
 
 ```bash
 bal run
@@ -252,7 +252,7 @@ bal run
 
 ## Examples
 
-The `Ballerina SAP JCo Connector` provides practical examples illustrating usage in various scenarios. Explore these
+The `Ballerina SAP ECC (JCo) Connector` provides practical examples illustrating usage in various scenarios. Explore these
 scenarios to understand how to automate processes involving SAP systems and external data sources using Ballerina.
 
 1. [SAP Inventory Update via RFC](https://github.com/ballerina-platform/module-ballerinax-sap.jco/tree/main/examples/sap_inventory_update) - Integrate external inventory data into an SAP system and

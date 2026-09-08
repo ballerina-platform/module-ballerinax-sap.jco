@@ -1,6 +1,6 @@
 # Automated Supplier Order Processing via iDoc Listener
 
-In this example, we will demonstrate how to use the Ballerina SAP JCo Connector to automate order processing for a
+In this example, we will demonstrate how to use the Ballerina SAP ECC (JCo) Connector to automate order processing for a
 fictional company named "AutoParts Inc." This company specializes in automotive parts and receives orders from various
 suppliers via SAP iDocs. The scenario involves setting up an iDoc listener that automates the process of receiving and
 transforming these iDocs into actionable order data within the company's inventory management system.
@@ -30,7 +30,7 @@ complete, the record can be converted into XML format, which is the iDoc format 
 
 ## Prerequisites
 
-### 1. Setup SAP JCo Connector
+### 1. Setup SAP ECC (JCo) Connector
 
 Ensure that the SAP JCo Connector libraries are installed and properly configured on your system. Also, ensure you have
 valid credentials to access your SAP system.

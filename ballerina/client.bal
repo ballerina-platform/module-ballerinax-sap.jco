@@ -17,7 +17,7 @@
 import ballerina/jballerina.java as java;
 import ballerina/uuid;
 
-# SAP JCo client for calling RFC-enabled function modules and sending IDocs to an SAP system.
+# SAP ECC (JCo) client for calling RFC-enabled function modules and sending IDocs to an SAP system.
 public isolated client class Client {
 
     # Registers a JCo RFC destination and verifies connectivity with a ping.

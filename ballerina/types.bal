@@ -230,6 +230,6 @@ public type TransactionErrorDetail record {|
 # `unitId` carried in the detail preserves the exactly-once guarantee.
 public type TransactionError distinct error<TransactionErrorDetail>;
 
-# Represents all errors that can be returned by the SAP JCo connector.
+# Represents all errors that can be returned by the SAP ECC (JCo) connector.
 public type Error ConnectionError|LogonError|ResourceError|SystemError|AbapApplicationError
     |JCoError|IDocError|ParameterError|ConfigurationError|ExecutionError|TransactionError;

@@ -47,7 +47,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Native function implementations for the Ballerina SAP JCo {@code Listener} object.
+ * Native function implementations for the Ballerina SAP ECC (JCo) {@code Listener} object.
  * Each public static method in this class corresponds to a Ballerina extern function and is
  * invoked by the Ballerina runtime at specific points in the listener lifecycle
  * ({@code init → attach → start → gracefulStop/immediateStop → detach}).

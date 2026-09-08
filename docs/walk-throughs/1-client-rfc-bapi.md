@@ -6,7 +6,7 @@ A large slice of the SAP install base still runs on **ECC 6.0** (SAP ERP Central
 
 SAP S/4HANA ships OData endpoints by default. **ECC does not.** On NetWeaver the supported path for programmatic access is the **SAP Java Connector (JCo)** — a binary SDK that speaks the proprietary RFC protocol over SAP Gateway. Every other ECC-to-outside-world integration pattern you've seen (PI/PO, CPI's ECC adapter, BTP's RFC connector) is JCo under the hood.
 
-This five-part series is about the Ballerina SAP JCo connector that wraps JCo and **Ballerina**, so you get the low-code canvas on top and typed Ballerina when you need to drop down a layer.
+This five-part series is about the Ballerina SAP ECC (JCo) connector that wraps JCo and **Ballerina**, so you get the low-code canvas on top and typed Ballerina when you need to drop down a layer.
 
 ### Map of the series
 
@@ -126,7 +126,7 @@ Open *Logistics - General → Logistics Basic Data → Material → GetList*. Th
   
   The native library needs to be on the system `PATH` (Windows) or `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (Mac) at runtime so the JVM can find it.
 
-- Configure the required minimum version of SAP JCo connector in your **Ballerina.toml**: (This is optional but recommended to avoid accidentally using an incompatible version of JCo)
+- Configure the required minimum version of SAP ECC (JCo) connector in your **Ballerina.toml**: (This is optional but recommended to avoid accidentally using an incompatible version of JCo)
 
     ```toml
     [[dependency]]
