@@ -8,6 +8,7 @@ keywords = ["Name/SAP ECC (JCo)", "Area/ERP & Business Operations", "Vendor/SAP"
 repository = "https://github.com/ballerina-platform/module-ballerinax-sap.jco"
 icon = "icon.png"
 license = ["Apache-2.0"]
+include = ["metadata/**"]
 
 
 [[platform.java21.dependency]]
