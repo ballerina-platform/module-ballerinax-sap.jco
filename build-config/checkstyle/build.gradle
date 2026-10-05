@@ -27,5 +27,5 @@ task build(type: Download) {
     ])
     overwrite false
     onlyIfNewer true
-    dest buildDir
+    dest layout.buildDirectory.get().asFile
 }
