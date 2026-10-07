@@ -18,10 +18,16 @@
 
 import org.apache.tools.ant.taskdefs.condition.Os
 
+abstract class ExecHelper {
+    @Inject
+    abstract ExecOperations getExecOperations()
+}
+def execHelper = project.objects.newInstance(ExecHelper)
+
 task test {
     doLast {
         try {
-            exec {
+            execHelper.execOperations.exec {
                 workingDir project.projectDir
                 println("Working dir: ${workingDir}")
                 if (Os.isFamily(Os.FAMILY_WINDOWS)) {
@@ -45,7 +51,7 @@ task build {
     }
     doLast {
         try {
-            exec {
+            execHelper.execOperations.exec {
                 workingDir project.projectDir
                 println("Working dir: ${workingDir}")
                 if (Os.isFamily(Os.FAMILY_WINDOWS)) {

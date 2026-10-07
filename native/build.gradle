@@ -20,7 +20,7 @@ plugins {
     id 'java'
     id 'com.github.spotbugs'
     id 'checkstyle'
-    id 'com.github.johnrengelman.shadow'
+    id 'com.gradleup.shadow'
 }
 
 description = 'Ballerina - sap.jco Java Native'
@@ -36,8 +36,6 @@ dependencies {
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
-
-sourceCompatibility = JavaVersion.VERSION_21
 
 spotbugsMain {
     ignoreFailures = true

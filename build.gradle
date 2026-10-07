@@ -66,10 +66,18 @@ allprojects {
 
 def moduleVersion = project.version.replace("-SNAPSHOT", "")
 
-task build {
-    dependsOn(':sap.jco-native:build')
-    dependsOn(':sap.jco-ballerina:build')
-    dependsOn(':sap.jco-examples:build')
+if (!tasks.names.contains('build')) {
+    tasks.register('build') {
+        dependsOn(':sap.jco-native:build')
+        dependsOn(':sap.jco-ballerina:build')
+        dependsOn(':sap.jco-examples:build')
+    }
+} else {
+    tasks.named('build') {
+        dependsOn(':sap.jco-native:build')
+        dependsOn(':sap.jco-ballerina:build')
+        dependsOn(':sap.jco-examples:build')
+    }
 }
 
 release {
