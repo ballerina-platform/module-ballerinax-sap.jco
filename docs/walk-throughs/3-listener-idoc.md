@@ -307,8 +307,9 @@ service jco:IDocService on idocListener {
         );
 
         // Forward to downstream WMS, OMS, queue, etc. — omitted here for brevity.
-        // Any error this function explicitly returns is LOGGED by the connector, not routed
-        // to onError (IDoc delivery is fire-and-forget ).
+        // Returning () acknowledges the IDoc. Returning an error rejects it: the tRFC call
+        // fails and SAP keeps the IDoc in error (SM58) for reprocessing. Errors are logged,
+        // not routed to onError.
     }
 
     remote function onError(error err) returns error? {
@@ -319,8 +320,8 @@ service jco:IDocService on idocListener {
 
 | Available Methods | Description |
 |-------------------|-------------|
-| `onReceive(xml iDoc)` | Called for every incoming IDoc. The payload is the fully-rendered IDoc XML. You can parse it with `xmldata:parseAsType` into a typed record. Any error returned from this function is logged by the connector but does not affect SAP's delivery status (IDoc delivery is fire-and-forget). |
-| `onError(error err)` | Called for framework-level errors such as JCo gateway errors, registration failures, ACL denials, connection retries, and IDoc rendering errors. Does NOT fire for errors returned from `onReceive`. |
+| `onReceive(xml iDoc)` | Called for every incoming IDoc. The payload is the fully-rendered IDoc XML. You can parse it with `xmldata:parseAsType` into a typed record. SAP waits for this function to return. Returning `()` acknowledges the IDoc. Returning an error (or panicking) rejects it: the connector logs the error, the tRFC call fails, and the IDoc stays in error on the SAP side (SM58) so it can be reprocessed. |
+| `onError(error err)` | Called for framework-level errors such as JCo gateway errors, registration failures, ACL denials, connection retries, and IDoc rendering errors. An IDoc that fails rendering is also rejected so SAP keeps it. Does NOT fire for errors returned from `onReceive`. |
 
 ### Start the listener and Test on SAP side
 
@@ -430,10 +431,15 @@ Fix: in transaction **SM59**, open the RFC destination (e.g. `TEST_LISTENER`) �
 `onError` is narrower than you might expect — it gets:
 
 - **Framework errors from JCo itself.** Gateway disconnects during a retry. Server registration failures (permission denied by ACL). IDoc rendering errors (the repository lookup failed or returned unexpected metadata).
-- **Pre-dispatch failures.** The XML rendering of an incoming IDoc failed before `onReceive` could be called.
+- **Pre-dispatch failures.** The XML rendering of an incoming IDoc failed before `onReceive` could be called. The IDoc is rejected after `onError` returns, so SAP keeps it for reprocessing.
 
-It does **not** get errors from `onReceive` itself. Your `onReceive` returning an error is logged at WARN, but not surfaced to `onError`. The rationale: IDoc delivery is fire-and-forget from SAP's perspective — there's no caller waiting for you to return. Anything your code does with the IDoc (parse it, forward it) is your responsibility to handle locally.
+It does **not** get errors from `onReceive` itself. Your `onReceive` returning an error is logged at WARN, but not surfaced to `onError`. The rationale: you have full control inside `onReceive`, so there is nothing a second callback could add.
 
-The RfcService in the next part is different — it *does* have a caller waiting, and errors from `onCall` surface back to SAP as ABAP exceptions. But for IDoc: log locally, handle locally.
+What a returned error *does* do is reject the IDoc. SAP delivers IDocs over transactional RFC and waits for `onReceive` to return. Return `()` and the connector acknowledges the call, SAP commits the transaction ID, and the IDoc is marked as delivered. Return an error (or panic) and the connector fails the call, the transaction ID is rolled back, and the IDoc stays in error on the SAP side where it can be reprocessed from SM58 or BD87 once the cause is fixed. That makes the choice inside `onReceive` explicit:
+
+- A failure SAP should retry later (database down, downstream API returned a 5xx): return the error.
+- A failure you own (invalid payload you have parked in your own dead-letter store): handle it and return `()`.
+
+The RfcService in the next part works the same way for its caller: errors from `onCall` surface back to SAP as ABAP exceptions.
 
 ---

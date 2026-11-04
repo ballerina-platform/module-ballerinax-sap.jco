@@ -652,6 +652,8 @@ service jco:IDocService on iDocListener {
 
 When an IDoc is received, it will be in XML format, and the user can easily map it to a record using Ballerina's XML-to-Record conversion features.
 
+SAP delivers IDocs over transactional RFC and waits for `onReceive` to return. The return value decides the outcome of that call: `()` acknowledges the IDoc, so the transaction ID is committed and SAP marks the IDoc as delivered; an error (or a panic) rejects it, so the transactional RFC call fails, the transaction ID is rolled back, and the IDoc stays in error on the SAP side (SM58) for reprocessing. An IDoc that cannot be rendered to XML before `onReceive` is dispatched is reported to `onError` and rejected in the same way. Errors returned from `onReceive` are logged but are not dispatched to `onError`.
+
 ##### 2.2.3.2 Handle inbound RFC calls
 
 The Listener can also receive inbound RFC calls from the SAP system using the `RfcService` type. SAP invokes this service as if it were a registered RFC function module.

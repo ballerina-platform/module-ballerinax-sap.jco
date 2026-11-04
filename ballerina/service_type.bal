@@ -16,17 +16,23 @@
 
 # Handles IDocs pushed from an SAP system.
 public type IDocService distinct service object {
-    # Invoked when an IDoc is received from the SAP system.
+    # Invoked when an IDoc is received from the SAP system. SAP waits for this method to
+    # return before the transactional RFC call that carries the IDoc completes.
     #
     # + iDoc - The received IDoc in XML format
-    # + return - An error if processing fails
+    # + return - `()` to acknowledge the IDoc, which commits the transaction on the SAP side.
+    #            An error (or a panic) rejects the IDoc: the transactional RFC call fails,
+    #            the transaction ID is rolled back, and the IDoc stays in error on the SAP
+    #            side (SM58) so it can be reprocessed. To take ownership of a failure instead,
+    #            handle it inside this method and return `()`.
     remote function onReceive(xml iDoc) returns error?;
 
     # Invoked when a framework-level error occurs while the listener is handling a request.
     # This covers JCo gateway and server errors surfaced asynchronously by the JCo runtime
     # (connection retries, registration failures) and pre-dispatch failures such as IDoc
-    # rendering or parsing. It is not invoked for errors raised by the IDoc receive handler
-    # itself — IDoc delivery is fire-and-forget and per-call errors are logged instead.
+    # rendering or parsing, which also reject the IDoc so SAP keeps it for reprocessing. It is
+    # not invoked for errors returned from the IDoc receive handler itself: those are logged
+    # and reject the IDoc, and the application owns any further handling inside `onReceive`.
     # Because the listener starts before the gateway handshake completes, this handler is
     # also the primary signal for connectivity problems: JCo retries automatically on every
     # failed attempt, and stops once the gateway becomes reachable again.
