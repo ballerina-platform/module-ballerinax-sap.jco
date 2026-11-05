@@ -40,26 +40,20 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.StringWriter;
 
+
 /**
  * JCo IDoc handler that bridges incoming SAP IDoc documents to the Ballerina service layer.
  * When JCo delivers an {@link IDocDocumentList}, this handler serialises it to XML, invokes
- * the Ballerina {@code onReceive} remote method, and waits synchronously for the strand
- * to finish before returning control to the JCo worker thread. SAP waits for this method to
- * return before the transactional RFC (tRFC) call that carries the IDoc completes.
+ * the Ballerina {@code onReceive} resource function, and waits synchronously for the strand
+ * to finish before returning control to the JCo worker thread.
  * <p>
- * Returning normally acknowledges the IDoc: JCo commits the transaction ID (TID) and SAP marks
- * the IDoc as delivered. Throwing rejects it: JCo fails the tRFC call, rolls back the TID, and
- * the call stays in error on the SAP side (SM58) so the IDoc can be reprocessed. This handler
- * rejects the IDoc in every case where it was not processed:
- * <ul>
- *   <li>Framework faults that prevent {@code onReceive} from being dispatched, such as IDoc XML
- *       rendering or parsing failures, are routed to the service's {@code onError} remote
- *       method for observability and then rejected.</li>
- *   <li>An error returned from, or a panic raised in, {@code onReceive} is logged and rejected.
- *       It is <em>not</em> dispatched to {@code onError}, since the application has full control
- *       of error handling inside {@code onReceive}: handle the failure there and return
- *       {@code ()} to acknowledge the IDoc anyway.</li>
- * </ul>
+ * Framework faults that prevent {@code onReceive} from being dispatched — such as IDoc XML
+ * rendering or parsing failures — are routed to the service's {@code onError} remote method
+ * and then rejected by throwing {@link IDocRejectedException}, so that JCo fails the tRFC
+ * call, rolls back the TID, and SAP keeps the IDoc for reprocessing instead of marking it as
+ * delivered. Errors returned or thrown from {@code onReceive} itself are logged and
+ * <em>not</em> dispatched to {@code onError}: the application owns error handling there, and
+ * the IDoc is acknowledged.
  */
 public class BallerinaIDocHandler implements JCoIDocHandler {
     private static final Logger logger = LoggerFactory.getLogger(BallerinaIDocHandler.class);
@@ -72,21 +66,21 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
     }
 
     /**
-     * Receives an IDoc document list from JCo, converts it to an XML value, and dispatches it
-     * to the Ballerina {@code onReceive} remote method.
+     * Receives an IDoc document list from JCo, converts it to an XML string, and dispatches it
+     * to the Ballerina {@code onReceive} resource function.
      * <p>
      * Framework faults during rendering or parsing are forwarded to the service's
-     * {@code onError} remote method and then rejected. Errors returned or panics thrown from
-     * {@code onReceive} itself are logged and rejected without invoking {@code onError}.
+     * {@code onError} remote method and then rejected, so the IDoc is not acknowledged to SAP.
+     * Errors returned or panics thrown from {@code onReceive} itself are logged only.
      *
      * @param serverCtx JCo server context for the current request (not used directly)
      * @param idocList  the list of IDoc documents delivered by SAP
-     * @throws IDocRejectedException if the IDoc could not be rendered, or if {@code onReceive}
-     *                               returned an error or panicked, so that JCo fails the tRFC
-     *                               call and rolls back the TID
+     * @throws IDocRejectedException if the IDoc could not be rendered or parsed, so that JCo
+     *                               fails the tRFC call and rolls back the TID
      */
     public void handleRequest(JCoServerContext serverCtx, IDocDocumentList idocList) {
-        // (1) Pre-dispatch: render and parse IDoc XML. Framework fault — route to onError, then reject.
+        // (1) Pre-dispatch: render and parse IDoc XML. Framework fault — route to onError, then
+        // reject so that SAP keeps the IDoc for reprocessing instead of marking it as delivered.
         BXml xmlContentValue;
         try {
             xmlContentValue = renderIDoc(idocList);
@@ -96,20 +90,16 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
             throw new IDocRejectedException("IDoc rendering failed: " + causeMsg, thr);
         }
 
-        // (2) Dispatch: invoke onReceive. User-method errors are NOT routed to onError, but they
-        // still reject the IDoc so that SAP keeps it for reprocessing.
+        // (2) Dispatch: invoke onReceive. User-method errors are NOT routed to onError.
         Object result;
         try {
             result = invokeOnReceive(xmlContentValue);
         } catch (Throwable thr) {
-            String causeMsg = thr.getMessage() != null ? thr.getMessage() : "onReceive() panicked";
-            logger.error("onReceive() threw an unexpected error; rejecting the IDoc so SAP can reprocess it", thr);
-            throw new IDocRejectedException("onReceive() panicked: " + causeMsg, thr);
+            logger.error("onReceive() threw an unexpected error", thr);
+            return;
         }
         if (result instanceof BError returnedError) {
-            logger.warn("onReceive() returned an error; rejecting the IDoc so SAP can reprocess it: {}",
-                    returnedError.getMessage());
-            throw new IDocRejectedException("onReceive() returned an error: " + returnedError.getMessage());
+            logger.error("onReceive() returned an error: {}", returnedError.getMessage());
         }
     }
 
@@ -142,11 +132,11 @@ public class BallerinaIDocHandler implements JCoIDocHandler {
     }
 
     /**
-     * Invokes the Ballerina {@code onReceive} remote method on the attached service.
+     * Invokes the Ballerina {@code onReceive} resource function on the attached service.
      * Uses concurrent or sequential dispatch based on whether the service and the method
      * are both declared {@code isolated}.
      *
-     * @param args the arguments to pass to the remote method (IDoc XML value)
+     * @param args the arguments to pass to the resource function (IDoc XML value)
      * @return the return value from the Ballerina method (may be a {@link BError})
      */
     public Object invokeOnReceive(Object... args) {

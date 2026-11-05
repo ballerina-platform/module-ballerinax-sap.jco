@@ -7,13 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **Behaviour change:** an error returned from, or a panic raised in, `IDocService.onReceive` now rejects the IDoc: the transactional RFC call fails, the transaction ID is rolled back, and the IDoc stays in error on the SAP side (SM58) so it can be reprocessed. Previously such errors were only logged and the IDoc was acknowledged. Applications that want to own a failure should handle it inside `onReceive` and return `()`. ([ballerina-library#9493](https://github.com/ballerina-platform/ballerina-library/issues/9493))
-
 ### Fixed
 
-- An IDoc that fails XML rendering or parsing before `onReceive` is dispatched is no longer acknowledged and lost. It is still reported to `onError`, and is now rejected so SAP keeps it for reprocessing. ([ballerina-library#9492](https://github.com/ballerina-platform/ballerina-library/issues/9492))
+- An IDoc that fails XML rendering or parsing before `onReceive` is dispatched is no longer acknowledged to SAP and lost. It is still reported to `onError`, and is now rejected so that the transactional RFC call fails and SAP keeps the IDoc for reprocessing. ([ballerina-library#9492](https://github.com/ballerina-platform/ballerina-library/issues/9492))
 
 ## [2.1.0] - 2026-08-25
 

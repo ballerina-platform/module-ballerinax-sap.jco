@@ -19,8 +19,8 @@
 package io.ballerina.lib.sap.idoc;
 
 /**
- * Thrown from {@link BallerinaIDocHandler#handleRequest} to tell JCo that an inbound IDoc was
- * not processed. JCo then fails the transactional RFC call, invokes
+ * Thrown from {@link BallerinaIDocHandler#handleRequest} to tell JCo that an inbound IDoc could
+ * not be rendered and was therefore not processed. JCo then fails the transactional RFC call, invokes
  * {@code JCoServerTIDHandler.rollback(tid)}, and reports the message to the SAP system, where the
  * call stays in error (SM58) so the IDoc can be reprocessed once the cause is fixed.
  */

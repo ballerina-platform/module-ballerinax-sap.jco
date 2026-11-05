@@ -32,8 +32,9 @@ import java.util.List;
 
 /**
  * Verifies the acknowledge/reject contract of {@link BallerinaIDocHandler#handleRequest}:
- * the IDoc is acknowledged only when {@code onReceive} returns {@code ()}, and every other
- * outcome throws so that JCo fails the tRFC call and rolls back the TID.
+ * an IDoc that cannot be rendered is reported to {@code onError} and rejected (thrown) so that
+ * JCo fails the tRFC call and rolls back the TID, while an IDoc that reaches {@code onReceive}
+ * is acknowledged whatever {@code onReceive} returns.
  */
 public class BallerinaIDocHandlerTest {
 
@@ -112,23 +113,17 @@ public class BallerinaIDocHandlerTest {
     }
 
     @Test
-    public void onReceiveReturningErrorRejectsTheIDocWithoutInvokingOnError() {
+    public void onReceiveReturningErrorStillAcknowledgesTheIDoc() {
         ScriptedHandler handler = new ScriptedHandler(null, ballerinaError("downstream unavailable"), null);
-        IDocRejectedException rejected = Assert.expectThrows(IDocRejectedException.class,
-                () -> handler.handleRequest(null, null));
-        Assert.assertTrue(rejected.getMessage().contains("downstream unavailable"),
-                "rejection message should carry the onReceive error: " + rejected.getMessage());
+        handler.handleRequest(null, null);
         Assert.assertEquals(handler.onReceiveCalls.size(), 1);
         Assert.assertTrue(handler.onErrorCalls.isEmpty(), "onReceive errors are not routed to onError");
     }
 
     @Test
-    public void onReceivePanicRejectsTheIDocWithoutInvokingOnError() {
-        BError panic = ballerinaError("index out of range");
-        ScriptedHandler handler = new ScriptedHandler(null, null, panic);
-        IDocRejectedException rejected = Assert.expectThrows(IDocRejectedException.class,
-                () -> handler.handleRequest(null, null));
-        Assert.assertSame(rejected.getCause(), panic, "rejection should carry the panic as its cause");
+    public void onReceivePanicStillAcknowledgesTheIDoc() {
+        ScriptedHandler handler = new ScriptedHandler(null, null, ballerinaError("index out of range"));
+        handler.handleRequest(null, null);
         Assert.assertTrue(handler.onErrorCalls.isEmpty(), "onReceive panics are not routed to onError");
     }
 
