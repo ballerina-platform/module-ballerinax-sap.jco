@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- An IDoc that fails XML rendering or parsing before `onReceive` is dispatched is no longer acknowledged to SAP and lost. It is still reported to `onError`, and is now rejected so that the transactional RFC call fails and SAP keeps the IDoc for reprocessing. ([ballerina-library#9492](https://github.com/ballerina-platform/ballerina-library/issues/9492))
+
 ## [2.1.0] - 2026-08-25
 
 ### Added

@@ -939,7 +939,7 @@
           "repeatable": "FALSE",
           "canAddParameters": false,
           "documentation": {
-            "default": "Invoked when a framework-level error occurs while the listener is handling a request. This covers JCo gateway and server errors surfaced asynchronously by the JCo runtime (connection retries, registration failures) and pre-dispatch failures such as IDoc rendering or parsing. It is not invoked for errors raised by the IDoc receive handler itself - IDoc delivery is fire-and-forget and per-call errors are logged instead."
+            "default": "Invoked when a framework-level error occurs while the listener is handling a request. This covers JCo gateway and server errors surfaced asynchronously by the JCo runtime (connection retries, registration failures) and pre-dispatch failures such as IDoc rendering or parsing (an IDoc that fails rendering is also rejected, so SAP keeps it for reprocessing). It is not invoked for errors raised by the IDoc receive handler itself - IDoc delivery is fire-and-forget and per-call errors are logged instead."
           }
         }
       ],

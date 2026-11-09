@@ -320,7 +320,7 @@ service jco:IDocService on idocListener {
 | Available Methods | Description |
 |-------------------|-------------|
 | `onReceive(xml iDoc)` | Called for every incoming IDoc. The payload is the fully-rendered IDoc XML. You can parse it with `xmldata:parseAsType` into a typed record. Any error returned from this function is logged by the connector but does not affect SAP's delivery status (IDoc delivery is fire-and-forget). |
-| `onError(error err)` | Called for framework-level errors such as JCo gateway errors, registration failures, ACL denials, connection retries, and IDoc rendering errors. Does NOT fire for errors returned from `onReceive`. |
+| `onError(error err)` | Called for framework-level errors such as JCo gateway errors, registration failures, ACL denials, connection retries, and IDoc rendering errors. An IDoc that fails rendering is also rejected, so SAP keeps it in error (SM58) for reprocessing. Does NOT fire for errors returned from `onReceive`. |
 
 ### Start the listener and Test on SAP side
 
@@ -430,7 +430,7 @@ Fix: in transaction **SM59**, open the RFC destination (e.g. `TEST_LISTENER`) �
 `onError` is narrower than you might expect — it gets:
 
 - **Framework errors from JCo itself.** Gateway disconnects during a retry. Server registration failures (permission denied by ACL). IDoc rendering errors (the repository lookup failed or returned unexpected metadata).
-- **Pre-dispatch failures.** The XML rendering of an incoming IDoc failed before `onReceive` could be called.
+- **Pre-dispatch failures.** The XML rendering of an incoming IDoc failed before `onReceive` could be called. After `onError` returns, the connector rejects the IDoc: the tRFC call fails, the transaction ID is rolled back, and the IDoc stays in error on the SAP side (SM58) so it can be reprocessed once the cause is fixed.
 
 It does **not** get errors from `onReceive` itself. Your `onReceive` returning an error is logged at WARN, but not surfaced to `onError`. The rationale: IDoc delivery is fire-and-forget from SAP's perspective — there's no caller waiting for you to return. Anything your code does with the IDoc (parse it, forward it) is your responsibility to handle locally.
 

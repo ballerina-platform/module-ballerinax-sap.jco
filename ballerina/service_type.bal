@@ -25,7 +25,9 @@ public type IDocService distinct service object {
     # Invoked when a framework-level error occurs while the listener is handling a request.
     # This covers JCo gateway and server errors surfaced asynchronously by the JCo runtime
     # (connection retries, registration failures) and pre-dispatch failures such as IDoc
-    # rendering or parsing. It is not invoked for errors raised by the IDoc receive handler
+    # rendering or parsing; an IDoc that fails rendering is also rejected, so the transactional
+    # RFC call fails and SAP keeps the IDoc for reprocessing instead of marking it as delivered.
+    # It is not invoked for errors raised by the IDoc receive handler
     # itself — IDoc delivery is fire-and-forget and per-call errors are logged instead.
     # Because the listener starts before the gateway handshake completes, this handler is
     # also the primary signal for connectivity problems: JCo retries automatically on every
