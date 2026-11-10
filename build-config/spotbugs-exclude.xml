@@ -72,4 +72,13 @@
         <Class name="io.ballerina.lib.sap.rfc.BallerinaRfcHandler"/>
         <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
+    <Match>
+        <Class name="io.ballerina.lib.sap.dataproviders.SAPDestinationDataProvider"/>
+        <Bug pattern="THROWS_METHOD_THROWS_RUNTIMEEXCEPTION"/>
+    </Match>
+    <Match>
+        <Class name="io.ballerina.lib.sap.rfc.BallerinaRfcHandler"/>
+        <Method name="parseXmlDocument"/>
+        <Bug pattern="THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION"/>
+    </Match>
 </FindBugsFilter>

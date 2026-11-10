@@ -66,7 +66,9 @@ allprojects {
 
 def moduleVersion = project.version.replace("-SNAPSHOT", "")
 
-task build {
+// Newer plugins register a root 'build' task themselves; reuse it when present.
+def rootBuild = tasks.names.contains('build') ? tasks.named('build') : tasks.register('build')
+rootBuild.configure {
     dependsOn(':sap.jco-native:build')
     dependsOn(':sap.jco-ballerina:build')
     dependsOn(':sap.jco-examples:build')

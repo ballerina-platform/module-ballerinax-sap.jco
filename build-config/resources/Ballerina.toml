@@ -2,7 +2,7 @@
 org = "ballerinax"
 name = "sap.jco"
 version = "@toml.version@"
-distribution = "2201.11.0"
+distribution = "2201.14.1"
 authors = ["Ballerina"]
 keywords = ["Name/SAP ECC (JCo)", "Area/ERP & Business Operations", "Vendor/SAP", "Cost/Paid", "Type/Connector", "Type/Trigger", "SAP ECC", "JCo", "RFC", "IDoc", "ERP"]
 repository = "https://github.com/ballerina-platform/module-ballerinax-sap.jco"
@@ -11,20 +11,20 @@ license = ["Apache-2.0"]
 include = ["metadata/**"]
 
 
-[[platform.java21.dependency]]
+[[platform.java25.dependency]]
 groupId = "io.ballerina.lib.sap"
 artifactId = "sap.jco-native"
 version = "@project.version@"
 path = "../native/build/libs/sap.jco-native-@project.version@.jar"
 
-[[platform.java21.dependency]]
+[[platform.java25.dependency]]
 path = "../native/libs/sapidoc3.jar"
 scope = "provided"
 groupId="com.sap"
 artifactId="com.sap.conn.idoc"
 version="3.1.*"
 
-[[platform.java21.dependency]]
+[[platform.java25.dependency]]
 path = "../native/libs/sapjco3.jar"
 scope = "provided"
 groupId="com.sap"
