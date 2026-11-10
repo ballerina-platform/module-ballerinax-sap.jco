@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The package now targets Ballerina 2201.14.0 (Swan Lake Update 14), which runs on Java 25, and declares its native and SAP JCo libraries under `[[platform.java25.dependency]]`. Projects that use the connector must run on Ballerina 2201.14.0 or later and declare the SAP JCo and IDoc JARs under `[[platform.java25.dependency]]`, as shown in the README. With Ballerina 2201.14 the previous `platform.java21` declarations caused `cannot resolve 'com.sap:com.sap.conn.idoc:3.1.*'` when a project resolved a package built on 2201.14.
+
 ### Fixed
 
 - An IDoc that fails XML rendering or parsing before `onReceive` is dispatched is no longer acknowledged to SAP and lost. It is still reported to `onError`, and is now rejected so that the transactional RFC call fails and SAP keeps the IDoc for reprocessing. ([ballerina-library#9492](https://github.com/ballerina-platform/ballerina-library/issues/9492))

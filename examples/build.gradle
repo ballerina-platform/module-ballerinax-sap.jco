@@ -17,11 +17,19 @@
  */
 
 import org.apache.tools.ant.taskdefs.condition.Os
+import org.gradle.process.ExecOperations
+
+import javax.inject.Inject
+
+abstract class ExamplesExecHelper {
+    @Inject abstract ExecOperations getExecOperations()
+}
 
 task test {
+    def execHelper = project.objects.newInstance(ExamplesExecHelper)
     doLast {
         try {
-            exec {
+            execHelper.execOperations.exec {
                 workingDir project.projectDir
                 println("Working dir: ${workingDir}")
                 if (Os.isFamily(Os.FAMILY_WINDOWS)) {
@@ -43,13 +51,14 @@ task build {
             build.enabled = false
         }
     }
+    def execHelper = project.objects.newInstance(ExamplesExecHelper)
     doLast {
         try {
-            exec {
+            execHelper.execOperations.exec {
                 workingDir project.projectDir
                 println("Working dir: ${workingDir}")
                 if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-                    commandLine 'sh', "/c", "chmod +x ./build.s && ./build.sh build && exit %%ERRORLEVEL%%"
+                    commandLine 'sh', "/c", "chmod +x ./build.sh && ./build.sh build && exit %%ERRORLEVEL%%"
                 } else {
                     commandLine 'sh', "-c", "chmod +x ./build.sh && ./build.sh build"
                 }
